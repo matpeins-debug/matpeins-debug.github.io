@@ -20,7 +20,7 @@
     { id: "wintermehrkampf", name: "Wintermehrkampf", pfad: "/wintermehrkampf/", satz: "Fünf Spiele, eine Wertung.", gruppen: false },
     { id: "schuetzenfest", name: "Schützenfest", pfad: "/schuetzenfest/", satz: "Ruhige Hand am Schießstand: Atem, Zug, Treffer.", gruppen: false },
     { id: "penaltyschiessen", name: "Penaltyschießen", pfad: "/penaltyschiessen/", satz: "Eins gegen eins auf dem Eis: antäuschen, schießen, halten.", gruppen: false },
-    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Fünf Sprünge über der Lippe: Höhe, Drehung, Griff.", gruppen: false },
+    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Acht Sprünge über der Kante: abspringen, drehen, landen.", gruppen: false },
   ];
   const live = () => LISTE.filter((s) => s.pfad);
   root.CMSpiele = {
