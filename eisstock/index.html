@@ -2383,7 +2383,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.8.1";
+  const VERSION = "0.8.2";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2411,6 +2411,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   const sichtbar = (x) => x - cam.cx > -0.6 * cam.d0, flach = (x) => Math.max(0.24, cam.hpx * sk(x) / (cam.mpx * cam.d0)) / 0.24;   // flach: wie rund ein Kreis am Boden aussieht (1 = Blick von hinten)
   const KAM = { SX: (x, y) => SX(x, y), SY: (x) => SY(x), u: (x) => cam.mpx * sk(x), sichtbar: (x) => sichtbar(x), W: 844, H: 390 };
   let jubel = 0;   // Stimmung am Teich: 1 nach einem Treffer oder Punkten, klingt ab
+  // Tafel, die sich nach dem Text richtet (am iPhone ist die Schrift breiter): mittig um cx, Schrift wird kleiner, wenn es sonst nicht ins Bild passt
+  function tafelMitte(c, cx, y, h, zeilen, minB) {
+    const breit = (s, px) => { c.font = `700 ${px}px "Futura","Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif`; return c.measureText(s).width; };
+    let k = 1, w = Math.max(...zeilen.map(([s, px]) => breit(s, px))) + 30; const max = R.W - 24; if (w > max) { k = (max - 30) / (w - 30); w = max; }
+    w = Math.max(w, minB || 0); const x = R.clamp(cx - w / 2, 12, R.W - 12 - w);
+    R.tafel(c, x, y, w, h, zeilen.map(([s, px, col]) => [s, Math.floor(px * k), col]));
+  }
   function kameraZiel(W, phase, dran) {
     if (phase === "messen") return CAM_FELD;
     if (phase !== "lauf") return CAM_ZIEL;
@@ -2579,20 +2586,20 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
               let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
               if (k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so);
               else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } }
-          if (aufg && phase === "zielen" && !(zug && u > 0)) R.tafel(c, R.W / 2 - 250, 50, 500, 30, [[AUFGABEN[aNr].text, 13]]);
+          if (aufg && phase === "zielen" && !(zug && u > 0)) tafelMitte(c, R.W / 2, 50, 30, [[AUFGABEN[aNr].text, 13]]);
           if (zug && phase === "zielen") {   // der Zug unter dem Finger und das Abgabetempo
             c.strokeStyle = "rgba(20,27,37,0.7)"; c.lineWidth = 3; c.beginPath(); c.moveTo(zug.x0, zug.y0); c.lineTo(zug.x, zug.y); c.stroke();
             c.fillStyle = "#F1E7D2"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.beginPath(); c.arc(zug.x0, zug.y0, 6, 0, R.TAU); c.fill(); c.stroke();
             c.fillStyle = u > ZUG_MIN ? "#C23B2A" : "rgba(20,27,37,0.5)"; c.beginPath(); c.arc(zug.x, zug.y, 13, 0, R.TAU); c.fill(); c.stroke();
             zuganzeige(c, zug, P.zugFuer(tempo()), eis, sohle, W, stufe.hilfe < 2);
             const lauf = P.weite(tempo(), eis, sohle), zuWeit = P.X0 + lauf > P.BAHN.lang;
-            R.tafel(c, R.W / 2 - 130, 50, 260, 46, [[zuWeit ? "Harter Schuss: läuft über die Bahn hinaus" : `Stock läuft ${R.zahl(lauf, 1)} m`, zuWeit ? 13 : 17, zuWeit ? "#C23B2A" : "#141B25"], [`Daube liegt bei ${R.zahl(W.daube.x - P.X0, 1)} m`, 12]]);
+            tafelMitte(c, R.W / 2, 50, 46, [[zuWeit ? "Harter Schuss: läuft über die Bahn hinaus" : `Stock läuft ${R.zahl(lauf, 1)} m`, zuWeit ? 13 : 17, zuWeit ? "#C23B2A" : "#141B25"], [`Daube liegt bei ${R.zahl(W.daube.x - P.X0, 1)} m`, 12]], 220);
           }
           if (oben && dran === 0 && (phase === "zielen" || phase === "wurf")) draufsicht(c, W, hilfe);
           if (phase === "messen" && msg) {
             if (duell || aufg) for (const wer of [1, 0]) { const s = W.st.filter((q) => P.imFeld(q) && q.wer === wer).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0]; if (!s) continue;   // Maßband zum besten Stock jeder Seite
               c.strokeStyle = FARBE[wer]; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(W.daube.x, W.daube.y), SY(W.daube.x)); c.lineTo(SX(s.x, s.y), SY(s.x)); c.stroke(); R.tafel(c, SX(s.x, s.y) - 34, SY(s.x) - 52, 68, 22, [[R.zahl(P.abstand(W, s) * 100, 0) + " cm", 12, FARBE[wer]]]); }
-            R.tafel(c, R.W / 2 - 170, 84, 340, 36, [[msg, 17, "#C23B2A"]]); }
+            tafelMitte(c, R.W / 2, 84, 36, [[msg, 17, "#C23B2A"]], 240); }
         },
       });
       naechster(); n = [0, 0]; dran = 0; phase = "zielen";
