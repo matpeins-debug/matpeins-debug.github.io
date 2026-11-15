@@ -2282,6 +2282,76 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   root.ESPhys = api; if (typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
+// Cold Medal · Eisstock – der Stock als 3D-Körper (WebGL ohne Bibliothek, wie die 3D-Figur der Reihe): gedrehtes Profil aus Laufsohle,
+// Stahlring und kegeligem Stockkörper, dazu der gebogene Stiel mit Griff. Licht in Stufen und dunkler Umriss wie im Plakat.
+// Gerendert wird in ein kleines eigenes Bild, das die 2D-Szene an die Stelle des Stocks setzt. Global ESStock3D; null, wenn WebGL fehlt.
+//   ESStock3D.zeichne(ctx, px, py, rPx, phi, el, farbe, sohle)   Fuß des Stocks bei (px, py), Halbmesser rPx Pixel,
+//                                                                phi = Eigendrehung (Biegung des Stiels), el = Blickwinkel von oben (rad)
+//   ESStock3D.inHand(ctx, hx, hy, a, rPx, farbe, sohle)          Stock hängt am Griff in der Hand, a = Winkel des Unterarms
+(function (root) {
+  "use strict";
+  if (typeof document === "undefined") { root.ESStock3D = null; return; }
+  const S = 224, BILD = 3.4, FUSS = 1.0, cv = document.createElement("canvas"); cv.width = cv.height = S;
+  let gl = null; try { gl = cv.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true }); } catch (e) { gl = null; }
+  if (!gl) { root.ESStock3D = null; return; }
+  // ---------------------------------------------------------------- Körper: Profil (Halbmesser, Höhe, Teil) um die Achse gedreht
+  const P = [], N = [], T = [], IX = [], SEG = 32;
+  const v = (p, n, t) => { P.push(p[0], p[1], p[2]); N.push(n[0], n[1], n[2]); T.push(t); return P.length / 3 - 1; };
+  const PROFIL = [[0.94, 0, 0], [0.94, 0.06, 0], [1.0, 0.06, 1], [1.0, 0.27, 1], [0.9, 0.31, 1], [0.86, 0.31, 2], [0.52, 0.48, 2], [0.22, 0.62, 2], [0.2, 0.72, 3], [0, 0.72, 3]];
+  for (let i = 0; i + 1 < PROFIL.length; i++) { const [r0, y0, teil] = PROFIL[i], [r1, y1] = PROFIL[i + 1], dr = r1 - r0, dy = y1 - y0, l = Math.hypot(dr, dy) || 1, nr = dy / l, ny = -dr / l;
+    for (let k = 0; k < SEG; k++) { const a0 = k / SEG * 6.2832, a1 = (k + 1) / SEG * 6.2832, q = (r, y, a) => v([r * Math.cos(a), y, r * Math.sin(a)], [nr * Math.cos(a), ny, nr * Math.sin(a)], teil);
+      const A = q(r0, y0, a0), B = q(r0, y0, a1), C = q(r1, y1, a1), D = q(r1, y1, a0); IX.push(A, B, C, A, C, D); } }
+  // Stiel: Röhre entlang einer leicht gebogenen Linie, unten Holz (Teil 4), oben der dunkle Griff (Teil 3)
+  const STIEL = (s) => [0.3 * s * s, 0.72 + 1.25 * s, 0], ST = 12, RD = 10; let ringVor = null;
+  for (let i = 0; i <= ST; i++) { const s = i / ST, [x, y] = STIEL(s), r = s > 0.52 ? 0.125 : 0.088, teil = s > 0.52 ? 3 : 4, ring = [];
+    for (let k = 0; k < RD; k++) { const a = k / RD * 6.2832; ring.push(v([x + r * Math.cos(a), y, r * Math.sin(a)], [Math.cos(a), 0.15, Math.sin(a)], teil)); }
+    if (ringVor) for (let k = 0; k < RD; k++) { const k2 = (k + 1) % RD; IX.push(ringVor[k], ringVor[k2], ring[k2], ringVor[k], ring[k2], ring[k]); }
+    ringVor = ring; }
+  { const [x, y] = STIEL(1), m = v([x, y + 0.05, 0], [0, 1, 0], 3); for (let k = 0; k < RD; k++) IX.push(ringVor[k], ringVor[(k + 1) % RD], m); }
+  const GRIFF = STIEL(0.9);
+  // ---------------------------------------------------------------- Programm
+  const VS = `attribute vec3 p, n; attribute float teil; uniform float yaw, el, huelle, kipp; uniform vec3 pal[5]; varying vec3 col; varying float lit;
+    void main() { vec3 q = p + n * huelle; float c = cos(yaw), s = sin(yaw);
+      vec3 r = vec3(q.x * c + q.z * s, q.y, -q.x * s + q.z * c), m = vec3(n.x * c + n.z * s, n.y, -n.x * s + n.z * c);
+      float ck = cos(kipp), sk = sin(kipp); r = vec3(r.x * ck - r.y * sk, r.x * sk + r.y * ck, r.z); m = vec3(m.x * ck - m.y * sk, m.x * sk + m.y * ck, m.z);
+      float ce = cos(el), se = sin(el); float ys = r.y * ce - r.z * se, tiefe = r.y * se + r.z * ce; vec3 nv = vec3(m.x, m.y * ce - m.z * se, m.y * se + m.z * ce);
+      gl_Position = vec4(r.x / 1.7, (ys - ${FUSS.toFixed(1)}) / 1.7, -tiefe / 4.0, 1.0);
+      lit = dot(normalize(nv), normalize(vec3(-0.45, 0.75, 0.5))); col = pal[int(teil + 0.5)]; }`;
+  const FS = `precision mediump float; uniform float huelle; varying vec3 col; varying float lit;
+    void main() { float s = lit > 0.3 ? 1.0 : lit > -0.15 ? 0.82 : 0.62; gl_FragColor = vec4(huelle > 0.0 ? vec3(0.08, 0.105, 0.145) : col * s, 1.0); }`;
+  const sh = (art, src) => { const s = gl.createShader(art); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null; };
+  const vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS), pr = gl.createProgram();
+  if (!vs || !fs) { root.ESStock3D = null; return; }
+  gl.attachShader(pr, vs); gl.attachShader(pr, fs); gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) { root.ESStock3D = null; return; }
+  gl.useProgram(pr);
+  const puffer = (daten, name, n) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(daten), gl.STATIC_DRAW); const l = gl.getAttribLocation(pr, name); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, n, gl.FLOAT, false, 0, 0); };
+  puffer(P, "p", 3); puffer(N, "n", 3); puffer(T, "teil", 1);
+  const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(IX), gl.STATIC_DRAW);
+  const U = {}; for (const n of ["yaw", "el", "huelle", "kipp", "pal"]) U[n] = gl.getUniformLocation(pr, n);
+  gl.enable(gl.DEPTH_TEST); gl.clearColor(0, 0, 0, 0); gl.viewport(0, 0, S, S);
+  const rgb = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+  function rendere(yaw, el, kipp, farbe, sohle) {
+    gl.uniform1f(U.yaw, yaw); gl.uniform1f(U.el, el); gl.uniform1f(U.kipp, kipp);
+    gl.uniform3fv(U.pal, new Float32Array([].concat(rgb(sohle), [0.62, 0.66, 0.7], rgb(farbe), [0.17, 0.165, 0.16], [0.6, 0.43, 0.24])));
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.depthMask(false); gl.uniform1f(U.huelle, 0.05); gl.drawElements(gl.TRIANGLES, IX.length, gl.UNSIGNED_SHORT, 0);   // Umriss: etwas größer, dunkel, dahinter
+    gl.depthMask(true); gl.uniform1f(U.huelle, 0); gl.drawElements(gl.TRIANGLES, IX.length, gl.UNSIGNED_SHORT, 0);
+  }
+  const EINH = S / BILD, FX = S / 2, FY = S / 2 + FUSS * EINH;   // Pixel je Einheit im Bild; Fuß des Stocks im Bild
+  function zeichne(c, px, py, rPx, phi, el, farbe, sohle) {
+    rendere(Math.PI / 2 - (phi || 0), el, 0, farbe, sohle); const k = rPx / EINH;
+    c.drawImage(cv, px - FX * k, py - FY * k, S * k, S * k);
+  }
+  // In der Hand, von der Seite gesehen: der Stock hängt am Griff und kippt mit dem Arm (a, 0 = hängt gerade nach unten)
+  function inHand(c, hx, hy, a, rPx, farbe, sohle) {
+    const el = 0.16, kipp = a; rendere(Math.PI, el, kipp, farbe, sohle); const k = rPx / EINH;
+    // Wo der Griff im Bild liegt: derselbe Weg wie im Shader (yaw = π dreht die Biegung nach hinten, also zur Figur)
+    const gx0 = -GRIFF[0], gy0 = GRIFF[1], gx = gx0 * Math.cos(kipp) - gy0 * Math.sin(kipp), gy = (gx0 * Math.sin(kipp) + gy0 * Math.cos(kipp)) * Math.cos(el);
+    c.drawImage(cv, hx - (FX + gx * EINH) * k, hy - (FY - gy * EINH) * k, S * k, S * k);
+  }
+  root.ESStock3D = { zeichne, inHand, bild: cv };
+})(typeof window !== "undefined" ? window : globalThis);
+
 // Cold Medal · Eisstock – der Teich in Lana: was um die Bahn steht (Zuschauer mit Haferl, Feuerkörbe, Tannen, Hütte der Eisschützen,
 // Stocktafel, Bank), der Stock selbst und der Stock in der Hand. Gezeichnet über die Kamera des Spiels (K: SX, SY, u = Pixel je Meter
 // an der Stelle x, sichtbar, flach). Nur Bild, keine Rechnung. Global ESTeich.
@@ -2400,6 +2470,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const ry = r * 0.3 * q, ring = r * 0.2, kegel = r * 0.42, hals = r * 0.2, yR = py - ring, yH = yR - kegel;
     c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.22, py + r * 0.08, r * 1.12, ry * 1.15, 0, 0, TAU); c.fill();
     c.globalAlpha = 0.16; c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py + ry * 0.9, r * 0.9, ry * 0.85, 0, 0, TAU); c.fill(); c.globalAlpha = 1;   // Spiegelung im Eis
+    if (root.ESStock3D) return root.ESStock3D.zeichne(c, px, py, r, s.phi, Math.asin(Math.min(0.92, 0.3 * q)), farbe, sohle);   // 3D-Stock; ohne WebGL folgt die gezeichnete Fassung
     c.fillStyle = sohle; c.beginPath(); c.ellipse(px, py, r * 0.94, ry * 0.94, 0, 0, TAU); c.fill();
     // Stahlring: Mantelfläche und Oberkante
     c.fillStyle = "#8D969F"; c.beginPath(); c.ellipse(px, py - ring * 0.15, r, ry, 0, 0, Math.PI); c.lineTo(px - r, yR); c.ellipse(px, yR, r, ry, 0, Math.PI, 0, true); c.closePath(); c.fill();
@@ -2417,6 +2488,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
   // Der Stock in der Hand, von der Seite: hängt am Griff und schwingt mit dem Arm (a = Winkel des Unterarms, 0 = nach unten)
   function stockInHand(c, hx, hy, a, k, farbe, sohle) {
+    if (root.ESStock3D) return root.ESStock3D.inHand(c, hx, hy, a, 13 * k, farbe, sohle);
     c.save(); c.translate(hx, hy); c.rotate(-a); c.lineCap = "round";
     c.strokeStyle = "#2B2A28"; c.lineWidth = 4.2 * k; c.beginPath(); c.moveTo(0, -4 * k); c.lineTo(0, 5 * k); c.stroke();   // Griff
     c.strokeStyle = "#9A6E3E"; c.lineWidth = 3 * k; c.beginPath(); c.moveTo(0, 5 * k); c.quadraticCurveTo(-1.5 * k, 10 * k, 0, 14 * k); c.stroke(); c.lineCap = "butt";
@@ -2462,7 +2534,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.12.1";
+  const VERSION = "0.13.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
