@@ -343,7 +343,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     idre: { land: "SWE", name: "Idre Fjäll", form: "rund", hoch: 0.5, wald: 0.9, haus: "#A8322A", dach: "#2B2B2B", teile: ["dorf", "flutlicht"] },
     heerenveen: { land: "NED", name: "Heerenveen", form: "flach", hoch: 0.06, wald: 0.25, haus: "#B9573C", dach: "#3B2C26", teile: ["muehle", "kirche", "muehle", "dorf"] },
     friesland: { land: "NED", name: "Friesland", form: "flach", hoch: 0.05, wald: 0.2, haus: "#B9573C", dach: "#3B2C26", teile: ["muehle", "dorf", "kirche"] },
-    lana: { land: "ITA", name: "Lana", form: "alpin", hoch: 0.72, wald: 0.6, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["kirche", "dorf", "burg"] },
+    lana: { land: "ITA", name: "Lana", form: "alpin", hoch: 0.72, wald: 0.6, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["kirche", "dorf", "burg", "zinnen"] },
     schnalstal: { land: "ITA", name: "Schnalstal", form: "alpin", hoch: 0.82, wald: 0.5, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["dorf", "kirche"] },
     garmisch: { land: "GER", name: "Garmisch-Partenkirchen", form: "alpin", hoch: 0.8, wald: 0.75, haus: "#F1E9D6", dach: "#6A4530", teile: ["kirche", "dorf", "huette"] },
     lahti: { land: "FIN", name: "Lahti", form: "flach", hoch: 0.12, wald: 1, haus: "#C9A94F", dach: "#3A3A3A", teile: ["schanzen", "funkmast", "funkmast", "dorf"] },
@@ -413,6 +413,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     schanzen(x, px, y, s, O, L) { x.strokeStyle = mix("#E9EEF2", L.mittel, L.licht * 0.35); x.lineCap = "round"; for (const [dx, h] of [[0, 46], [26, 34], [46, 24]]) { x.lineWidth = 3 * s; x.beginPath(); x.moveTo(px + dx * s, y - h * s); x.quadraticCurveTo(px + (dx + 16) * s, y - h * 0.45 * s, px + (dx + 30) * s, y - h * 0.3 * s); x.stroke(); x.lineWidth = 1.5 * s; x.beginPath(); x.moveTo(px + (dx + 2) * s, y - h * s); x.lineTo(px + (dx + 2) * s, y); x.stroke(); } },
     flutlicht(x, px, y, s, O, L) { x.strokeStyle = mix("#59616E", L.mittel, L.licht * 0.3); x.lineWidth = 1.4 * s; for (const dx of [-40, 40]) { x.beginPath(); x.moveTo(px + dx * s, y); x.lineTo(px + dx * s, y - 40 * s); x.stroke(); x.fillStyle = L.licht ? "#FFF3C4" : "#C8CCD2"; x.fillRect(px + (dx - 5) * s, y - 44 * s, 10 * s, 4 * s);
       if (L.licht) { const g = x.createRadialGradient(px + dx * s, y - 42 * s, 1, px + dx * s, y - 42 * s, 46 * s); g.addColorStop(0, "rgba(255,243,196,0.5)"); g.addColorStop(1, "rgba(255,243,196,0)"); x.fillStyle = g; x.fillRect(px + (dx - 46) * s, y - 88 * s, 92 * s, 92 * s); } } },
+    // drei Felstürme der Dolomiten im hellen Dolomit, auf einem Schuttkegel im Schnee (ferne Ebene; Eisstock, seit 15.11.2026)
+    zinnen(x, px, y, s, O, L) {
+      const fels = mix("#D8C3AC", L.fern, 0.18 + L.licht * 0.5), dunkel = mix("#A38C78", L.fern, 0.25 + L.licht * 0.5), y0 = y - 30 * s;
+      x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 190 * s, y); x.quadraticCurveTo(px - 90 * s, y - 52 * s, px, y - 46 * s); x.quadraticCurveTo(px + 100 * s, y - 50 * s, px + 200 * s, y); x.closePath(); x.fill();
+      x.fillStyle = L.schatten; x.beginPath(); x.moveTo(px + 20 * s, y - 46 * s); x.quadraticCurveTo(px + 110 * s, y - 48 * s, px + 200 * s, y); x.lineTo(px + 90 * s, y); x.closePath(); x.fill();
+      const turm = (cx, w, h) => { const P = (a, b) => [px + cx + a * w, y0 - b * h];
+        x.fillStyle = fels; x.beginPath(); [[-0.5, 0], [-0.43, 0.55], [-0.3, 0.9], [-0.12, 1], [0.1, 0.97], [0.26, 0.8], [0.4, 0.45], [0.5, 0]].forEach((q, i) => { const [a, b] = P(q[0], q[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.closePath(); x.fill();
+        x.fillStyle = dunkel; x.beginPath(); [[0.1, 0.97], [0.26, 0.8], [0.4, 0.45], [0.5, 0], [0.16, 0], [0.04, 0.5]].forEach((q, i) => { const [a, b] = P(q[0], q[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.closePath(); x.fill();
+        x.fillStyle = L.schnee; for (const [a, b, l] of [[-0.36, 0.34, 0.3], [-0.2, 0.62, 0.24], [-0.4, 0.12, 0.5]]) { const [qx, qy] = P(a, b); x.fillRect(qx, qy, l * w, Math.max(1, 1.6 * s)); } };
+      turm(96 * s, 26 * s, 58 * s); turm(62 * s, 52 * s, 96 * s); turm(-66 * s, 64 * s, 104 * s); turm(0, 74 * s, 132 * s);
+    },
     dom(x, px, y, s, O, L) { x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 90 * s, y); x.quadraticCurveTo(px - 30 * s, y - 120 * s, px + 10 * s, y - 118 * s); x.quadraticCurveTo(px + 60 * s, y - 100 * s, px + 110 * s, y); x.closePath(); x.fill(); x.fillStyle = L.schatten; x.beginPath(); x.moveTo(px + 10 * s, y - 118 * s); x.quadraticCurveTo(px + 60 * s, y - 100 * s, px + 110 * s, y); x.lineTo(px + 40 * s, y); x.closePath(); x.fill(); },
     dampf(x, px, y, s) { x.fillStyle = "rgba(255,255,255,0.35)"; for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(px + i * 3 * s, y - (10 + i * 7) * s, (4 + i * 1.6) * s, 0, TAU); x.fill(); } },
     fahne(x, px, y, s, O, L) { x.strokeStyle = "#E8E2D2"; x.lineWidth = 1.2 * s; x.beginPath(); x.moveTo(px, y); x.lineTo(px, y - 30 * s); x.stroke(); x.fillStyle = mix("#BA2B32", L.mittel, L.licht * 0.3); x.fillRect(px, y - 30 * s, 14 * s, 9 * s); x.fillStyle = "#FFFFFF"; x.fillRect(px + 3.4 * s, y - 30 * s, 3 * s, 9 * s); x.fillRect(px, y - 27 * s, 14 * s, 3 * s); x.fillStyle = "#1F3A7A"; x.fillRect(px + 4.2 * s, y - 30 * s, 1.4 * s, 9 * s); x.fillRect(px, y - 26.2 * s, 14 * s, 1.4 * s); },
@@ -433,12 +444,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const yF = berge(xF, Wl, hor + 1, amp, kamm(r, O.form === "alpin" ? 14 : 6, O.form === "alpin" ? 0.9 : 1.5), O.form === "stadt" ? "rund" : O.form, L.fern, O.form === "alpin" ? L.schnee : null, L.schatten);
     if (O.form !== "alpin" && O.form !== "stadt" && O.hoch > 0.2) { xF.fillStyle = mix(L.schnee, L.fern, 0.35); for (let px = 0; px < Wl; px += 2) { const y = yF(px); if (hor - y > amp * 0.6) xF.fillRect(px, y, 2, Math.min(7, (hor - y - amp * 0.6) * 0.6)); } }
     if (O.teile.includes("dom")) TEILE.dom(xF, Wl * 0.3, hor + 1, hor / 200, O, L, r);
+    if (O.teile.includes("zinnen")) TEILE.zinnen(xF, Wl * 0.19, hor + 1, hor / 200, O, L, r);
     // mittel: Vorberge mit Wald, Wahrzeichen im Talgrund
     const mAmp = Math.max(10, amp * 0.34), yM = berge(xM, Wl, hor + 14, mAmp, kamm(r, 7, 1.3), "rund", L.mittel, null, null);
     wald(xM, Wl, r, yM, O.wald * 0.8, L.wald, 13 + hor * 0.03);
     xM.fillStyle = L.schnee; xM.fillRect(0, hor + 8, Wl, 14);
     const sc = Math.max(0.6, hor / 210);
-    O.teile.forEach((tl, i) => { if (tl === "dom" || !TEILE[tl]) return; const px = Wl * ((i + 0.5) / O.teile.length) + (r() - 0.5) * 60; TEILE[tl](xM, px, hor + 9, sc * (tl === "skyline" ? 1 : 0.9), O, L, r); });
+    O.teile.forEach((tl, i) => { if (tl === "dom" || tl === "zinnen" || !TEILE[tl]) return; const px = Wl * ((i + 0.5) / O.teile.length) + (r() - 0.5) * 60; TEILE[tl](xM, px, hor + 9, sc * (tl === "skyline" ? 1 : 0.9), O, L, r); });
     wald(xM, Wl, r, () => hor + 16, O.wald * 0.35, mix(L.wald, "#000000", 0.15), 20 + hor * 0.04);
     function kachel(ctx, cv, off) { const x0 = -(((off % Wl) + Wl) % Wl); ctx.drawImage(cv, x0, 0, Wl, H); if (x0 + Wl < W) ctx.drawImage(cv, x0 + Wl, 0, Wl, H); }
     return { ort: O, licht: L, W, H, hor, nacht: !!L.licht,
@@ -2109,7 +2121,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // Schuss: winkel in Grad (0 = geradeaus), v in m/s
   function schuss(W, wer, winkel, v, sohle) {
     v = clamp(v, V_MIN, V_MAX); const a = winkel * Math.PI / 180, s = stock(X0, 0, wer, sohle);
-    s.vx = v * Math.cos(a); s.vy = v * Math.sin(a); s.w = 1.2 + 0.25 * v;
+    s.vx = v * Math.cos(a); s.vy = v * Math.sin(a); s.phi = Math.PI; s.w = 0.12 + 0.03 * v;   // flach aufgesetzt dreht der Stock kaum (Lehrbuch); der Stiel zeigt nach hinten
     W.st.push(s); W.lauf = s; W.aus = false; return s;
   }
   const steht = (s) => s.vx === 0 && s.vy === 0;
@@ -2229,25 +2241,136 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   root.ESPhys = api; if (typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
+// Cold Medal · Eisstock – der Teich in Lana: was um die Bahn steht (Zuschauer mit Haferl, Feuerkörbe, Tannen, Hütte der Eisschützen,
+// Stocktafel, Bank), der Stock selbst und der Stock in der Hand. Gezeichnet über die Kamera des Spiels (K: SX, SY, u = Pixel je Meter
+// an der Stelle x, sichtbar, flach). Nur Bild, keine Rechnung. Global ESTeich.
+(function (root) {
+  "use strict";
+  const TAU = Math.PI * 2, INK = "#141B25";
+  function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  const MANTEL = ["#7A4C2C", "#3F6B55", "#8E3B2E", "#4D4237", "#23466B", "#6B5A3A", "#5A3550"], HUT = ["#3A2A1C", "#2B3A2E", "#4A1F1A", "#26303F"];
+
+  // Was am Teich steht: x längs der Bahn (m ab Abspielstelle), y quer (Bahn ±1,5 m)
+  function baue() {
+    const r = rng(1908), L = [], mensch = (x, y) => L.push({ art: "mensch", x, y, m: Math.floor(r() * MANTEL.length), h: Math.floor(r() * HUT.length), gr: 0.44 + r() * 0.12, haferl: r() < 0.3, schal: r() < 0.5, ph: r() * TAU });
+    for (let x = 2.4; x < 28.6; x += x > 19 ? 0.5 : 1.1) for (const sd of [-1, 1]) { if (r() < 0.14) continue; mensch(x + r() * 0.3, sd * (2.2 + r() * 0.45)); if (x > 19 && r() < 0.65) mensch(x + 0.2 + r() * 0.3, sd * (3.0 + r() * 0.5)); }
+    for (let y = -3.3; y <= 3.3; y += 0.55) { if (r() < 0.2) continue; mensch(29.2 + r() * 0.5, y + r() * 0.2); if (r() < 0.5) mensch(30.1 + r() * 0.4, y + 0.25); }
+    L.push({ art: "feuer", x: 8, y: -3.4 }, { art: "feuer", x: 23.2, y: 4.3 }, { art: "tafel", x: 19.3, y: -3.3 }, { art: "bank", x: 1.6, y: 2.7 }, { art: "huette", x: 36, y: -6.2 });
+    for (let i = 0; i < 46; i++) { const x = 9 + r() * 36, sd = r() < 0.5 ? -1 : 1, y = x > 31.5 ? (r() * 2 - 1) * 10 : sd * (5.4 + r() * 6.5); if (x > 33 && x < 39 && y < -3.6 && y > -8.8) continue; L.push({ art: "tanne", x, y, gr: 1.1 + r() * 0.9, ph: r() * TAU }); }
+    const kratzer = []; for (let i = 0; i < 46; i++) { const x = r() * 27, y = (r() * 2 - 1) * 1.35; kratzer.push([x, y, 0.5 + r() * 2.2, (r() - 0.5) * 0.12]); }
+    return { dinge: L.sort((a, b) => b.x - a.x), kratzer };
+  }
+
+  const ZEICHNE = {
+    mensch(c, d, px, py, u, t, jubel) {
+      const h = d.gr * u, b = h * 0.3, hupf = (jubel > 0 ? Math.abs(Math.sin(t * 9 + d.ph)) * jubel * 0.09 : Math.max(0, Math.sin(t * 1.3 + d.ph)) * 0.012) * h, y = py - hupf;
+      c.fillStyle = "rgba(30,45,70,0.16)"; c.beginPath(); c.ellipse(px + h * 0.1, py, b * 0.75, b * 0.2, 0, 0, TAU); c.fill();
+      c.fillStyle = "#2E2A28"; c.fillRect(px - b * 0.36, y - h * 0.36, b * 0.3, h * 0.36); c.fillRect(px + b * 0.06, y - h * 0.36, b * 0.3, h * 0.36);
+      c.fillStyle = MANTEL[d.m]; c.beginPath(); c.moveTo(px - b * 0.5, y - h * 0.3); c.lineTo(px - b * 0.42, y - h * 0.8); c.lineTo(px + b * 0.42, y - h * 0.8); c.lineTo(px + b * 0.5, y - h * 0.3); c.closePath(); c.fill();
+      if (jubel > 0.3) { c.strokeStyle = MANTEL[d.m]; c.lineWidth = Math.max(1.5, b * 0.2); c.lineCap = "round"; c.beginPath(); c.moveTo(px - b * 0.4, y - h * 0.74); c.lineTo(px - b * 0.75, y - h * 0.98); c.moveTo(px + b * 0.4, y - h * 0.74); c.lineTo(px + b * 0.75, y - h * 0.98); c.stroke(); }
+      if (d.schal) { c.fillStyle = "#C23B2A"; c.fillRect(px - b * 0.36, y - h * 0.83, b * 0.72, h * 0.06); }
+      c.fillStyle = "#E8C9A8"; c.beginPath(); c.arc(px, y - h * 0.89, h * 0.085, 0, TAU); c.fill();
+      c.fillStyle = HUT[d.h]; c.beginPath(); c.ellipse(px, y - h * 0.95, h * 0.13, h * 0.03, 0, 0, TAU); c.fill(); c.fillRect(px - h * 0.075, y - h * 1.04, h * 0.15, h * 0.09);
+      if (d.haferl && jubel <= 0.3) { const hx = px + b * 0.52, hy = y - h * 0.6; c.fillStyle = "#F1E7D2"; c.fillRect(hx, hy, b * 0.24, h * 0.07); if (u > 60) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(hx + b * 0.12, hy - 1); c.quadraticCurveTo(hx + b * 0.3 * Math.sin(t * 2 + d.ph), hy - h * 0.07, hx + b * 0.12, hy - h * 0.13); c.stroke(); } }
+    },
+    feuer(c, d, px, py, u, t) {
+      const s = u * 0.5; c.fillStyle = "rgba(240,144,42,0.16)"; c.beginPath(); c.ellipse(px, py, s * 1.5, s * 0.42, 0, 0, TAU); c.fill();
+      c.strokeStyle = "#2A2A2A"; c.lineWidth = Math.max(1.5, s * 0.07); c.beginPath(); c.moveTo(px - s * 0.3, py); c.lineTo(px - s * 0.18, py - s * 0.5); c.moveTo(px + s * 0.3, py); c.lineTo(px + s * 0.18, py - s * 0.5); c.stroke();
+      c.fillStyle = "#2A2A2A"; c.beginPath(); c.moveTo(px - s * 0.34, py - s * 0.95); c.lineTo(px + s * 0.34, py - s * 0.95); c.lineTo(px + s * 0.24, py - s * 0.45); c.lineTo(px - s * 0.24, py - s * 0.45); c.closePath(); c.fill();
+      for (const [col, k, f] of [["#E2572B", 1, 7], ["#F0902A", 0.72, 9], ["#F6D36A", 0.42, 12]]) { c.fillStyle = col; c.beginPath(); c.moveTo(px - s * 0.3 * k, py - s * 0.95); c.quadraticCurveTo(px - s * 0.2 * k + Math.sin(t * f + d.x) * s * 0.12, py - s * (1.25 + 0.5 * k + 0.08 * Math.sin(t * (f + 3))), px + Math.sin(t * f * 0.7) * s * 0.06, py - s * (1.3 + 0.75 * k)); c.quadraticCurveTo(px + s * 0.26 * k, py - s * (1.2 + 0.3 * k), px + s * 0.3 * k, py - s * 0.95); c.closePath(); c.fill(); }
+      for (let i = 0; i < 5; i++) { const a = ((t * 0.22 + i / 5) % 1), r = s * (0.12 + a * 0.36); c.fillStyle = `rgba(120,125,135,${0.26 * (1 - a)})`; c.beginPath(); c.arc(px + Math.sin(a * 5 + i) * s * 0.25 + a * s * 0.5, py - s * (1.9 + a * 2.6), r, 0, TAU); c.fill(); }
+    },
+    tanne(c, d, px, py, u, t) {
+      const h = d.gr * u, w = h * 0.5, wieg = Math.sin(t * 0.7 + d.ph) * h * 0.008;
+      c.fillStyle = "rgba(30,45,70,0.14)"; c.beginPath(); c.ellipse(px + h * 0.16, py, w * 0.55, w * 0.15, 0, 0, TAU); c.fill();
+      c.fillStyle = "#4A3323"; c.fillRect(px - h * 0.03, py - h * 0.16, h * 0.06, h * 0.16);
+      for (let i = 0; i < 3; i++) { const y0 = py - h * (0.12 + i * 0.27), y1 = y0 - h * 0.42, b = w * (0.5 - i * 0.12), sp = px + wieg * (i + 1);
+        c.fillStyle = i % 2 ? "#2C4A40" : "#27433A"; c.beginPath(); c.moveTo(px - b, y0); c.lineTo(sp, y1); c.lineTo(px + b, y0); c.closePath(); c.fill();
+        c.fillStyle = "#F4F7F8"; c.beginPath(); c.moveTo(sp, y1); c.lineTo(px - b * 0.62, y0 - h * 0.13); c.lineTo(px - b * 0.25, y0 - h * 0.17); c.lineTo(sp - b * 0.05, y0 - h * 0.1); c.lineTo(px + b * 0.3, y0 - h * 0.2); c.closePath(); c.fill(); }
+    },
+    huette(c, d, px, py, u, t) {
+      const w = u * 2.0, h = u * 0.9;
+      c.fillStyle = "rgba(30,45,70,0.14)"; c.fillRect(px - w * 0.5, py - 2, w * 1.12, u * 0.14);
+      c.fillStyle = "#7A5636"; c.fillRect(px - w / 2, py - h, w, h); c.strokeStyle = "rgba(20,27,37,0.25)"; c.lineWidth = 1; for (let i = 1; i < 5; i++) { c.beginPath(); c.moveTo(px - w / 2, py - h * i / 5); c.lineTo(px + w / 2, py - h * i / 5); c.stroke(); }
+      c.fillStyle = "#5C3D24"; c.beginPath(); c.moveTo(px - w * 0.58, py - h); c.lineTo(px, py - h * 1.62); c.lineTo(px + w * 0.58, py - h); c.closePath(); c.fill();
+      c.fillStyle = "#F4F7F8"; c.beginPath(); c.moveTo(px - w * 0.6, py - h * 1.02); c.lineTo(px, py - h * 1.7); c.lineTo(px + w * 0.6, py - h * 1.02); c.lineTo(px + w * 0.5, py - h * 1.08); c.lineTo(px, py - h * 1.56); c.lineTo(px - w * 0.5, py - h * 1.08); c.closePath(); c.fill();
+      c.fillStyle = "#3A2A1C"; c.fillRect(px - w * 0.1, py - h * 0.62, w * 0.2, h * 0.62); c.fillStyle = "#F6D36A"; c.fillRect(px + w * 0.2, py - h * 0.66, w * 0.17, h * 0.3); c.fillRect(px - w * 0.37, py - h * 0.66, w * 0.17, h * 0.3);
+      c.fillStyle = "#5C3D24"; c.fillRect(px + w * 0.26, py - h * 1.6, w * 0.08, h * 0.34);
+      for (let i = 0; i < 4; i++) { const a = ((t * 0.16 + i / 4) % 1); c.fillStyle = `rgba(150,155,165,${0.3 * (1 - a)})`; c.beginPath(); c.arc(px + w * 0.3 + a * w * 0.3, py - h * (1.66 + a * 1.1), u * (0.08 + a * 0.2), 0, TAU); c.fill(); }
+      if (u > 34) { c.fillStyle = "#F1E7D2"; c.strokeStyle = INK; c.lineWidth = 1; c.fillRect(px - w * 0.2, py - h * 0.95, w * 0.4, h * 0.2); c.strokeRect(px - w * 0.2, py - h * 0.95, w * 0.4, h * 0.2); c.fillStyle = INK; c.font = `700 ${Math.round(h * 0.15)}px "Futura","Avenir Next Condensed","Arial Narrow",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("LANA", px, py - h * 0.845); }
+    },
+    tafel(c, d, px, py, u) {
+      const w = u * 0.8, h = u * 0.55; c.fillStyle = "#5C3D24"; c.fillRect(px - u * 0.03, py - h * 1.5, u * 0.06, h * 1.5);
+      c.fillStyle = "#2F3A40"; c.strokeStyle = "#7A5636"; c.lineWidth = Math.max(1.5, u * 0.04); c.fillRect(px - w / 2, py - h * 2, w, h); c.strokeRect(px - w / 2, py - h * 2, w, h);
+      c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(px - w * 0.36 + i * w * 0.08, py - h * 1.82); c.lineTo(px - w * 0.36 + i * w * 0.08, py - h * 1.58); } for (let i = 0; i < 3; i++) { c.moveTo(px - w * 0.36 + i * w * 0.08, py - h * 1.42); c.lineTo(px - w * 0.36 + i * w * 0.08, py - h * 1.18); } c.stroke();
+    },
+    bank(c, d, px, py, u) {
+      const w = u * 1.1; c.fillStyle = "#7A5636"; c.fillRect(px - w / 2, py - u * 0.22, w, u * 0.06); c.fillRect(px - w * 0.42, py - u * 0.2, u * 0.05, u * 0.2); c.fillRect(px + w * 0.38, py - u * 0.2, u * 0.05, u * 0.2);
+      for (const [k, col] of [[-0.25, "#C23B2A"], [0.2, "#23466B"]]) { c.fillStyle = col; c.beginPath(); c.ellipse(px + k * w, py - u * 0.25, u * 0.13, u * 0.04, 0, 0, TAU); c.fill(); c.strokeStyle = "#7A5636"; c.lineWidth = Math.max(1.5, u * 0.03); c.beginPath(); c.moveTo(px + k * w, py - u * 0.27); c.lineTo(px + k * w + u * 0.03, py - u * 0.5); c.stroke(); }
+    },
+  };
+  // Kratzer im Eis: zeigen bei der Kamerafahrt, dass sich etwas bewegt
+  function eisspuren(c, K, kratzer) {
+    c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 1; c.beginPath();
+    for (const [x, y, l, schraeg] of kratzer) { if (!K.sichtbar(x)) continue; c.moveTo(K.SX(x, y), K.SY(x)); c.lineTo(K.SX(x + l, y + schraeg), K.SY(x + l)); }
+    c.stroke();
+  }
+  function zeichne(c, K, teich, t, jubel) {
+    for (const d of teich.dinge) { if (!K.sichtbar(d.x)) continue; const px = K.SX(d.x, d.y), py = K.SY(d.x), u = K.u(d.x); if (px < -u * 1.5 || px > K.W + u * 1.5 || py < -10 || py > K.H + u * 2.6) continue; ZEICHNE[d.art](c, d, px, py, u, t, jubel || 0); }
+  }
+  // Der Stock auf dem Eis: Laufsohle (Farbe der Sohle), Stockkörper mit Ring in der Mannschaftsfarbe, gebogener Stiel.
+  // Die Biegung des Stiels zeigt die Eigendrehung (phi); beim Abgeben zeigt sie nach hinten zum Schützen.
+  function stock(c, px, py, r, q, s, farbe, sohle) {
+    const d = r * 0.36, ry = r * 0.3 * q;
+    c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.22, py + r * 0.08, r * 1.12, ry * 1.15, 0, 0, TAU); c.fill();
+    c.fillStyle = sohle; c.beginPath(); c.ellipse(px, py, r, ry, 0, 0, TAU); c.fill();
+    c.fillStyle = "#2B2F36"; c.beginPath(); c.ellipse(px, py - d * 0.25, r * 0.95, ry * 0.95, 0, 0, Math.PI); c.lineTo(px - r * 0.95, py - d); c.ellipse(px, py - d, r * 0.95, ry * 0.95, 0, Math.PI, 0, true); c.closePath(); c.fill();
+    c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py - d * 0.48, r * 0.95, ry * 0.95, 0, 0, Math.PI); c.lineTo(px - r * 0.95, py - d * 0.8); c.ellipse(px, py - d * 0.8, r * 0.95, ry * 0.95, 0, Math.PI, 0, true); c.closePath(); c.fill();
+    c.fillStyle = farbe; c.strokeStyle = INK; c.lineWidth = 1.3; c.beginPath(); c.ellipse(px, py - d, r * 0.95, ry * 0.95, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = "#2B2F36"; c.beginPath(); c.ellipse(px, py - d, r * 0.4, ry * 0.4, 0, 0, TAU); c.fill();
+    const phi = s.phi || 0, kx = Math.cos(phi) * r * 0.42, ky = Math.sin(phi) * ry * 1.1, hx = px + kx, hy = py - d - r * 1.3 + ky;
+    c.strokeStyle = "#8A6238"; c.lineWidth = Math.max(2, r * 0.2); c.lineCap = "round"; c.beginPath(); c.moveTo(px, py - d); c.quadraticCurveTo(px - kx * 0.25, py - d - r * 0.8, hx, hy); c.stroke();
+    c.fillStyle = "#3A2A1C"; c.beginPath(); c.arc(hx, hy, Math.max(1.8, r * 0.19), 0, TAU); c.fill();
+  }
+  // Der Stock in der Hand, von der Seite: hängt am Stiel und schwingt mit dem Arm (a = Winkel des Unterarms, 0 = nach unten)
+  function stockInHand(c, hx, hy, a, k, farbe, sohle) {
+    c.save(); c.translate(hx, hy); c.rotate(-a);
+    c.strokeStyle = "#8A6238"; c.lineWidth = 3.2 * k; c.lineCap = "round"; c.beginPath(); c.moveTo(0, -3 * k); c.quadraticCurveTo(-3 * k, 7 * k, 0, 15 * k); c.stroke();
+    c.fillStyle = "#2B2F36"; c.fillRect(-13 * k, 15 * k, 26 * k, 5 * k); c.fillStyle = farbe; c.fillRect(-13 * k, 16.4 * k, 26 * k, 2.2 * k);
+    c.fillStyle = sohle; c.fillRect(-14 * k, 20 * k, 28 * k, 2.4 * k); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(-13 * k, 15 * k, 26 * k, 5 * k);
+    c.restore();
+  }
+  root.ESTeich = { baue, zeichne, eisspuren, stock, stockInHand };
+})(typeof window !== "undefined" ? window : globalThis);
+
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.4.0";
-  const P = window.ESPhys, F = window.CMFigur;
+  const VERSION = "0.5.0";
+  const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
-  const POSE = { bereit: { lean: 24, crouch: 0, sL: [30, 44], fL: [-16, 20], aF: [10, 6], aB: [-30, -10], hd: -8 }, aus: { lean: 34, crouch: 0, sL: [40, 56], fL: [-30, 16], aF: [-60, -4], aB: [40, 20], hd: -10 },
-    ab: { lean: 50, crouch: 0, sL: [58, 70], fL: [-40, 10], aF: [70, 6], aB: [-50, -10], hd: -18 } };
+  // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
+  const POSE = { ziel: { lean: 10, crouch: 0, sL: [8, 14], fL: [-6, 10], aF: [6, 4], aB: [-14, -12], hd: -4 },
+    rueck: { lean: 30, crouch: 0, sL: [22, 34], fL: [-14, 14], aF: [-68, -4], aB: [34, 24], hd: -8 },
+    schritt: { lean: 40, crouch: 0, sL: [46, 58], fL: [-30, 14], aF: [-22, -2], aB: [20, 20], hd: -12 },
+    setz: { lean: 54, crouch: 0, sL: [62, 78], fL: [-46, 8], aF: [38, 4], aB: [-40, -10], hd: -16 },
+    nach: { lean: 46, crouch: 0, sL: [56, 70], fL: [-42, 12], aF: [80, 8], aB: [-50, -10], hd: -10 } };
+  const mitArm = (p, a) => Object.assign({}, p, { aF: [a, p.aF[1]] }), weichP = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+  // Abgabe in WURF_SEK: kurz ganz ausholen, Ausfallschritt, aufsetzen
+  function wurfPose(von, k) { return k < 0.25 ? F.mix(von, POSE.rueck, weichP(k / 0.25)) : k < 0.62 ? F.mix(POSE.rueck, POSE.schritt, weichP((k - 0.25) / 0.37)) : F.mix(POSE.schritt, POSE.setz, weichP((k - 0.62) / 0.38)); }
   const FARBE = ["#C23B2A", "#23466B"], KEHREN = 4, STOECKE = 3;
   const GEGNER = { hobby: { st: 0.3, name: "Hobby", satz: "Hobby: legt einfach an die Daube, mit spürbarer Streuung." }, verein: { st: 0.6, name: "Verein", satz: "Verein: dosiert besser und schießt dich auch einmal weg." }, meister: { st: 0.9, name: "Meister", satz: "Meister: rechnet voraus, schießt genau und schiebt die Daube." } };
-  const ZUG_MAX = 220, ZUG_MIN = 0.05, GRAD_JE_PX = 0.035, WINKEL_MAX = 6, WURF_SEK = 0.32;   // Wischen: 220 px voller Zug, 1 px seitlich = 0,035°
+  const ZUG_MAX = 220, ZUG_MIN = 0.05, GRAD_JE_PX = 0.035, WINKEL_MAX = 6, WURF_SEK = 0.55;   // Wischen: 220 px voller Zug, 1 px seitlich = 0,035°
   let R;
   // Kamera: Tiefe x, quer y. cx = Stelle auf der Bahn, d0 = Abstand der Kamera dahinter, mpx = Pixel je Meter dort, hpx = Höhe, hor = Horizont.
   // Drei Blicke: Zielen (von hinten über die ganze Bahn), Gleiten (fährt mit dem Stock mit), Zielfeld (groß und schräg von oben).
-  const CAM_ZIEL = { cx: 0, d0: 19.2, mpx: 205, hpx: 276, hor: 96 }, CAM_FELD = { cx: 20.3, d0: 7, mpx: 200, hpx: 750, hor: -310 };
+  const CAM_ZIEL = { cx: 0, d0: 19.2, mpx: 205, hpx: 276, hor: 96 }, CAM_FELD = { cx: 20.3, d0: 7, mpx: 200, hpx: 527, hor: -120 };
   let cam = Object.assign({}, CAM_ZIEL);
   const mixCam = (a, b, w) => { const o = {}; for (const k in a) o[k] = a[k] + (b[k] - a[k]) * w; return o; }, weich = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
   const sk = (x) => cam.d0 / Math.max(0.3 * cam.d0, cam.d0 + x - cam.cx), SX = (x, y) => 422 + y * cam.mpx * sk(x), SY = (x) => cam.hor + cam.hpx * sk(x);
   const sichtbar = (x) => x - cam.cx > -0.6 * cam.d0, flach = (x) => Math.max(0.24, cam.hpx * sk(x) / (cam.mpx * cam.d0)) / 0.24;   // flach: wie rund ein Kreis am Boden aussieht (1 = Blick von hinten)
+  const KAM = { SX: (x, y) => SX(x, y), SY: (x) => SY(x), u: (x) => cam.mpx * sk(x), sichtbar: (x) => sichtbar(x), W: 844, H: 390 };
+  let jubel = 0;   // Stimmung am Teich: 1 nach einem Treffer oder Punkten, klingt ab
   function kameraZiel(W, phase, dran) {
     if (phase === "messen") return CAM_FELD;
     if (phase !== "lauf") return CAM_ZIEL;
@@ -2260,16 +2383,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     c.fillStyle = "#F2F6F8"; c.fillRect(0, 0, R.W, R.H);
     if (cam.hor > -60) { c.save(); c.translate(0, cam.hor - 96); R.kulisse("lana", 150, "tag").zeichne(c, 0, t); c.fillStyle = "#F2F6F8"; c.fillRect(0, 150, R.W, R.H + 400); c.restore(); }
     const B = P.BAHN, h = B.breit / 2;
-    // Zuschauer mit Haferl hinter der Bande, Feuerkorb
-    for (let i = 0; i < 26; i++) { const x = 3 + i * 1.0; if (!sichtbar(x)) continue; const sd = i % 2 ? 1 : -1, px = SX(x, sd * (h + 0.9 + (i % 3) * 0.25)), py = SY(x), s = sk(x) * 0.3 * cam.mpx, bob = Math.max(0, Math.sin(t * 2.6 + i)) * s * 0.04;
-      c.fillStyle = ["#7A4C2C", "#3F6B55", "#8E3B2E", "#4D4237", "#23466B"][i % 5]; c.fillRect(px - s * 0.11, py - s * 0.62 - bob, s * 0.22, s * 0.5); c.fillStyle = "#E8C9A8"; c.beginPath(); c.arc(px, py - s * 0.7 - bob, s * 0.07, 0, R.TAU); c.fill(); c.fillStyle = "#3A2A1C"; c.fillRect(px - s * 0.09, py - s * 0.8 - bob, s * 0.18, s * 0.05); }
-    const fx = SX(8, -(h + 1.6)), fy = SY(8), fs = sichtbar(8) ? sk(8) * 0.29 * cam.mpx : 0; c.fillStyle = "#2A2A2A"; c.fillRect(fx - fs * 0.12, fy - fs * 0.3, fs * 0.24, fs * 0.3); c.fillStyle = "#F0902A"; c.beginPath(); c.moveTo(fx - fs * 0.1, fy - fs * 0.3); c.quadraticCurveTo(fx + Math.sin(t * 7) * 3, fy - fs * (0.62 + 0.06 * Math.sin(t * 11)), fx + fs * 0.1, fy - fs * 0.3); c.fill();
     // Eis und Banden
     const eisC = { glatt: ["#CFE8F2", "#EAF6FA"], rau: ["#C9DDE6", "#E4EEF2"], stumpf: ["#CAD6DB", "#E8EDEF"] }[W.eis];
     const g = c.createLinearGradient(0, SY(B.lang), 0, SY(0)); g.addColorStop(0, eisC[0]); g.addColorStop(1, eisC[1]);
     const xn = Math.max(-1.5, cam.cx - 0.6 * cam.d0);   // vorderer Rand: nie hinter der Kamera
     c.fillStyle = g; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.closePath(); c.fill();
     c.strokeStyle = "#7A5636"; c.lineWidth = 5; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.stroke();
+    T.eisspuren(c, KAM, TEICH.kratzer);
+    c.strokeStyle = "rgba(60,90,120,0.22)"; c.lineWidth = 9; c.beginPath(); c.moveTo(SX(xn, -h) - 6, SY(xn)); c.lineTo(SX(B.lang, -h) - 6, SY(B.lang) - 3); c.lineTo(SX(B.lang, h) + 6, SY(B.lang) - 3); c.lineTo(SX(xn, h) + 6, SY(xn)); c.stroke();   // Schneewall hinter der Bande
+    T.zeichne(c, KAM, TEICH, t, jubel);
     c.strokeStyle = "rgba(194,59,42,0.75)"; c.lineWidth = 2; c.beginPath(); for (const x of [B.feld0, B.feld1]) { c.moveTo(SX(x, -h), SY(x)); c.lineTo(SX(x, h), SY(x)); } c.stroke();
     c.strokeStyle = "rgba(35,70,107,0.35)"; c.lineWidth = 1; for (const r of [0.5, 1.5]) { c.beginPath(); c.ellipse(SX(W.daube.x, W.daube.y), SY(W.daube.x), r * cam.mpx * sk(W.daube.x), r * cam.mpx * sk(W.daube.x) * 0.24 * flach(W.daube.x), 0, 0, R.TAU); c.stroke(); }
     // Zielhilfe: Spur in der Breite des Stocks bis zur Stoppstelle oder zur ersten Berührung (danach wird nicht vorausgesagt)
@@ -2282,12 +2404,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     // Daube und Stöcke von hinten nach vorn
     const dinge = W.st.filter((s) => s.lebt).concat(W.daube.aus ? [] : [W.daube]).sort((a, b) => b.x - a.x);
     for (const s of dinge) { if (!sichtbar(s.x)) continue; const px = SX(s.x, s.y), py = SY(s.x), r = s.r * cam.mpx * sk(s.x), q = flach(s.x);
-      c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.2, py + r * 0.1, r * 1.1, r * 0.34 * q, 0, 0, R.TAU); c.fill();
-      if (s.daube) { c.fillStyle = "#DDA43B"; c.strokeStyle = "#141B25"; c.lineWidth = 1.2; c.beginPath(); c.ellipse(px, py - r * 0.2, r * 1.3, r * 0.5 * Math.min(q, 2), 0, 0, R.TAU); c.fill(); c.stroke(); continue; }
-      c.fillStyle = (P.SOHLE[s.sohle] || P.SOHLE.mittel).farbe; c.beginPath(); c.ellipse(px, py, r, r * 0.3 * q, 0, 0, R.TAU); c.fill();
-      c.fillStyle = FARBE[s.wer]; c.strokeStyle = "#141B25"; c.lineWidth = 1.3; c.beginPath(); c.ellipse(px, py - r * 0.28, r * 0.92, r * 0.28 * q, 0, 0, R.TAU); c.fill(); c.stroke();
-      c.fillStyle = "#F1E7D2"; c.beginPath(); c.ellipse(px + Math.cos(s.phi || 0) * r * 0.62, py - r * 0.28 + Math.sin(s.phi || 0) * r * 0.19 * q, Math.max(1, r * 0.13), Math.max(0.6, r * 0.06 * q), 0, 0, R.TAU); c.fill();   // Marke: zeigt die Eigendrehung
-      c.strokeStyle = "#7A5636"; c.lineWidth = Math.max(1.5, r * 0.2); c.beginPath(); c.moveTo(px, py - r * 0.3); c.lineTo(px + r * 0.15, py - r * 1.5); c.stroke(); c.fillStyle = "#3A2A1C"; c.beginPath(); c.arc(px + r * 0.15, py - r * 1.5, Math.max(1.5, r * 0.18), 0, R.TAU); c.fill(); }
+      if (s.daube) { c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.2, py + r * 0.1, r * 1.1, r * 0.34 * q, 0, 0, R.TAU); c.fill(); c.fillStyle = "#DDA43B"; c.strokeStyle = "#141B25"; c.lineWidth = 1.2; c.beginPath(); c.ellipse(px, py - r * 0.2, r * 1.3, r * 0.5 * Math.min(q, 2), 0, 0, R.TAU); c.fill(); c.stroke(); continue; }
+      T.stock(c, px, py, r, q, s, FARBE[s.wer], (P.SOHLE[s.sohle] || P.SOHLE.mittel).farbe); }
   }
 
   // Zuganzeige neben dem Finger: wie weit man ziehen kann (bis MAX), wo der Zug fürs Zielfeld liegt (grün) und wo die Daube (Strich).
@@ -2332,11 +2450,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       let oben = true; const kOben = R.knopf({ seite: "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
-      function abgeben(w, v) { if (phase !== "zielen") return; zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel" }; phase = "wurf"; tPh = 0; R.tippWeg(); }
+      function abgeben(w, v) { if (phase !== "zielen") return; zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? F.mix(POSE.ziel, POSE.rueck, weichP(u * 1.5)) : POSE.rueck }; phase = "wurf"; tPh = 0; R.tippWeg(); }
       function naechster() {
         const fertig = n[0] >= (duell ? STOECKE : 5) && (!duell || n[1] >= STOECKE);
         if (fertig) { phase = "messen"; tPh = 0; const w = P.wertung(W);
-          if (duell) { if (w.wer != null) stand[w.wer] += w.punkte; verlauf.push(w); msg = w.gleich ? "Gleich weit: keine Punkte" : w.wer == null ? "Kein Stock im Zielfeld" : `${w.punkte} ${w.punkte === 1 ? "Punkt" : "Punkte"} für ${w.wer === 0 ? R.myName() : geg.name}`; w.wer === 0 ? R.ton.jubel() : R.ton.raunen(); }
+          if (duell) { if (w.wer != null) stand[w.wer] += w.punkte; verlauf.push(w); msg = w.gleich ? "Gleich weit: keine Punkte" : w.wer == null ? "Kein Stock im Zielfeld" : `${w.punkte} ${w.punkte === 1 ? "Punkt" : "Punkte"} für ${w.wer === 0 ? R.myName() : geg.name}`; w.wer === 0 ? R.ton.jubel() : R.ton.raunen(); jubel = w.wer === 0 ? 1 : 0.4; }
           else { msg = `${ziel.reduce((s, v) => s + v, 0)} Punkte`; R.ton.glocke(); }
           return; }
         // Es spielt, wer nicht die Bestlage hat; ohne Bestlage, wer mehr Stöcke übrig hat, sonst wer die Kehre anspielt
@@ -2368,13 +2486,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             if (tPh >= WURF_SEK) { P.schuss(W, wurf.wer, wurf.w, wurf.v, wurf.sohle); n[wurf.wer]++; phase = "lauf"; tPh = 0; akk = 0; dz = W.daubeZurueck; R.ton.wusch(); }
           } else if (phase === "lauf") {
             akk += dt * (dran === 1 ? 2.5 : 1.4);   // Zeitraffer nur fürs Zuschauen, die Rechnung bleibt dieselbe
-            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) R.ton.klack(); }
+            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { R.ton.klack(); jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
             if (W.daubeZurueck > dz) { dz = W.daubeZurueck; R.sag("Daube zurück aufs Mittelkreuz", 1.6); }
-            if (P.ruht(W) || tPh > 30) { const s = W.lauf; if (!duell && s) { const p = P.imFeld(s) ? P.zielPunkte(P.mitte(W, s)) : 0; ziel.push(p); R.sag(p ? `${p} Punkte` : "Nicht im Feld", 1.4, !p); if (p >= 7) R.ton.gut(); s.lebt = false; W.daube = P.neu(eis).daube; }
+            if (P.ruht(W) || tPh > 30) { const s = W.lauf; if (!duell && s) { const p = P.imFeld(s) ? P.zielPunkte(P.mitte(W, s)) : 0; ziel.push(p); R.sag(p ? `${p} Punkte` : "Nicht im Feld", 1.4, !p); if (p >= 7) { R.ton.gut(); jubel = 1; } s.lebt = false; W.daube = P.neu(eis).daube; }
               else if (s && !s.lebt && dran === 0) R.sag("Aus!", 1.2, true); naechster(); }
           } else if (phase === "messen" && tPh > 2.8) {
             if (duell && kehre < KEHREN) { kehre++; W = P.neu(eis); n = [0, 0]; msg = null; naechster(); } else ende();
           }
+          jubel = Math.max(0, jubel - dt * 0.55);
           cam = mixCam(cam, kameraZiel(W, phase === "wurf" ? "zielen" : phase, phase === "wurf" ? wurf.wer : dran), R.schnell ? 1 : 1 - Math.exp(-dt * 3.2));
           const karte = dran === 0 && (phase === "zielen" || phase === "wurf");
           kOben.set({ aktiv: oben, hidden: !karte });
@@ -2385,10 +2504,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           const zieht = phase === "zielen" && dran === 0 && zug && u > 0;
           const hilfe = zieht ? { ziel: true, winkel, weite: P.weite(tempo(), eis, sohle) } : null; if (hilfe) hilfe.kontakt = P.ersterKontakt(W, winkel, hilfe.weite);
           bahn(c, t, W, hilfe);
-          // Schütze von hinten an der Abspielstelle: zielen, ausholen, abgeben, nachschwingen
-          const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look;
-          const ps = phase === "zielen" ? (wer === 1 ? F.mix(POSE.bereit, POSE.aus, Math.min(1, tPh)) : zug ? F.mix(POSE.bereit, POSE.aus, Math.min(1, u * 1.6)) : F.idle(POSE.bereit, t, 1)) : phase === "wurf" ? F.mix(POSE.aus, POSE.ab, Math.min(1, tPh / WURF_SEK)) : POSE.ab;
-          const fk = sk(0) * cam.mpx / 205; if (phase !== "messen" && sichtbar(0.5) && fk < 2.4) R.figur(c, { x: SX(0, -0.3), y: SY(0) + 14 * fk, s: 1.25 * fk, pose: ps, look, kit: KIT, dir: 1 });
+          // Schütze an der Abspielstelle mit dem Stock in der Hand: pendeln, ausholen, Ausfallschritt, aufsetzen, nachschwingen
+          const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look, pendel = mitArm(POSE.ziel, 6 + 15 * Math.sin(t * 2.3));
+          const zielP = wer === 1 ? F.mix(pendel, POSE.rueck, weichP((tPh - 0.6) / 0.7)) : zug ? F.mix(POSE.ziel, POSE.rueck, weichP(u * 1.5)) : pendel;
+          const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / WURF_SEK) : F.mix(F.mix(POSE.setz, POSE.nach, weichP(tPh / 0.45)), POSE.ziel, weichP((tPh - 2.2) / 1.2) * 0.8);
+          const fk = sk(0) * cam.mpx / 205;
+          if (phase !== "messen" && sichtbar(0.5) && fk < 2.4) { const fx = SX(0, -0.3), fy = SY(0) + 14 * fk, fs = 1.25 * fk;
+            R.figur(c, { x: fx, y: fy, s: fs, pose: ps, look, kit: KIT, dir: 1 });
+            if (phase === "zielen" || phase === "wurf") { const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / WURF_SEK - 0.7) / 0.3) : 0;
+              let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
+              if (k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so);
+              else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } }
           if (zug && phase === "zielen") {   // der Zug unter dem Finger und das Abgabetempo
             c.strokeStyle = "rgba(20,27,37,0.7)"; c.lineWidth = 3; c.beginPath(); c.moveTo(zug.x0, zug.y0); c.lineTo(zug.x, zug.y); c.stroke();
             c.fillStyle = "#F1E7D2"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.beginPath(); c.arc(zug.x0, zug.y0, 6, 0, R.TAU); c.fill(); c.stroke();
@@ -2420,7 +2546,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       ["Eis und Sohle", "Der Stock gleitet gerade und bremst gleichmäßig: doppeltes Tempo, vierfache Weite. Der Eisbericht sagt, wie das Eis läuft. Die Laufsohle wählst du selbst: Schwarz läuft weit, Blau bremst. Keine ist besser, du musst nur den Zug dazu finden."],
       ["Stöße", "Ein Treffer in die Mitte schiebt den anderen Stock geradeaus weg, dein Stock bleibt bald liegen. Seitlich getroffen laufen beide schräg auseinander. Die Daube ist leicht und rutscht mit: Fliegt sie aus dem Zielfeld, kommt sie zurück aufs Mittelkreuz."],
       ["Wertung", `Duell: ${KEHREN} Kehren mit je ${STOECKE} Stöcken. Es spielt immer, wer gerade nicht am nächsten liegt. Am Ende der Kehre gibt es 1 Punkt für jeden eigenen Stock, der näher an der Daube liegt als der beste fremde; gemessen wird von Rand zu Rand. Zielschießen: bis 30 cm 10 Punkte, bis 70 cm 7, bis 1,20 m 5, bis 2 m 3, sonst im Feld 1.`]],
-    plakat(c, t) { cam = Object.assign({}, CAM_ZIEL); bahn(c, t, demoW); R && R.figur(c, { x: 360, y: 386, s: 1.25, pose: F.idle(POSE.bereit, t, 1), look: R.myLook(), kit: KIT }); },
+    plakat(c, t) { cam = Object.assign({}, CAM_ZIEL); bahn(c, t, demoW); if (R) { const ps = mitArm(POSE.ziel, 6 + 15 * Math.sin(t * 2.3)), J = F.joints(ps), hd = J.aF[2], e = J.aF[1]; R.figur(c, { x: 360, y: 386, s: 1.25, pose: ps, look: R.myLook(), kit: KIT }); T.stockInHand(c, 360 + hd[0] * 1.25, 386 + hd[1] * 1.25, Math.atan2(hd[0] - e[0], hd[1] - e[1]), 1.19, FARBE[0], P.SOHLE.mittel.farbe); } },
   });
 })();
 </script>
