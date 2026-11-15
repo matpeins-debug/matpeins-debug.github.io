@@ -2076,179 +2076,142 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   root.CMRahmen = { v: 1, W, H, spiel, rng, clamp };
 })(typeof window !== "undefined" ? window : globalThis);
 
-// Cold Medal · Ski Cross – Physik ohne DOM: Kurs als Höhenprofil mit Wellen, Sprüngen und Steilkurven, drei Linien,
-// Start im Takt, Pumpen, Hocke, Windschatten, Berührung als Stoß. Alle Fahrer mit derselben Physik. Global SXPhys.
+// Cold Medal · Ski Cross – Physik ohne Browser (Node und Seite). Seit 0.3: Blick den Hang hinunter, gelenkt wird nur links und rechts.
 (function (root) {
   "use strict";
-  function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const TAKT = 0.5, STARTSCHUEBE = 3;
-  // Kurs: Elemente mit Lage s (Meter): welle (in der Senke drücken), sprung (an der Kante drücken), kurve (Länge l, innen = Linie 0)
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const LANG = 620, VMAX = 15, QUER = 1.1, TORW = 0.3, DRIFT = 0.35;
+
+  // Kurs: Tore (Mitte x, halbe Breite w), Wellen, Kurvendrift. x: -1 linker Rand … 1 rechter Rand.
   function kurs(seed) {
-    const r = rng(seed), el = []; let s = 40;
-    const arten = ["welle", "welle", "sprung", "kurve", "welle", "sprung", "kurve", "welle", "welle", "sprung", "kurve", "welle", "sprung", "welle"];
-    for (const art of arten) { if (art === "kurve") { const l = 45 + r() * 20; el.push({ art, s, l, innen: r() < 0.5 ? 0 : 2 }); s += l + 25 + r() * 20; } else { el.push({ art, s, l: art === "welle" ? 14 : 22 }); s += (art === "welle" ? 26 : 46) + r() * 22; } }
-    return { el, lang: s + 30 };
+    const r = rng(seed), tore = [], wellen = [], p1 = r() * 6, p2 = r() * 6; let x = 0;
+    for (let s = 70; s < LANG - 30; s += 34 + r() * 10) { x = clamp(x + (r() - 0.5) * 1.2, -0.62, 0.62); tore.push({ s, x, w: TORW }); }
+    for (let i = 0; i + 1 < tore.length; i += 3) wellen.push({ s: (tore[i].s + tore[i + 1].s) / 2 });
+    return { lang: LANG, tore, wellen, kurve: (s) => 0.6 * Math.sin(s / 70 + p1) + 0.4 * Math.sin(s / 31 + p2) };
   }
-  // Höhe des Kurses (für das Bild): Gefälle plus Wellen und Sprungtische
-  function hoehe(K, s) { let h = -0.16 * s; for (const e of K.el) { const d = s - e.s; if (e.art === "welle" && d > -7 && d < 7) h += -1.4 * Math.cos(d / 7 * Math.PI / 2) * (1) + 0; if (e.art === "sprung" && d > -14 && d <= 0) h += 2.2 * Math.pow(1 + d / 14, 2); if (e.art === "sprung" && d > 0 && d < 8) h += 2.2 * (1 - d / 8) * 0; } return h; }
-  function fahrer(o) { o = o || {}; return { s: 0, v: 0, linie: o.linie != null ? o.linie : 1, zielLinie: o.linie != null ? o.linie : 1, lw: 0, hocke: false, hockeT: 0, luft: 0, luftH: 0, phi: 0.5, schuebe: 0, startQ: 0, naechst: 0, wackel: 0, fertig: false, zeit: null, karte: 0, verwarn: 0,
-    kraft: o.kraft != null ? o.kraft : 1, pump: 0, treffer: 0, versuche: 0, t: 0, los: false, schatten: false }; }
-  // Güte für das Element vor dem Fahrer: Abstand zum Punkt in Metern
-  function druecke(f, K) {
-    if (!f.los || f.fertig) return 0;
-    if (f.schuebe < STARTSCHUEBE) { const e = Math.abs(f.phi - 1), q = f.phi < 0.5 || e > 0.3 ? 0 : 1 - (e / 0.3) * 0.7; f.schuebe++; f.startQ += q; f.v += 2.2 * q + 0.6; f.phi = 0; return q; }
-    const e = K.el.find((x) => x.art !== "kurve" && !x["hit" + f.id] && x.s - f.s > -4 && x.s - f.s < 16);
-    f.versuche++;
-    if (!e) { f.v *= 0.985; return 0; }
-    const d = e.s - f.s, q = Math.abs(d) > 4.5 ? 0 : 1 - (Math.abs(d) / 4.5) * 0.7; e["hit" + f.id] = true;
-    if (q > 0) { f.treffer++; if (e.art === "welle") f.v += 1.5 * q; else { f.flach = q; } }
-    f.pump = q; f.pumpT = f.t; return q;
+  function fahrer(o) { return Object.assign({ s: 0, x: 0, v: 0, vx: 0, t: 0, tor: 0, welle: 0, fehler: 0, straf: 0, fertig: false, zeit: null, kraft: 1, steuer: 0 }, o); }
+  // ein Zeitschritt; steuer -1 … 1. Liefert Ereignis: "tor" | "verpasst" | "welle" | "verkantet" | "ziel" | null
+  function schritt(f, K, dt, steuer, alle) {
+    if (f.fertig) return null; f.t += dt; f.steuer = steuer = clamp(steuer || 0, -1, 1); let ev = null;
+    let ziel = VMAX * f.kraft * (1 - 0.12 * Math.abs(steuer));
+    if (Math.abs(f.x) > 1) ziel *= 0.5;                                   // Tiefschnee neben der Piste
+    if (f.straf > 0) { ziel *= 0.55; f.straf -= dt; }
+    if (alle && alle.some((o) => o !== f && !o.fertig && o.s - f.s > 0.5 && o.s - f.s < 7 && Math.abs(o.x - f.x) < 0.16)) ziel *= 1.08;   // Windschatten
+    f.v += (ziel - f.v) * Math.min(1, dt * (ziel > f.v ? 0.9 : 2.5));
+    f.vx += (steuer * QUER - f.vx) * Math.min(1, dt * 6);
+    f.x = clamp(f.x + (f.vx - K.kurve(f.s) * DRIFT * (f.v / VMAX)) * dt, -1.25, 1.25);
+    f.s += f.v * dt;
+    while (f.tor < K.tore.length && f.s >= K.tore[f.tor].s) { const g = K.tore[f.tor++]; if (Math.abs(f.x - g.x) > g.w) { f.fehler++; f.straf = 0.9; ev = "verpasst"; } else ev = ev || "tor"; }
+    while (f.welle < K.wellen.length && f.s >= K.wellen[f.welle].s) { f.welle++; if (Math.abs(steuer) > 0.5) { f.straf = Math.max(f.straf, 0.5); ev = "verkantet"; } else { f.v += 0.5; ev = ev || "welle"; } }
+    if (alle) for (const o of alle) if (o !== f && !o.fertig && o.s >= f.s && o.s - f.s < 1.6 && Math.abs(o.x - f.x) < 0.13 && f.straf <= 0) { f.straf = 0.5; f.x += f.x < o.x ? -0.06 : 0.06; ev = "rempler"; }   // wer auffährt, verliert
+    if (f.s >= K.lang) { f.fertig = true; f.zeit = f.t - (f.s - K.lang) / Math.max(1, f.v); ev = "ziel"; }
+    return ev;
   }
-  function linie(f, d, alle) {
-    const z = clamp(f.zielLinie + d, 0, 2); if (z === f.zielLinie || f.luft > 0) return false;
-    const gegner = alle.find((o) => o !== f && !o.fertig && o.zielLinie === z && Math.abs(o.s - f.s) < 2.4);
-    if (gegner) { f.v *= 0.93; gegner.v *= 0.97; f.wackel = gegner.wackel = 0.5; f.verwarn += f.s < gegner.s + 0.5 ? 1 : 0.5; if (f.verwarn >= 2 && !f.karte) f.karte = 1; return "beruehrt"; }
-    f.zielLinie = z; return true;
+  // Gegner und Mitspieler: aufs nächste Tor zielen, Drift ausgleichen, über Wellen gerade bleiben, Vordermann umfahren
+  function bot(f, K, r, alle) {
+    const st = f.staerke == null ? 0.7 : f.staerke, g = K.tore[f.tor], w = K.wellen[f.welle];
+    if (f.botTor !== f.tor) { f.botTor = f.tor; f.botOff = (r() - 0.5) * 0.5 * (1 - st); }
+    let tx = (g ? g.x : 0) + (f.botOff || 0);
+    const vor = alle && alle.find((o) => o !== f && !o.fertig && o.s - f.s > 0 && o.s - f.s < 5 && Math.abs(o.x - f.x) < 0.15);
+    if (vor && (!g || g.s - f.s > 12)) tx += f.x <= vor.x ? -0.22 : 0.22;
+    let steuer = clamp(((tx - f.x) * 2.4 + K.kurve(f.s) * DRIFT) / QUER, -1, 1);
+    if (w && w.s - f.s < 3.5 && w.s - f.s > -0.5) steuer = clamp(steuer, -0.4, 0.4);
+    return steuer;
   }
-  function schritt(f, K, dt, alle) {
-    if (f.fertig) return; f.t += dt; if (!f.los) return;
-    f.phi += dt / TAKT; if (f.phi > 1.32) f.phi -= 1;
-    f.wackel = Math.max(0, f.wackel - dt);
-    const k = K.el.find((x) => x.art === "kurve" && f.s >= x.s && f.s < x.s + x.l);
-    f.inKurve = k || null;
-    // Windschatten: direkt hinter jemandem in derselben Linie
-    f.schatten = alle.some((o) => o !== f && !o.fertig && o.zielLinie === f.zielLinie && o.s - f.s > 1.5 && o.s - f.s < 9);
-    let luftw = 0.0031 * (f.hocke ? 0.7 : 1) * (f.schatten ? 0.72 : 1);
-    let a = 9.81 * 0.16 * 0.62 * f.kraft - luftw * f.v * f.v - 0.25 - (f.wackel > 0 ? 1.2 : 0);
-    if (f.luft > 0) { f.luft -= dt; a = -0.6; }
-    // Sprungkante: ohne Drücken hoher Sprung (kostet Zeit), mit Drücken flach
-    const sp = K.el.find((x) => x.art === "sprung" && !x["ab" + f.id] && f.s >= x.s);
-    if (sp) { sp["ab" + f.id] = true; const q = f.flach || 0; f.flach = 0; f.luft = 0.55 + 0.75 * (1 - q); f.luftH = 1 + 2.6 * (1 - q); f.luftT = f.luft; f.v -= 1.3 * (1 - q); }
-    // Steilkurve: innen kürzer, außen mit Schwung; zu lange in der Hocke trägt es nach außen
-    let weg = 1;
-    if (k) { const innen = k.innen, ab = Math.abs(f.zielLinie - innen); weg = 1 / (0.9 + 0.075 * ab); a += 0.22 * ab;
-      f.hockeT = f.hocke ? f.hockeT + dt : 0; if (f.hockeT > 1.4 && ab < 2) { linie(f, innen === 0 ? 1 : -1, alle); f.hockeT = 0; f.v *= 0.97; } }
-    else f.hockeT = 0;
-    f.v = clamp(f.v + a * dt, 2, 30);
-    f.s += f.v * weg * dt; f.lw += (f.zielLinie - f.lw) * Math.min(1, dt * 7);
-    if (f.s >= K.lang) { f.fertig = true; f.zeit = f.t - (f.s - K.lang) / f.v; }
-  }
-  // Mitfahrer mit Charakter: starter (guter Start), blocker (bleibt innen), spaet (späte Linie)
-  function bot(f, K, alle, r) {
-    const st = f.staerke, frei = (z) => z >= 0 && z <= 2 && !alle.some((o) => o !== f && !o.fertig && o.zielLinie === z && Math.abs(o.s - f.s) < 4.5);
-    if (f.schuebe < STARTSCHUEBE) { if (f.phi >= 1 + (r() - 0.5) * 0.4 * (1 - st) - (f.typ === "starter" ? 0 : 0.02)) druecke(f, K); return; }
-    const e = K.el.find((x) => x.art !== "kurve" && !x["hit" + f.id] && x.s - f.s > -2 && x.s - f.s < 14);
-    if (e) { if (f.botZiel == null || f.botEl !== e) { f.botEl = e; f.botZiel = (r() - 0.5) * 5.5 * (1 - st) + (r() < 0.06 * (1 - st) ? 9 : 0); } if (e.s - f.s <= f.botZiel) druecke(f, K); }
-    const k = K.el.find((x) => x.art === "kurve" && x.s - f.s < 18 && f.s < x.s + x.l);
-    f.hocke = !k || f.s < k.s || (f.hockeT < 1.0);
-    if (k && f.typ !== "spaet" && f.zielLinie !== k.innen && r() < 0.015 + 0.03 * st && frei(f.zielLinie + (k.innen < f.zielLinie ? -1 : 1))) linie(f, k.innen < f.zielLinie ? -1 : 1, alle);
-    else if (!k && r() < 0.02) { const vor = alle.find((o) => o !== f && o.zielLinie === f.zielLinie && o.s - f.s > 0 && o.s - f.s < 2.5); const d = f.zielLinie === 0 ? 1 : f.zielLinie === 2 ? -1 : r() < 0.5 ? 1 : -1; if (vor && frei(f.zielLinie + d)) linie(f, d, alle); }
-  }
-  function lauf(K, fahrerListe, seed) { const r = rng(seed); fahrerListe.forEach((f) => { f.los = true; }); for (let i = 0; i < 60 * 200 && fahrerListe.some((f) => !f.fertig); i++) { for (const f of fahrerListe) { bot(f, K, fahrerListe, r); schritt(f, K, 1 / 60, fahrerListe); } } return fahrerListe; }
-  function rang(alle) { return alle.slice().sort((a, b) => (a.karte - b.karte) || (a.fertig && b.fertig ? a.zeit - b.zeit : a.fertig ? -1 : b.fertig ? 1 : b.s - a.s)); }
-  const api = { rng, TAKT, STARTSCHUEBE, kurs, hoehe, fahrer, druecke, linie, schritt, bot, lauf, rang };
-  root.SXPhys = api; if (typeof module !== "undefined") module.exports = api;
+  function lauf(alle, K, seed) { const r = rng(seed); for (let i = 0; i < 60 * 200 && alle.some((f) => !f.fertig); i++) for (const f of alle) schritt(f, K, 1 / 60, bot(f, K, r, alle), alle); return alle; }
+  const rang = (alle) => alle.slice().sort((a, b) => (a.fertig && b.fertig ? a.zeit - b.zeit : a.fertig ? -1 : b.fertig ? 1 : b.s - a.s));
+  const api = { LANG, VMAX, TORW, clamp, rng, kurs, fahrer, schritt, bot, lauf, rang };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.SXPhys = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
 // Cold Medal · Ski Cross – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
+// Seit 0.3: Blick von hinten den Hang hinunter, vier Fahrer im Bild, gelenkt wird nur links und rechts.
 (function () {
   "use strict";
-  const VERSION = "0.2.0";
-  const P = window.SXPhys, F = window.CMFigur;
-  const KIT = { head: "helmet", feet: "xcSki", torso: "bib", hands: "poles", glove: true };
-  const POSE = {
-    start: { lean: 30, crouch: 0, sL: [34, 50], fL: [-18, 30], aF: [70, 30], aB: [-50, -20], hd: -14 },
-    hocke: { lean: 62, crouch: 0, sL: [66, 100], fL: [60, 96], aF: [50, 70], aB: [44, 66], hd: -34 },
-    hoch: { lean: 24, crouch: 0, sL: [30, 46], fL: [24, 42], aF: [30, 40], aB: [-20, -30], hd: -12 },
-    luft: { lean: 30, crouch: 0, sL: [50, 70], fL: [40, 64], aF: [80, 30], aB: [-60, -30], hd: -10 },
-    jubel: F.POSES.cheer,
-  };
-  const LEIB = ["#C23B2A", "#3F8B4F", "#2C6FB3", "#E0B020"], LNAME = ["Rot", "Grün", "Blau", "Gelb"], PPM = 15;
-  let R;
+  const VERSION = "0.3.0";
+  const P = window.SXPhys;
+  const KIT = { head: "helmet", feet: "skiBoots", torso: "bib", hands: "poles", glove: true };
+  const POSE = { lean: 30, crouch: 0.75, sL: [56, 84], fL: [50, 84], aF: [60, 70], aB: [50, 70], hd: -16 };
+  const HOR = 92, BASE = 368, HALB = 300, FERN = 130, FARBEN = ["#C23B2A", "#2C6FB3", "#DDA43B", "#3F6B55"];
+  let R, kul;
 
-  function kursBild(c, t, K, cam) {
-    R.kulisse("idre", 150, "abend").zeichne(c, cam.s * PPM, t);
-    const X = (s) => (s - cam.s) * PPM + 290, Y = (s, l) => 222 - (P.hoehe(K, s) - cam.h) * PPM * 0.85 + (l || 0) * 19;
-    const s0 = cam.s - 22, s1 = cam.s + 40;
-    // Steilkurven: Wand hinter der Bahn mit Fahnen
-    for (const e of K.el) if (e.art === "kurve" && e.s + e.l > s0 && e.s < s1) { c.fillStyle = "#D5DEF0"; c.beginPath(); c.moveTo(X(e.s), Y(e.s) - 4);
-      for (let s = e.s; s <= e.s + e.l; s += 3) c.lineTo(X(s), Y(s) - 4 - 46 * Math.sin((s - e.s) / e.l * Math.PI)); c.lineTo(X(e.s + e.l), Y(e.s + e.l) - 4); c.closePath(); c.fill();
-      for (let s = e.s + 6; s < e.s + e.l; s += 9) { const fy = Y(s) - 6 - 46 * Math.sin((s - e.s) / e.l * Math.PI); c.strokeStyle = "#3A2A1C"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X(s), fy); c.lineTo(X(s), fy - 18); c.stroke(); c.fillStyle = (Math.round(s) % 2 ? "#2C6FB3" : "#E0B020"); c.fillRect(X(s), fy - 18, 10, 6); }
-      R.tafel(c, X(e.s) + 6, Y(e.s) - 78, 108, 22, [[e.innen === 0 ? "INNEN: OBEN ↑" : "INNEN: UNTEN ↓", 11, "#2C6FB3"]]); }
-    c.fillStyle = "#E9EEF8"; c.beginPath(); c.moveTo(X(s0), R.H + 10); for (let s = s0; s <= s1; s += 1.5) c.lineTo(X(s), Y(s) - 6); c.lineTo(X(s1), R.H + 10); c.closePath(); c.fill();
-    c.strokeStyle = "rgba(44,111,179,0.35)"; c.lineWidth = 1.5; for (const l of [0.5, 1.5]) { c.beginPath(); for (let s = s0; s <= s1; s += 1.5) c.lineTo(X(s), Y(s, l)); c.stroke(); }
-    for (const e of K.el) { if (e.s < s0 || e.s > s1 || e.art === "kurve") continue; const x = X(e.s);
-      if (e.art === "welle") { c.strokeStyle = "#2C6FB3"; c.lineWidth = 3; c.beginPath(); c.ellipse(x, Y(e.s, 1), 14, 26, 0, 0, R.TAU); c.stroke(); }
-      else { c.fillStyle = "#C23B2A"; c.fillRect(x - 2, Y(e.s, 0) - 8, 4, 52); R.tafel(c, x - 26, Y(e.s) - 34, 52, 18, [["KANTE", 10, "#C23B2A"]]); } }
-    const zx = X(K.lang); if (zx < R.W + 40) { c.fillStyle = "#141B25"; c.fillRect(zx - 2, Y(K.lang) - 60, 4, 110); R.tafel(c, zx - 30, Y(K.lang) - 84, 60, 24, [["ZIEL", 13, "#C23B2A"]]); }
-    return { X, Y };
-  }
-  function fahrerBild(c, t, f, V, K) {
-    const x = V.X(f.s), sprung = f.luft > 0 ? Math.sin((1 - f.luft / f.luftT) * Math.PI) * f.luftH * PPM : 0, y = V.Y(f.s, f.lw) - sprung, s = 0.56 + 0.06 * f.lw;
-    if (x < -40 || x > R.W + 40) return;
-    R.schatten(c, x, V.Y(f.s, f.lw), 14);
-    const pose = !f.los ? POSE.start : f.fertig ? POSE.jubel : f.luft > 0 ? POSE.luft : f.schuebe < P.STARTSCHUEBE ? F.mix(POSE.start, POSE.hoch, Math.min(1, f.phi)) : f.hocke ? POSE.hocke : POSE.hoch;
-    const st = (P.hoehe(K, f.s + 1) - P.hoehe(K, f.s - 1)) / 2;
-    R.figur(c, { x, y, s, pose, look: Object.assign({}, f.look, { bib: LEIB[f.id] }), kit: KIT, tilt: -Math.atan(st * 0.85) + (f.wackel > 0 ? Math.sin(t * 30) * 0.12 : 0), lw: 1.2 });
-    if (f.ich) { c.fillStyle = "#F1E7D2"; c.strokeStyle = "#141B25"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y - 62 * s - 16); c.lineTo(x - 6, y - 62 * s - 26); c.lineTo(x + 6, y - 62 * s - 26); c.closePath(); c.fill(); c.stroke();
-      if (f.t - (f.pumpT || -9) < 0.5 && f.schuebe >= P.STARTSCHUEBE) R.text(c, f.pump > 0.75 ? "Genau!" : f.pump > 0 ? "Gut" : "Daneben", x + 4, y - 62 * s - 36, 13, f.pump > 0.75 ? "#9BE07A" : f.pump > 0 ? "#F1E7D2" : "#F08A7A"); }
+  // Bildpunkt für einen Ort d Meter voraus und X quer (Pistenmitte 0, Rand ±1)
+  function punkt(K, cam, d, X) { const k = 1 / (1 + Math.max(0, d) * 0.07), bieg = -K.kurve(cam.s + d * 0.5) * d * d * 0.05; return [R.W / 2 + ((X - cam.x) * HALB + bieg) * k, HOR + (BASE - HOR) * k, k]; }
+  function hang(c, t, K, cam, alle, ich) {
+    kul = kul || R.kulisse("idre", HOR + 6, "tag"); kul.zeichne(c, cam.s * 0.3 + cam.x * 30, t);
+    c.fillStyle = "#DCE6EC"; c.fillRect(0, HOR, R.W, R.H - HOR);
+    // Piste in Streifen von fern nach nah: der Wechsel der Töne zeigt das Tempo
+    for (let d = FERN; d > -6; d -= 4) { const a = punkt(K, cam, d, -1), b = punkt(K, cam, d, 1), a2 = punkt(K, cam, d - 4, -1), b2 = punkt(K, cam, d - 4, 1);
+      c.fillStyle = Math.floor((cam.s + d) / 8) % 2 ? "#F7FAFC" : "#EEF3F7"; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.lineTo(b2[0], b2[1] + 1); c.lineTo(a2[0], a2[1] + 1); c.closePath(); c.fill(); }
+    const dinge = [];
+    for (let m = Math.ceil((cam.s - 2) / 9) * 9; m < cam.s + FERN; m += 9) for (const sd of [-1, 1]) { dinge.push({ d: m - cam.s, art: "zaun", X: sd * 1.05 }); const h = Math.sin(m * 12.9898 + sd) * 43758.5453, z = h - Math.floor(h); if (z < 0.7) dinge.push({ d: m - cam.s + z * 5, art: "baum", X: sd * (1.5 + z * 2.2), g: 0.8 + z }); }
+    K.wellen.forEach((w) => { const d = w.s - cam.s; if (d > -2 && d < FERN) dinge.push({ d, art: "welle" }); });
+    K.tore.forEach((g, i) => { const d = g.s - cam.s; if (d > -2 && d < FERN) dinge.push({ d, art: "tor", g, i }); });
+    if (K.lang - cam.s < FERN) dinge.push({ d: K.lang - cam.s, art: "ziel" });
+    alle.forEach((f) => { const d = f.s - cam.s; if (d > -1 && d < FERN) dinge.push({ d: f === ich ? d + 0.01 : d, art: "fahrer", f }); });
+    dinge.sort((a, b) => b.d - a.d);
+    for (const o of dinge) {
+      if (o.art === "zaun") { const p = punkt(K, cam, o.d, o.X); c.fillStyle = "#C23B2A"; c.fillRect(p[0] - 2 * p[2], p[1] - 22 * p[2], 4 * p[2], 22 * p[2]); }
+      else if (o.art === "baum") { const p = punkt(K, cam, o.d, o.X), g = 60 * o.g * p[2]; c.fillStyle = "#1F3B33"; c.beginPath(); c.moveTo(p[0], p[1] - g * 1.5); c.lineTo(p[0] + g * 0.45, p[1]); c.lineTo(p[0] - g * 0.45, p[1]); c.closePath(); c.fill(); c.fillStyle = "#F4F8FA"; c.beginPath(); c.moveTo(p[0], p[1] - g * 1.5); c.lineTo(p[0] + g * 0.16, p[1] - g); c.lineTo(p[0] - g * 0.16, p[1] - g); c.closePath(); c.fill(); }
+      else if (o.art === "welle") { const a = punkt(K, cam, o.d, -1), b = punkt(K, cam, o.d, 1), h = 16 * a[2]; c.fillStyle = "rgba(44,111,179,0.28)"; c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo((a[0] + b[0]) / 2, a[1] - h * 1.6, b[0], b[1]); c.lineTo(b[0], b[1] + h * 0.5); c.quadraticCurveTo((a[0] + b[0]) / 2, a[1] - h * 0.6, a[0], a[1] + h * 0.5); c.closePath(); c.fill(); }
+      else if (o.art === "tor") { const farbe = o.i % 2 ? "#2C6FB3" : "#C23B2A"; for (const sd of [-1, 1]) { const p = punkt(K, cam, o.d, o.g.x + sd * o.g.w), h = 74 * p[2]; c.fillStyle = "#141B25"; c.fillRect(p[0] - 1.5 * p[2], p[1] - h, 3 * p[2], h); c.fillStyle = farbe; c.fillRect(p[0] + (sd < 0 ? -26 : 0) * p[2], p[1] - h, 26 * p[2], 22 * p[2]); } }
+      else if (o.art === "ziel") { const a = punkt(K, cam, o.d, -1), b = punkt(K, cam, o.d, 1), h = 110 * a[2]; c.fillStyle = "#141B25"; c.fillRect(a[0] - 3 * a[2], a[1] - h, 6 * a[2], h); c.fillRect(b[0] - 3 * a[2], b[1] - h, 6 * a[2], h); c.fillStyle = "#C23B2A"; c.fillRect(a[0], a[1] - h, b[0] - a[0], 26 * a[2]); if (a[2] > 0.2) R.text(c, "ZIEL", (a[0] + b[0]) / 2, a[1] - h + 13 * a[2], 18 * a[2], "#F1E7D2"); }
+      else { const f = o.f, p = punkt(K, cam, o.d, f.x), k = p[2]; R.schatten(c, p[0], p[1], 22 * k); c.save(); c.translate(p[0], p[1]); c.rotate(f.vx * 0.22); if (f.straf > 0) c.rotate(Math.sin(t * 30) * 0.08);
+        R.figur(c, { x: 0, y: 0, s: 1.5 * k, pose: POSE, look: Object.assign({}, f.look, { bib: FARBEN[f.id] }), kit: KIT, dir: f.vx < 0 ? -1 : 1, lw: f === ich ? 2 : 1.4 }); c.restore();
+        if (f === ich) { c.fillStyle = FARBEN[0]; c.beginPath(); c.moveTo(p[0], p[1] - 92 * k); c.lineTo(p[0] - 7, p[1] - 104 * k); c.lineTo(p[0] + 7, p[1] - 104 * k); c.closePath(); c.fill(); } }
+    }
   }
 
   function turnier() {
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, feld = R.feld(7, seed, 0.6); let runde = 0;
-    const typen = ["starter", "blocker", "spaet", "x"];
-    function lauf(name, gegner, platzAb) {
-      const K = P.kurs(seed + runde * 101), rnd = P.rng(seed + runde * 7), ichLinie = 1;
-      const alle = [Object.assign(P.fahrer({ linie: 1 }), { id: 0, ich: true, look: R.myLook(), name: R.myName(), nat: R.myNat(), staerke: 0.85, typ: "x" })]
-        .concat(gegner.map((g, i) => Object.assign(P.fahrer({ linie: [0, 2, 1][i], kraft: 0.93 + 0.09 * g.st }), { id: i + 1, look: g.look, name: g.name, nat: g.nat, staerke: g.st, typ: typen[i], g })));
-      const ich = alle[0], cam = { s: 0, h: 0 }; let phase = "tor", tPh = 0, tor = 1.6 + rnd() * 1.2, acc = 0, tEnd = 0;
-      const kR = R.knopf({ seite: "rechts", text: "Schub", symbol: "stock", onDown: druck });
-            function druck() { if (phase === "tor") { if (tPh < tor) { R.sag("Zu früh! Das Tor ist noch zu", 1.2, true); ich.v = -1; tor = tPh + 1.2; R.ton.schlecht(); } return; } const q = P.druecke(ich, K); q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.tick(); }
-      function wechsel(d) { const r = P.linie(ich, d, alle); if (r === "beruehrt") { R.ton.klack(); R.sag(ich.karte ? "Gelbe Karte!" : "Berührung!", 1.2, true); } else if (r) R.ton.schnee(); }
-      function ende() {
-        const rg = P.rang(alle), platz = rg.indexOf(ich) + 1, zeilen = rg.map((f, i) => ({ platz: platzAb + i, name: f.name + ` (${LNAME[f.id]})`, nat: f.nat, wert: f.karte ? "Gelb" : f.fertig ? R.zeit(f.zeit) : "–", ich: f.ich }));
-        runde++;
-        if (name === "Halbfinale") { const weiter = platz <= 2, rest = feld.slice(3, 6), mit = rg.filter((f) => !f.ich && (rg.indexOf(f) < 2) === weiter).map((f) => f.g).slice(0, 1);
-          return R.stand({ kicker: "Idre Fjäll · Halbfinale", titel: weiter ? `Platz ${platz}: im großen Finale` : `Platz ${platz}: kleines Finale`, zeilen, note: "Die ersten zwei fahren im großen Finale um die Plätze 1 bis 4, die anderen im kleinen um 5 bis 8." + (ich.karte ? " Gelbe Karte heißt Letzter im Lauf." : ""),
-            knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Weiter", rot: true, fn: () => lauf(weiter ? "Großes Finale" : "Kleines Finale", mit.concat(rest.slice(0, 3 - mit.length)), weiter ? 1 : 5) }] }); }
-        const gesamt = platzAb + platz - 1; R.medaille(gesamt); if (gesamt <= 3) R.ton.jubel(); R.rekord("platz", gesamt, true);
-        R.stand({ kicker: `Idre Fjäll · ${name}`, titel: gesamt === 1 ? "Sieg!" : `Platz ${gesamt}`, zeilen, note: `Pumpen getroffen: ${ich.treffer} von ${ich.versuche}. Tipp: In der Geraden Daumen auf den Stick (Hocke), in der Kurve nach innen ziehen.`, knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: turnier }] });
-      }
+    function lauf(name, gegner) {
+      const K = P.kurs(seed + runde * 101), rnd = P.rng(seed + runde * 7), cam = { s: 0, x: 0 };
+      const alle = [P.fahrer({ id: 0, x: -0.2, ich: true, look: R.myLook(), name: R.myName(), nat: R.myNat(), staerke: 0.85 })]
+        .concat(gegner.map((g, i) => P.fahrer({ id: i + 1, x: [-0.6, 0.2, 0.6][i], look: g.look, name: g.name, nat: g.nat, staerke: g.st, kraft: 0.92 + 0.08 * g.st, g })));
+      const ich = alle[0]; let phase = "tor", tPh = 0, tor = 1.6 + rnd() * 1.0, tEnd = 0, li = false, re = false, botS = null;
+      const kL = R.knopf({ seite: "links", text: "Links", symbol: "links", onDown: () => { li = true; }, onUp: () => { li = false; } });
+      const kR = R.knopf({ seite: "rechts", text: "Rechts", symbol: "rechts", onDown: () => { re = true; }, onUp: () => { re = false; } });
       R.szene({
-        taste(k, an) { if (k === "rechts" && an) druck(); if (k === "links") ich.hocke = an; },
-        bot() { if (phase === "lauf") P.bot(ich, K, alle, rnd); },
+        taste(k, an) { if (k === "links") li = an; if (k === "rechts") re = an; },
+        bot() { botS = phase === "lauf" ? P.bot(ich, K, rnd, alle) : 0; },
         update(dt) {
           tPh += dt;
-          if (phase === "tor") { R.tipp("start", "Wenn das Tor fällt: dreimal im Takt tippen. Danach an jeder Welle tippen, wenn sich der Ring schließt.", 5); if (tPh >= tor) { phase = "lauf"; alle.forEach((f) => { f.los = true; f.phi = 1; }); R.ton.klack(); R.ton.glocke(); } }
-          else { { const k = K.el.find((x) => x.art === "kurve" && x.s - ich.s < 18 && ich.s < x.s + x.l); ich.hocke = !k || ich.s < k.s || ich.hockeT < 1.0;   // Linie und Hocke fährt die Figur selbst
-              if (k && ich.zielLinie !== k.innen) { const d = k.innen < ich.zielLinie ? -1 : 1, z = ich.zielLinie + d; if (!alle.some((o) => o !== ich && !o.fertig && o.zielLinie === z && Math.abs(o.s - ich.s) < 4.5)) P.linie(ich, d, alle); } }
-            for (const f of alle) { if (!f.ich) P.bot(f, K, alle, rnd); P.schritt(f, K, dt, alle); }
-            
-            const e = K.el.find((x) => x.art !== "kurve" && !x.hit0 && x.s - ich.s > -3 && x.s - ich.s < 16);
-            kR.set({ zu: ich.schuebe < P.STARTSCHUEBE ? Math.min(1, ich.phi) : e ? R.clamp(1 - (e.s - ich.s) / 16, 0, 1) : null, ok: e ? Math.abs(e.s - ich.s) < 3 : Math.abs(ich.phi - 1) < 0.18 }); }
-          const ziel = ich.fertig ? K.lang + 4 : ich.s + 6; cam.s += (ziel - cam.s) * Math.min(1, dt * 6); cam.h += (P.hoehe(K, cam.s) - cam.h) * Math.min(1, dt * 6);
+          if (phase === "tor") { R.tipp("start", "Lenke mit links und rechts durch die Tore. Über die blauen Wellen gerade fahren.", 5); if (tPh >= tor) { phase = "lauf"; R.ton.klack(); R.ton.glocke(); } }
+          else { for (const f of alle) { const ev = P.schritt(f, K, dt, f === ich ? (botS != null ? botS : (re ? 1 : 0) - (li ? 1 : 0)) : P.bot(f, K, rnd, alle), alle);
+              if (f === ich && ev) { if (ev === "tor") R.ton.tick(); else if (ev === "welle") R.ton.wusch(); else if (ev === "verpasst") { R.ton.schlecht(); R.sag("Tor verpasst", 1, true); } else if (ev === "verkantet") { R.ton.schnee(); R.sag("Verkantet: über Wellen gerade bleiben", 1.2, true); } else if (ev === "rempler") { R.ton.klack(); R.sag("Aufgefahren", 0.9, true); } } }
+            botS = null; if (Math.abs(ich.x) > 1) R.tipp("rand", "Neben der Piste liegt Tiefschnee: zurück zwischen die roten Stangen.", 3); }
+          cam.s = ich.s - 8; cam.x += (ich.x * 0.75 - cam.x) * Math.min(1, dt * 5);
+          kL.set({ aktiv: li }); kR.set({ aktiv: re });
           const rg = P.rang(alle), platz = rg.indexOf(ich) + 1;
-          R.chips([[name, "dark"], [phase === "tor" ? "Am Starttor" : `Platz ${platz} von 4`, platz <= 2 ? "good" : "warn"], [`${Math.max(0, Math.round(K.lang - ich.s))} m`], [`${Math.round(ich.v * 3.6)} km/h`], ...(ich.schatten ? [["Windschatten", "gold"]] : []), ...(ich.hocke ? [["Hocke"]] : []), ...(ich.karte ? [["Gelbe Karte", "warn"]] : [])]);
-          if (ich.fertig || alle.filter((f) => f.fertig).length >= 3) { if (!tEnd && ich.fertig) R.ton.glocke(); tEnd += dt; if (tEnd > 2.4 || (!ich.fertig && tEnd > 4)) { alle.forEach((f) => { if (!f.fertig) { f.zeit = f.t + (K.lang - f.s) / Math.max(4, f.v); f.fertig = true; } }); ende(); } }
+          if (ich.fertig && !tEnd) { tEnd = 0.01; platz <= 2 ? R.ton.jubel() : R.ton.raunen(); R.sag(platz === 1 ? "Sieg im Lauf!" : `Platz ${platz}`, 2, platz > 2); }
+          if (tEnd) { tEnd += dt; if (tEnd > 2.2) { P.lauf(alle, K, seed + 5); ergebnis(name, alle); } }
+          R.chips([[name, "dark"], [phase === "tor" ? "Am Start" : `Platz ${platz} von 4`, platz <= 2 ? "good" : "warn"], [`${Math.max(0, Math.round(K.lang - ich.s))} m`, "gold"], ich.fehler ? [`${ich.fehler} Tor${ich.fehler > 1 ? "e" : ""} verpasst`, "warn"] : ["Sauber"]]);
         },
-        draw(c, t) { const V = kursBild(c, t, K, cam); if (phase === "tor") { c.fillStyle = "#5B4A3A"; c.fillRect(V.X(1.2), V.Y(1.2, 0) - 30, 5, 82); c.fillStyle = "#C23B2A"; c.fillRect(V.X(1.2) - 3, V.Y(1.2, 0) - 4, 11, 56); }
-          alle.slice().sort((a, b) => a.lw - b.lw).forEach((f) => fahrerBild(c, t, f, V, K)); R.flocken(c, t, 26, 1.4); },
+        draw(c, t) { hang(c, t, K, cam, alle, ich); if (phase === "tor") R.tafel(c, R.W / 2 - 90, 150, 180, 40, [[tPh > tor - 0.6 ? "ACHTUNG" : "FERTIG MACHEN", 16, "#C23B2A"]]); },
       });
     }
-    lauf("Halbfinale", feld.slice(0, 3), 1);
+    function ergebnis(name, alle) {
+      const rg = P.rang(alle), platz = rg.findIndex((f) => f.ich) + 1, finale = runde === 1, weiter = !finale && platz <= 2, gesamt = finale ? platz : weiter ? 0 : platz + 2;
+      if (finale) R.medaille(platz); if (gesamt) R.rekord("platz", gesamt, true);
+      R.stand({ kicker: `Idre Fjäll · ${name}`, titel: finale ? (platz <= 3 ? ["Gold!", "Silber!", "Bronze!"][platz - 1] : "Platz 4 im Finale") : weiter ? `Platz ${platz}: Du stehst im Finale` : `Platz ${platz}: ausgeschieden`,
+        kopf: [["", "p"], ["", ""], ["", ""], ["Tore", "n"], ["Zeit", "n"]], zeilen: rg.map((f, i) => ({ platz: i + 1, name: f.name, nat: f.nat, spalten: [f.fehler ? "−" + f.fehler : "alle"], wert: i ? "+" + R.zahl(f.zeit - rg[0].zeit) : R.zeit(f.zeit), ich: f.ich, strich: !finale && i === 1 })),
+        note: finale ? "Finale: vier Fahrer, einer gewinnt." : "Die ersten zwei jedes Laufs fahren ins Finale.",
+        knoepfe: weiter ? [{ text: "Weiter", rot: true, fn: () => { runde = 1; const mit = rg.find((f) => !f.ich && rg.indexOf(f) < 2); lauf("Finale", [mit.g, feld[3], feld[4]]); } }] : [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: turnier }] });
+    }
+    lauf("Halbfinale", feld.slice(0, 3));
   }
 
-  const dK = P.kurs(5), dF = Object.assign(P.fahrer({ linie: 1 }), { id: 0, los: true, schuebe: 3, hocke: true });
+  const dK = P.kurs(7), dAlle = [0, 1, 2, 3].map((i) => P.fahrer({ id: i, x: [-0.2, -0.6, 0.2, 0.6][i], staerke: 0.8, look: {} })), dR = P.rng(3);
   R = window.CMRahmen.spiel({
     id: "ski-cross", name: "Ski Cross", titel: ["Ski", "Cross"], band: "Idre Fjäll · Schweden", version: VERSION, kit: KIT,
-    satz: "Vier zugleich über Wellen, Sprünge und Steilkurven. Die ersten zwei kommen weiter.",
-    modi: [{ id: "turnier", name: "Rennen", sub: (R) => (R.S.best.platz ? `Bester Platz: ${R.S.best.platz}` : "Halbfinale und Finale zu viert"), start: turnier }],
-    info: [["So geht’s", "Ein Knopf: Wenn das Starttor fällt, dreimal im Takt tippen. Danach an jeder Welle tippen, wenn sich der Ring schließt: In der Senke gibt das Schwung, an der Kante bleibst du flach. Linie und Hocke fährt deine Figur selbst."],
-      ["Linie", "In der Steilkurve ist innen kürzer. Wer in der Kurve zu lange in der Hocke bleibt, den trägt es nach außen. Direkt hinter jemandem fährst du im Windschatten und wirst schneller; zum Überholen die Linie wechseln."],
-      ["Karten", "Wer in eine besetzte Linie zieht, berührt den anderen: Beide verlieren Tempo. Zwei Verwarnungen ergeben eine Gelbe Karte, und Gelb heißt Letzter im Lauf."],
-      ["Noch nicht drin", "Setzlauf, Turnier mit 16 und die Massenabfahrt wie um 1930 kommen später."]],
-    plakat(c, t) { dF.s = 60 + (t * 12) % 500; dF.lw = 1; dF.id = 0; dF.look = R ? R.myLook() : undefined; const cam = { s: dF.s + 4, h: P.hoehe(dK, dF.s + 4) }; const V = kursBild(c, t, dK, cam); fahrerBild(c, t, dF, V, dK); },
+    satz: "Vier fahren zugleich den Hang hinunter. Die ersten zwei kommen weiter.",
+    modi: [{ id: "turnier", name: "Turnier", sub: (R) => (R.S.best && R.S.best.platz ? `Beste Platzierung: ${R.S.best.platz}.` : "Halbfinale, dann Finale"), start: turnier }],
+    info: [["So geht’s", "Du siehst den Hang von hinten und lenkst nur links und rechts. Fahr durch jedes Tor: Ein verpasstes Tor bremst dich hart. Wer wenig lenkt, ist schneller."],
+      ["Wellen", "Über die blauen Wellen gerade fahren, dann geben sie Schwung. Wer dabei lenkt, verkantet."],
+      ["Zweikampf", "Direkt hinter einem Gegner fährst du im Windschatten schneller. Fahr ihm nicht auf: Wer auffährt, verliert Tempo. Zum Überholen ausscheren."],
+      ["Noch nicht drin", "Achtel- und Viertelfinale, Sprünge, Strecken zur Wahl, Duell per Link."]],
+    plakat(c, t) { if (!R) return; if (dAlle.every((f) => f.fertig)) dAlle.forEach((f, i) => Object.assign(f, P.fahrer({ id: i, x: f.x, staerke: 0.8, look: f.look }))); dAlle.forEach((f) => { f.look = f.id ? f.look : R.myLook(); P.schritt(f, dK, 1 / 60, P.bot(f, dK, dR, dAlle), dAlle); }); hang(c, t, dK, { s: dAlle[0].s - 8, x: dAlle[0].x * 0.75 }, dAlle, dAlle[0]); },
   });
 })();
 </script>

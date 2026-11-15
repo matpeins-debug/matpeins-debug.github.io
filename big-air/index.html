@@ -2076,228 +2076,116 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   root.CMRahmen = { v: 1, W, H, spiel, rng, clamp };
 })(typeof window !== "undefined" ? window : globalThis);
 
-// Cold Medal · Big Air – Physik ohne DOM: Anfahrt im Takt, Absprung, Flugbahn ohne Luftpolster, Drehung als
-// Winkelgeschwindigkeit, Griff, Landung am Hang, Wertung wie beim Preisgericht. Global BAPhys.
+// Cold Medal · Big Air – Physik ohne Browser (Node und Seite). Seit 0.3: ein Knopf wie im Seitenscroller: tippen = Absprung, halten = Salto.
 (function (root) {
   "use strict";
-  function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-  const G = 9.81, LIP = { x: 42, y: 10, w: 27 * Math.PI / 180 }, KNICK = { x: 54, y: 8.6 }, HANG = 31 * Math.PI / 180, TAKT = 0.7, SCHUEBE = 3;
-  // Achsen: Drehzahl in Grad je Sekunde, nach wie viel Grad die Ski wieder passen, Fenster für die saubere Landung, Zuschlag
-  const ACHSE = { flach: { w: 430, teil: 180, sauber: 30, hand: 56, plus: 0, name: "Flach" }, schraeg: { w: 430, teil: 180, sauber: 25, hand: 48, plus: 6, name: "Schräg" }, salto: { w: 300, teil: 360, sauber: 30, hand: 60, plus: 9, name: "Salto" } };
-  const GRIFFE = { spitze: "Spitze", ende: "Ende", bindung: "Bindung" };
-  const hangY = (x) => (x < KNICK.x ? KNICK.y : KNICK.y - Math.tan(HANG) * (x - KNICK.x));
-  // Anlaufspur: Punkt und Neigung bei Weg u (0 … 1) von oben bis zur Kante
-  function spur(u) { const x = LIP.x * u, y = 10 + 30 * Math.pow(1 - u, 1.7) - 1.6 * Math.sin(Math.PI * clamp((u - 0.72) / 0.28, 0, 1)) * 0 + (u > 0.8 ? 0 : 0); return { x, y: u > 0.86 ? y + (u - 0.86) / 0.14 * 0 : y }; }
-  function neu(trick, o) {
-    o = o || {};
-    return { trick, phase: "anfahrt", t: 0, u: 0, tempo: 0, schuebe: [], phi: 0.3, wind: o.wind || 0, gefuehl: o.gefuehl || 0,
-      x: 0, y: 40, vx: 0, vy: 0, rot: 0, dreht: false, offen: false, offenT: null, griffT: 0, greift: false, hoch: 0, pop: 0, tFlug: 0, land: null };
+  function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const ANLAUF = 2.4, LIPPE = 0.94, FENSTER = 0.07, DREH = 430, TOL = 50;
+
+  function neu(o) { return { phase: "anfahrt", u: 0, q: null, t: 0, T: 0, h: 0, rot: 0, dreht: false, flips: 0, sturz: false, sauber: 0, wind: (o && o.wind) || 0 }; }
+  function absprung(s) { if (s.phase !== "anfahrt" || s.q != null) return null; s.q = s.u < LIPPE - FENSTER ? 0.05 : clamp(1 - Math.abs(s.u - LIPPE) / FENSTER, 0.05, 1); return s.q; }
+  // haelt: Knopf gedrückt. Liefert "ab" beim Absprung, "landung" oder "sturz" am Ende.
+  function schritt(s, dt, haelt) {
+    if (s.phase === "anfahrt") { s.u += dt / ANLAUF; if (s.u >= 1) { if (s.q == null) s.q = 0.15; s.T = 1.35 + 1.25 * s.q + s.wind * 0.03; s.h = 2 + 5 * s.q; s.phase = "flug"; return "ab"; } return null; }
+    if (s.phase !== "flug") return null;
+    s.t += dt; s.dreht = !!haelt; if (haelt) s.rot += DREH * dt;
+    if (s.t < s.T) return null;
+    const voll = Math.round(s.rot / 360) * 360, fehler = Math.abs(s.rot - voll);
+    s.sturz = fehler > TOL; s.flips = s.sturz ? Math.floor(s.rot / 360) : voll / 360; s.sauber = s.sturz ? 0 : 1 - (fehler / TOL) * 0.7; s.phase = "aus";
+    return s.sturz ? "sturz" : "landung";
   }
-  const guete = (e, f) => (e > f ? 0 : 1 - (e / f) * 0.7);
-  function schub(st) { if (st.phase !== "anfahrt" || st.schuebe.length >= SCHUEBE) return 0; const q = st.phi < 0.5 ? 0 : guete(Math.abs(st.phi - 1), 0.28); st.schuebe.push(q); st.phi = 0; st.tempo = st.schuebe.reduce((s, v) => s + v, 0) / SCHUEBE; return q; }
-  // Absprung: dx = Abstand zur Kante in Metern beim Drücken (vor der Kante positiv)
-  function absprung(st) { if (st.phase !== "anfahrt" || st.absp != null) return null; const d = LIP.x * (1 - st.u); st.absp = d; st.pop = d > 6 ? 0 : guete(Math.abs(d - 0.8), 3.2); st.dreht = true; return st.pop; }
-  function halte(st, an) { if (st.phase === "anfahrt" && !an && st.absp != null && st.u < 1) { st.dreht = false; return; } if (st.phase !== "flug") { st.dreht = an && st.absp != null; return; } if (!an && st.dreht) { st.dreht = false; st.offen = true; st.offenT = st.tFlug; } }
-  function griff(st, an) { st.greift = !!an && st.phase === "flug" && !st.land; }
-  const tempoV = (st) => 12.4 + 3.2 * st.tempo - 0.25 * st.wind;       // m/s an der Kante (Gegenwind bremst)
-  function schritt(st, dt) {
-    st.t += dt;
-    if (st.phase === "anfahrt") {
-      st.phi += dt / TAKT; if (st.phi > 1.3) st.phi -= 1;
-      const v = 4 + (tempoV(st) - 4) * Math.min(1, st.u * 1.6 + 0.1);
-      st.u = Math.min(1, st.u + (v * dt) / 52);
-      const p = spurPunkt(st.u); st.x = p.x; st.y = p.y;
-      if (st.u >= 1) { const v0 = tempoV(st); st.phase = "flug"; st.vx = v0 * Math.cos(LIP.w); st.vy = v0 * Math.sin(LIP.w) + 2.2 * st.pop; st.x = LIP.x; st.y = LIP.y; if (st.absp == null) { st.pop = 0; st.dreht = false; } st.hoch = 0; }
-      return;
-    }
-    if (st.phase === "flug") {
-      st.tFlug += dt; st.vy -= G * dt; st.x += st.vx * dt; st.y += st.vy * dt; st.hoch = Math.max(st.hoch, st.y - LIP.y);
-      const A = ACHSE[st.trick.achse];
-      if (st.dreht) st.rot += A.w * dt;
-      if (st.greift && !st.offen) st.griffT += dt;
-      if (st.y <= hangY(st.x) && st.vy < 0) lande(st);
-      return;
-    }
-    if (st.phase === "aus") { st.aus += dt; const v = st.land.sturz ? 6 : 13; st.x += v * Math.cos(HANG) * dt * (st.x > 96 ? 0.4 : 1); st.y = Math.max(hangY(Math.min(st.x, 96)), -18.5); }
-  }
-  function spurPunkt(u) { const x = LIP.x * u; let y = 10 + 30 * Math.pow(1 - u, 1.6); if (u > 0.8) { const k = (u - 0.8) / 0.2; y = y - 2.2 * Math.sin(k * Math.PI / 2) * (1 - k) + 0 * k; } return { x, y: u >= 1 ? LIP.y : y }; }
-  function lande(st) {
-    const A = ACHSE[st.trick.achse], fen = 1 + 0.25 * st.gefuehl;
-    const rest = st.rot % A.teil, e = Math.min(rest, A.teil - rest), voll = Math.round(st.rot / A.teil) * A.teil;
-    const zuSpaet = st.dreht || (st.offenT != null && st.tFlug - st.offenT < 0.12 && st.rot > 0);
-    let art = e <= A.sauber * fen && !zuSpaet ? "sauber" : e <= A.hand * fen ? "hand" : "sturz";
-    if (st.greift && art === "sauber") art = "hand";                 // Griff nicht losgelassen
-    const weite = (st.x - KNICK.x) / Math.cos(HANG);
-    if (st.x < KNICK.x + 1.5) art = "sturz";                           // zu kurz: auf dem Tisch gelandet
-    st.land = { art, sturz: art === "sturz", rot: art === "sturz" ? Math.floor(st.rot / A.teil) * A.teil : voll, fehler: e, weite: Math.max(0, weite), hoch: st.hoch, griff: Math.min(1, st.griffT / 1.0), flug: st.tFlug };
-    st.y = hangY(st.x); st.phase = "aus"; st.aus = 0;
-  }
-  // Basis für das Preisgericht (0 … 100) aus Schwierigkeit, Ausführung, Höhe
-  function wertung(st) {
-    const L = st.land, A = ACHSE[st.trick.achse];
-    const schwer = 24 + 64 * Math.pow(Math.min(1, L.rot / 1440), 0.8) + (L.rot > 0 ? A.plus : 0);
-    const ausf = L.sturz ? 0.3 : (L.art === "hand" ? 0.72 : 0.9 + 0.1 * (1 - L.fehler / A.sauber)) ;
-    const stil = 0.86 + 0.09 * L.griff + 0.05 * clamp((L.hoch - 3) / 4, 0, 1);
-    return clamp(schwer * ausf * stil, 5, 99);
-  }
-  const trickName = (tr, rot) => (rot ? `${tr.richtung === "links" ? "Links" : "Rechts"} ${rot}${tr.achse === "flach" ? "" : " " + ACHSE[tr.achse].name}` : "Gerader Sprung");
-  const gleich = (a, b) => a.richtung === b.richtung && a.achse === b.achse;
-  // Sprung eines erfundenen Gegners: Basiswert und Trick aus der Stärke
-  function ki(staerke, r, nr) {
-    const achse = r() < 0.25 + 0.3 * staerke ? (r() < 0.5 ? "schraeg" : "salto") : "flach", A = ACHSE[achse];
-    const stufen = Math.round((2 + 5 * staerke + (r() - 0.5) * 2.4) * (180 / A.teil)), rot = clamp(stufen, 1, achse === "salto" ? 3 : 8) * A.teil;
-    const p = r(), art = p < 0.14 + 0.3 * (1 - staerke) * (rot / 1260) ? "sturz" : p < 0.4 ? "hand" : "sauber";
-    const tr = { richtung: nr % 2 ? "links" : "rechts", achse, griff: "spitze" };
-    const st = { trick: tr, land: { art, sturz: art === "sturz", rot, fehler: r() * A.sauber, hoch: 4 + 3 * staerke * r(), griff: 0.4 + 0.6 * r() * staerke } };
-    return { trick: tr, rot, art, basis: wertung(st) };
-  }
-  // Finale: die zwei besten Wertungen aus zwei verschiedenen Tricks
-  function finalwert(spruenge) { let best = 0; for (let i = 0; i < spruenge.length; i++) { best = Math.max(best, spruenge[i].wert); for (let j = i + 1; j < spruenge.length; j++) if (!gleich(spruenge[i].trick, spruenge[j].trick)) best = Math.max(best, spruenge[i].wert + spruenge[j].wert); } return Math.round(best * 10) / 10; }
-  const api = { rng, G, LIP, KNICK, HANG, TAKT, SCHUEBE, ACHSE, GRIFFE, hangY, spurPunkt, neu, schub, absprung, halte, griff, schritt, wertung, trickName, gleich, ki, finalwert, tempoV };
-  root.BAPhys = api; if (typeof module !== "undefined") module.exports = api;
+  const wertung = (s) => clamp(s.sturz ? 12 + s.flips * 6 : 20 + 14 * s.q + s.flips * 18 + 12 * s.sauber, 0, 100);
+  function ki(st, r) { const flips = Math.min(3, Math.max(1, Math.round(0.8 + 2.2 * st + (r() - 0.5)))), sturz = r() < 0.26 - 0.14 * st; return { flips, sturz, basis: clamp(sturz ? 12 + flips * 6 : 20 + 14 * (0.5 + 0.5 * st) + flips * 18 + 12 * (0.55 + 0.4 * r()), 0, 100) }; }
+  // Mitspieler: trifft die Kante und dreht so viele ganze Saltos, wie in die Flugzeit passen
+  function bot(s) { if (s.phase === "anfahrt") return { ab: s.q == null && s.u >= LIPPE, haelt: false }; if (s.phase !== "flug") return { haelt: false }; const ziel = Math.floor(((s.T - 0.2) * DREH) / 360) * 360; return { haelt: s.rot < ziel - 4 }; }
+  const api = { ANLAUF, LIPPE, FENSTER, DREH, TOL, clamp, rng, neu, absprung, schritt, wertung, ki, bot };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.BAPhys = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
 // Cold Medal · Big Air – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
+// Seit 0.3: ein Knopf wie in den einfachen Seitenscrollern. Tippen an der Kante = Absprung, halten = Salto, loslassen vor der Landung.
 (function () {
   "use strict";
-  const VERSION = "0.2.0";
-  const P = window.BAPhys, F = window.CMFigur;
-  const KIT = { head: "helmet", feet: "xcSki", torso: "plain", glove: true };
-  const POSE = {
-    hocke: { lean: 44, crouch: 0, sL: [56, 86], fL: [50, 82], aF: [30, 40], aB: [14, 30], hd: -24 },
-    schub: { lean: 30, crouch: 0, sL: [30, 40], fL: [-20, 30], aF: [-40, 20], aB: [50, 30], hd: -12 },
-    dreh: { lean: 20, crouch: 0, sL: [70, 100], fL: [62, 96], aF: [40, 80], aB: [-30, -60], hd: -6 },
-    griff: { lean: 46, crouch: 0, sL: [84, 112], fL: [78, 108], aF: [72, 8], aB: [-40, -50], hd: -10 },
-    offen: { lean: 12, crouch: 0, sL: [22, 34], fL: [14, 30], aF: [70, 20], aB: [-70, -20], hd: -4 },
-    gelandet: { lean: 26, crouch: 0, sL: [44, 70], fL: [38, 66], aF: [60, 30], aB: [-50, -20], hd: -8 },
-    liegt: { lean: 80, crouch: 0, sL: [70, 30], fL: [40, 60], aF: [120, 20], aB: [-20, -40], hd: 10 },
-  };
-  const PPM = 11.5, ZEIT = "abend";
-  let R;
-  const X = (x, cam) => (x - cam.x) * PPM + 400, Y = (y, cam) => 208 - (y - cam.y) * PPM;
+  const VERSION = "0.3.0";
+  const P = window.BAPhys;
+  const KIT = { head: "helmet", feet: "skiBoots", torso: "plain", glove: true };
+  const POSE = { hocke: { lean: 40, crouch: 0.8, sL: [60, 90], fL: [50, 86], aF: [30, 40], aB: [14, 30], hd: -20 }, salto: { lean: 50, crouch: 1, sL: [90, 120], fL: [84, 116], aF: [80, 20], aB: [70, 20], hd: -20 }, offen: { lean: 10, crouch: 0.2, sL: [24, 30], fL: [10, 30], aF: [-70, 20], aB: [-110, 20], hd: 0 }, sturz: { lean: 80, crouch: 0.3, sL: [20, 40], fL: [-30, 50], aF: [-120, 30], aB: [100, 30], hd: 20 } };
+  const A = [56, 52], B = [262, 338], L = [372, 240], RUNDEN = 3;
+  let R, kul;
+  const hang = (x) => 304 + (x - 404) * 0.2;
+  const bez = (u) => { const q = 1 - u; return [q * q * A[0] + 2 * q * u * B[0] + u * u * L[0], q * q * A[1] + 2 * q * u * B[1] + u * u * L[1], Math.atan2(2 * q * (B[1] - A[1]) + 2 * u * (L[1] - B[1]), 2 * q * (B[0] - A[0]) + 2 * u * (L[0] - B[0]))]; };
 
-  function anlage(c, t, cam) {
-    R.kulisse("sapporo", 205, ZEIT).zeichne(c, cam.x * PPM, t);
-    // Flutlicht-Schein und Zuschauer im Auslauf
-    const boden = Y(-18.5, cam);
-    c.fillStyle = "#AEB9D6"; c.fillRect(0, boden, R.W, R.H - boden + 40);
-    // Gerüst aus Holz und Stahl unter der Anlaufspur
-    c.strokeStyle = "#5B4A3A"; c.lineWidth = 2;
-    for (let u = 0; u <= 1.001; u += 0.1) { const p = P.spurPunkt(Math.min(1, u)); c.beginPath(); c.moveTo(X(p.x, cam), Y(p.y, cam)); c.lineTo(X(p.x, cam), Y(8.6, cam) + 4); c.stroke(); if (u < 1) { const q = P.spurPunkt(u + 0.1); c.beginPath(); c.moveTo(X(p.x, cam), Y(8.6, cam)); c.lineTo(X(q.x, cam), Y(q.y, cam)); c.stroke(); } }
-    c.fillStyle = "#3A4254"; c.fillRect(X(0, cam) - 4, Y(8.6, cam), X(54, cam) - X(0, cam) + 4, boden - Y(8.6, cam));
-    c.fillStyle = "#F4F7FB"; c.beginPath(); c.moveTo(X(0, cam), Y(40, cam));
-    for (let u = 0; u <= 1.001; u += 0.02) { const p = P.spurPunkt(Math.min(1, u)); c.lineTo(X(p.x, cam), Y(p.y, cam)); }
-    c.lineTo(X(P.LIP.x, cam), Y(8.6, cam)); c.lineTo(X(0, cam), Y(8.6, cam)); c.closePath(); c.fill();
-    c.strokeStyle = "#C23B2A"; c.lineWidth = 3; c.beginPath(); c.moveTo(X(P.LIP.x - 0.3, cam), Y(P.LIP.y, cam)); c.lineTo(X(P.LIP.x - 0.3, cam), Y(8.6, cam)); c.stroke();
-    // Tisch und Landehang
-    c.fillStyle = "#EEF2F8"; c.beginPath(); c.moveTo(X(P.LIP.x, cam), Y(8.6, cam)); c.lineTo(X(P.KNICK.x, cam), Y(8.6, cam));
-    for (let x = P.KNICK.x; x <= 99; x += 3) c.lineTo(X(x, cam), Y(Math.max(P.hangY(x), -18.5), cam));
-    c.lineTo(X(130, cam), boden); c.lineTo(X(130, cam), R.H + 40); c.lineTo(X(P.LIP.x, cam), R.H + 40); c.closePath(); c.fill();
-    c.strokeStyle = "#2C6FB3"; c.lineWidth = 2; for (const m of [10, 20, 30, 40]) { const x = P.KNICK.x + m * Math.cos(P.HANG); c.beginPath(); c.moveTo(X(x, cam) - 6, Y(P.hangY(x), cam) + 3); c.lineTo(X(x, cam) + 6, Y(P.hangY(x), cam) + 9); c.stroke(); }
-    // Punktrichterturm und Zuschauer
-    const tx = X(88, cam), ty = Y(-10, cam); c.fillStyle = "#6B4A30"; c.fillRect(tx, ty - 46, 46, 30); c.fillRect(tx + 4, ty - 16, 4, 40); c.fillRect(tx + 38, ty - 16, 4, 40); c.fillStyle = "#F6C766"; for (let i = 0; i < 3; i++) c.fillRect(tx + 5 + i * 13, ty - 40, 9, 12);
-    for (let i = 0; i < 46; i++) { const wx = X(96 + i * 0.75, cam), bob = Math.max(0, Math.sin(t * 3 + i * 1.7)) * 2; c.fillStyle = ["#C23B2A", "#E9EEF5", "#DDA43B", "#3F6B55", "#7FB3D5"][i % 5]; c.fillRect(wx, boden - 12 - bob - (i % 3) * 2, 6, 12); c.fillStyle = "#E8C9A8"; c.fillRect(wx + 1.5, boden - 16 - bob - (i % 3) * 2, 3.5, 4); }
-    c.fillStyle = "#C23B2A"; c.fillRect(X(95, cam), boden - 3, 400, 3);
+  function schanze(c, t) {
+    kul = kul || R.kulisse("sapporo", 300, "abend"); kul.zeichne(c, 0, t);
+    c.fillStyle = "#EEF4F8"; c.strokeStyle = "#141B25"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(0, R.H); c.lineTo(0, A[1] - 8); c.lineTo(A[0], A[1]);
+    for (let i = 1; i <= 30; i++) { const p = bez(i / 30); c.lineTo(p[0], p[1]); } c.lineTo(L[0] + 6, L[1] + 30); c.lineTo(404, hang(404)); c.lineTo(R.W, hang(R.W)); c.lineTo(R.W, R.H); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "#C23B2A"; c.fillRect(L[0] - 14, L[1] + 2, 16, 5);      // rote Kante
+    // Zuschauer und Punktrichterturm am Auslauf
+    for (let i = 0; i < 14; i++) { const x = 600 + i * 17, y = hang(x) - 2, bob = Math.max(0, Math.sin(t * 2.4 + i * 1.9)) * 2; c.fillStyle = ["#C23B2A", "#2C6FB3", "#DDA43B", "#3F6B55"][i % 4]; c.fillRect(x, y - 16 - bob, 10, 14); c.fillStyle = "#E8C9A8"; c.fillRect(x + 2, y - 22 - bob, 6, 6); }
+    c.fillStyle = "#22272E"; c.fillRect(470, hang(470) - 4, 6, 4); c.fillRect(760, 150, 60, 44); c.fillStyle = "#F1E7D2"; c.fillRect(766, 156, 48, 16); R.text(c, "JURY", 790, 164, 10, "#22272E");
   }
-  function figur(c, st, cam, look, t) {
-    const A = P.ACHSE[st.trick.achse], dir = st.trick.richtung === "links" ? 1 : -1, s = 0.52;
-    let pose = POSE.hocke, turn = 0, tilt = 0;
-    if (st.phase === "anfahrt") { const u = Math.min(1, st.phi / 0.35); pose = st.schuebe.length && st.schuebe.length < P.SCHUEBE + 1 && u < 1 && st.u < 0.5 ? F.mix(POSE.schub, POSE.hocke, u) : POSE.hocke; const a = P.spurPunkt(Math.min(1, st.u + 0.01)), b = P.spurPunkt(Math.max(0, st.u - 0.01)); tilt = Math.atan2(-(a.y - b.y), a.x - b.x); }
-    else if (st.phase === "flug") { pose = st.offen ? POSE.offen : st.greift ? POSE.griff : st.dreht ? POSE.dreh : POSE.offen; const w = st.rot * Math.PI / 180;
-      if (st.trick.achse === "flach") turn = w * dir; else if (st.trick.achse === "salto") tilt = -w * dir; else { turn = w * dir; tilt = 0.6 * Math.sin(w); } }
-    else if (st.land.sturz) { pose = POSE.liegt; tilt = P.HANG + 1.2; }
-    else { pose = st.aus > 0.8 ? F.mix(POSE.gelandet, F.POSES.cheer, Math.min(1, (st.aus - 0.8) * 3)) : POSE.gelandet; tilt = st.x < 96 ? P.HANG : 0; }
-    const cx = X(st.x, cam), cy = Y(st.y, cam) - 36 * s * (st.phase === "flug" ? 1 : 0);
-    const ax = st.phase === "flug" ? cx - Math.sin(tilt) * 36 * s : cx, ay = st.phase === "flug" ? cy + Math.cos(tilt) * 36 * s : cy;
-    if (st.phase !== "flug") R.schatten(c, cx, cy, 14);
-    R.figur(c, { x: ax, y: ay, s, pose, look, kit: KIT, turn, tilt, lw: 1.3 });
-  }
-  function ring(c, st) {
-    if (st.phase !== "flug") return;
-    const A = P.ACHSE[st.trick.achse], x = 150, y = 230, r = 46, grad = Math.floor(st.rot), rest = st.rot % A.teil, e = Math.min(rest, A.teil - rest), gut = e <= A.sauber;
-    c.fillStyle = "rgba(20,27,37,0.78)"; c.beginPath(); c.arc(x, y, r + 10, 0, R.TAU); c.fill();
-    c.strokeStyle = "#5A6478"; c.lineWidth = 8; c.beginPath(); c.arc(x, y, r, 0, R.TAU); c.stroke();
-    const w = (A.sauber / A.teil) * R.TAU; c.strokeStyle = "#4E9A4A"; c.beginPath(); c.arc(x, y, r, -Math.PI / 2 - w, -Math.PI / 2 + w); c.stroke();
-    const a = -Math.PI / 2 + (rest / A.teil) * R.TAU; c.strokeStyle = gut ? "#9BE07A" : "#F1E7D2"; c.lineWidth = 5; c.beginPath(); c.moveTo(x + Math.cos(a) * (r - 12), y + Math.sin(a) * (r - 12)); c.lineTo(x + Math.cos(a) * (r + 8), y + Math.sin(a) * (r + 8)); c.stroke();
-    R.text(c, String(Math.round(st.rot / A.teil) * A.teil), x, y - 4, 26, gut ? "#9BE07A" : "#F1E7D2"); R.text(c, st.dreht ? "DREHEN" : "OFFEN", x, y + 18, 10, "#C9D2E0");
-  }
-  function tafeln(c, w, name) {
-    const x0 = R.W / 2 - 220, y0 = 96;
-    R.tafel(c, x0, y0 - 30, 440, 26, [[name, 14]]);
-    w.noten.forEach((n, i) => { const x = x0 + i * 74; c.fillStyle = "#141B25"; c.fillRect(x, y0, 70, 46); R.text(c, R.zahl(n), x + 35, y0 + 24, 22, i === w.hi || i === w.lo ? "#7A8496" : "#F1E7D2"); if (i === w.hi || i === w.lo) { c.strokeStyle = "#C23B2A"; c.lineWidth = 3; c.beginPath(); c.moveTo(x + 10, y0 + 24); c.lineTo(x + 60, y0 + 24); c.stroke(); } });
-    R.tafel(c, x0 + 150, y0 + 52, 140, 34, [[R.zahl(w.wert), 22, "#C23B2A"]]);
+  function fahrer(c, s, look) {
+    let x, y, w, pose;
+    if (s.phase === "anfahrt") { const p = bez(Math.min(1, s.u)); x = p[0]; y = p[1]; w = p[2]; pose = POSE.hocke; }
+    else { const k = s.phase === "aus" ? 1 : s.t / s.T, zx = 540 + 200 * s.q; x = L[0] + (zx - L[0]) * k; y = L[1] + (hang(zx) - L[1]) * k - Math.sin(k * Math.PI) * s.h * 17;
+      w = s.phase === "aus" ? (s.sturz ? 1.3 : 0.2) : -0.5 + 0.7 * k - (s.rot * Math.PI) / 180; pose = s.phase === "aus" ? (s.sturz ? POSE.sturz : POSE.hocke) : s.dreht ? POSE.salto : POSE.offen; }
+    if (s.phase !== "anfahrt") R.schatten(c, x, hang(Math.max(404, x)) + 2, 16);
+    c.save(); c.translate(x, y - 2); c.rotate(w); c.strokeStyle = "#141B25"; c.lineWidth = 7; c.lineCap = "round"; c.beginPath(); c.moveTo(-24, 0); c.lineTo(24, 0); c.stroke(); c.strokeStyle = "#DDA43B"; c.lineWidth = 4; c.beginPath(); c.moveTo(-23, 0); c.lineTo(23, 0); c.stroke();
+    R.figur(c, { x: 0, y: -2, s: 0.74, pose, look, kit: KIT }); c.restore();
   }
 
   function wettkampf(training) {
-    const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, rnd = P.rng(seed), feld = training ? [] : R.feld(11, seed, 0.6), wind = Math.round((rnd() * 4 - 1.5) * 10) / 10;
-    feld.forEach((f) => { f.spr = [0, 1, 2].map((i) => { const k = P.ki(f.st, rnd, i + f.id); return { trick: k.trick, wert: R.richter(k.basis, rnd).wert }; }); });
-    const meine = [], RUNDEN = 3; let letzter = { richtung: "links", achse: "flach", griff: "spitze" };
-    function karte() {
-      if (!training || meine.length) { const w = Object.assign({}, letzter, { richtung: meine.length % 2 ? "rechts" : "links" }); letzter = w; return sprung(w); }   // Trickkarte nur noch zu Beginn der Trickschule
-      R.wahl({ kicker: training ? `Trickschule · Sprung ${meine.length + 1}` : `Finale · Sprung ${meine.length + 1} von ${RUNDEN}`, titel: "Trickkarte", knopf: "Zum Start",
-        gruppen: [{ id: "richtung", label: "Richtung", list: [["links", "Links herum"], ["rechts", "Rechts herum"]], wert: meine.length === 1 ? (letzter.richtung === "links" ? "rechts" : "links") : letzter.richtung },
-          { id: "achse", label: "Achse", list: [["flach", "Flach"], ["schraeg", "Schräg"], ["salto", "Salto"]], wert: letzter.achse },
-          { id: "griff", label: "Griff", list: Object.entries(P.GRIFFE), wert: letzter.griff }],
-        botWerte: { richtung: meine.length % 2 ? "rechts" : "links", achse: "flach" },
-        aendern: (w) => (w.achse === "flach" ? "Flach: halbe Umdrehungen zählen, die Ski passen alle 180°." : w.achse === "schraeg" ? "Schräg: mehr Punkte, engeres Fenster bei der Landung." : "Salto: nur ganze Umdrehungen landen, am meisten Punkte je Drehung.") +
-          (meine.length && !training ? " Im Finale zählen die zwei besten Sprünge aus zwei verschiedenen Tricks." : ` Wind ${wind > 0 ? "von vorn" : "von hinten"} ${R.zahl(Math.abs(wind))} m/s.`),
-        fn: (w) => { letzter = w; sprung(w); } });
-    }
-    function sprung(trick) {
-      const st = P.neu(trick, { wind }), cam = { x: 14, y: 26 }; let wert = null, tEnd = 0, hielt = false;
-      const kR = { set() {} };
-      const kL = R.knopf({ seite: "links", text: "Absprung", symbol: "hocke", onDown: () => { hielt = true; if (st.phase === "anfahrt") { const p = P.absprung(st); if (p != null) { R.ton.wusch(); R.sag(p > 0.75 ? "Voll getroffen!" : p > 0.3 ? "Guter Absprung" : "Zu früh", 1, p <= 0.3); } } }, onUp: () => { hielt = false; P.halte(st, false); } });
+    const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, rnd = P.rng(seed), feld = training ? [] : R.feld(11, seed, 0.6), wind = Math.round((rnd() * 4 - 1.5) * 10) / 10, meine = [];
+    feld.forEach((f) => { f.spr = [0, 1, 2].map(() => { const k = P.ki(f.st, rnd); return { flips: k.flips, sturz: k.sturz, wert: R.richter(k.basis, rnd).wert }; }); });
+    const zwei = (a) => a.map((x) => x.wert).sort((x, y) => y - x).slice(0, 2).reduce((x, y) => x + y, 0);
+    function sprung() {
+      const s = P.neu({ wind }); let wert = null, tEnd = 0, haelt = false, botAn = null;
+      const kR = R.knopf({ seite: "rechts", text: "Absprung", symbol: "hocke", onDown: () => { haelt = true; if (s.phase === "anfahrt") { const q = P.absprung(s); if (q != null) { R.ton.wusch(); R.sag(q > 0.75 ? "Voll getroffen!" : q > 0.3 ? "Guter Absprung" : "Zu früh", 1, q <= 0.3); } } }, onUp: () => { haelt = false; } });
       R.szene({
-        taste(k, an) { if (k === "rechts") { if (an) { if (st.phase === "anfahrt") P.schub(st); else P.griff(st, true); } else P.griff(st, false); } if (k === "links") { if (an) { hielt = true; if (st.phase === "anfahrt") P.absprung(st); } else { hielt = false; P.halte(st, false); } } },
-        bot() { if (st.phase === "anfahrt") { if (st.schuebe.length < P.SCHUEBE && st.phi >= 1) P.schub(st); if (st.absp == null && P.LIP.x * (1 - st.u) < 1.2) { hielt = true; P.absprung(st); } } else if (st.phase === "flug") { if (st.dreht && st.rot >= (meine.length === 2 ? 530 : 710)) { hielt = false; P.halte(st, false); } P.griff(st, st.tFlug > 0.25 && st.tFlug < 1.3 && !st.offen); } },
+        taste(k, an) { if (k === "rechts" || k === "links") { haelt = an; if (an && s.phase === "anfahrt") P.absprung(s); } },
+        bot() { const b = P.bot(s); if (b.ab) P.absprung(s); botAn = b.haelt; },
         update(dt) {
-          if (st.phase === "anfahrt" && st.schuebe.length < P.SCHUEBE && st.phi >= 1) P.schub(st); if (st.phase === "flug") P.griff(st, st.tFlug > 0.25 && st.tFlug < 1.3 && !st.offen);   // Anschieben und Griff von selbst
-          const vor = st.phase; P.schritt(st, dt);
-          if (st.phase === "anfahrt") { if (st.schuebe.length < P.SCHUEBE) R.tipp("anfahrt", "An der roten Kante drücken und halten: Absprung.", 5);
-            if (st.absp != null && !hielt) st.dreht = false; }
-          if (vor === "anfahrt" && st.phase === "flug") { kR.set({ text: "Griff", symbol: "wurf", zu: null }); kL.set({ text: "Öffnen", zu: null }); if (!hielt) st.dreht = false; R.tipp("flug", "Halten = drehen. Loslassen = aufmachen und landen.", 5); }
-          if (vor === "flug" && st.phase === "aus") { const L = st.land; wert = R.richter(P.wertung(st), rnd); tEnd = 0; R.tippWeg();
-            if (L.sturz) { R.ton.schlecht(); R.ton.raunen(); R.sag("Sturz!", 1.6, true); } else if (L.art === "hand") { R.ton.knapp(); R.sag("Hand im Schnee", 1.6); } else { R.ton.gut(); R.ton.jubel(); R.sag("Stomp!", 1.6); }
-            meine.push({ trick, wert: wert.wert, rot: L.rot, art: L.art }); }
-          if (st.phase === "anfahrt") { const d = P.LIP.x * (1 - st.u); kR.set({ zu: st.schuebe.length < P.SCHUEBE ? Math.min(1, st.phi) : null, ok: Math.abs(st.phi - 1) < 0.15 }); kL.set({ zu: st.absp == null && d < 14 ? R.clamp(1 - (d - 0.8) / 13, 0, 1) : null, puls: st.absp == null && d < 2.5 }); }
-          else { kL.set({ aktiv: st.dreht, puls: false }); kR.set({ aktiv: st.greift }); }
-          const zx = st.phase === "anfahrt" ? Math.max(14, st.x + 10) : Math.min(st.x + 6, 92), zy = st.phase === "anfahrt" ? Math.max(st.y - 6, 12) : Math.max(st.y - 2, -8);
-          cam.x += (zx - cam.x) * Math.min(1, dt * 5); cam.y += (zy - cam.y) * Math.min(1, dt * 5);
-          const sum = P.finalwert(meine);
-          R.chips([[training ? "Trickschule" : `Sprung ${Math.min(RUNDEN, meine.length + (wert ? 0 : 1))}/${RUNDEN}`, "dark"], [P.trickName(trick, st.land ? st.land.rot : Math.round(st.rot / P.ACHSE[trick.achse].teil) * P.ACHSE[trick.achse].teil)],
-            [st.phase === "anfahrt" ? `Tempo ${Math.round(P.tempoV(st) * 3.6 * Math.min(1, st.u * 1.6 + 0.1))} km/h` : `Höhe ${R.zahl(st.hoch)} m`], ...(meine.length && !training ? [[`Wertung ${R.zahl(sum)}`, "gold"]] : [])]);
-          if (wert) { tEnd += dt; if (tEnd > 3.4) (meine.length >= RUNDEN ? ende : karte)(); }
+          const ev = P.schritt(s, dt, botAn != null ? botAn : haelt && s.phase === "flug"); botAn = null;
+          if (s.phase === "anfahrt") { R.tipp("anfahrt", "An der roten Kante tippen: Absprung. In der Luft halten = Salto.", 5); kR.set({ zu: s.q == null ? P.clamp((s.u - 0.35) / (P.LIPPE - 0.35), 0, 1) : null, ok: Math.abs(s.u - P.LIPPE) < P.FENSTER * 0.5 }); }
+          if (ev === "ab") { kR.set({ text: "Salto", symbol: "wurf", zu: null }); R.tipp("flug", "Halten = drehen. Loslassen, wenn das Brett wieder nach unten zeigt.", 5); }
+          if (s.phase === "flug") kR.set({ aktiv: s.dreht });
+          if ((ev === "landung" || ev === "sturz") && !wert) { wert = R.richter(P.wertung(s), rnd); tEnd = 0.01; R.tippWeg(); kR.set({ hidden: true });
+            if (s.sturz) { R.ton.schlecht(); R.ton.raunen(); R.sag("Sturz", 1.6, true); } else { R.ton.schnee(); if (wert.wert > 75) R.ton.jubel(); R.sag(s.flips ? `${s.flips} Salto${s.flips > 1 ? "s" : ""}${s.sauber > 0.85 ? ", sauber gelandet" : ""}` : "Gerader Sprung", 1.6); } }
+          if (tEnd) { tEnd += dt; if (tEnd > 2.6) { meine.push({ wert: wert.wert, flips: s.flips, sturz: s.sturz }); tabelle(); } }
+          const voll = Math.abs(s.rot - Math.round(s.rot / 360) * 360) < P.TOL * 0.7;
+          R.chips([[training ? `Trickschule ${meine.length + 1}/${RUNDEN}` : `Sprung ${meine.length + 1}/${RUNDEN}`, "dark"], [`Wind ${wind > 0 ? "+" : ""}${R.zahl(wind)}`, wind >= 0 ? "good" : "warn"], s.phase === "anfahrt" ? ["Anfahrt"] : [`${Math.round(s.rot)}°`, voll ? "good" : "warn"]]);
         },
-        draw(c, t) { anlage(c, t, cam); figur(c, st, cam, R.myLook(), t); ring(c, st); if (wert && tEnd > 0.9) tafeln(c, wert, P.trickName(trick, st.land.rot) + (st.land.sturz ? " · Sturz" : st.land.art === "hand" ? " · Hand im Schnee" : " · sauber")); },
+        draw(c, t) {
+          schanze(c, t); fahrer(c, s, R.myLook());
+          if (s.phase === "flug") { const k = s.t / s.T; c.fillStyle = "rgba(20,27,37,0.5)"; c.fillRect(R.W / 2 - 70, 64, 140, 8); c.fillStyle = "#DDA43B"; c.fillRect(R.W / 2 - 70, 64, 140 * k, 8); R.text(c, "LANDUNG", R.W / 2, 52, 10, "#F1E7D2"); }
+          if (wert) R.tafel(c, R.W / 2 - 150, 84, 300, 78, [["WERTUNG", 11, "#8A8F9C"], [R.zahl(wert.wert), 34, "#141B25"], [wert.noten.map((n) => Math.round(n)).join("  "), 11, "#2C6FB3"]]);
+        },
       });
     }
-    function ende() {
-      const ich = { name: R.myName(), nat: R.myNat(), sum: P.finalwert(meine), ich: true, spalten: meine.map((m) => R.zahl(m.wert)) };
-      const zeilen = feld.map((f) => ({ name: f.name, nat: f.nat, sum: P.finalwert(f.spr), spalten: f.spr.map((m) => R.zahl(m.wert)) })).concat([ich]).sort((a, b) => b.sum - a.sum);
-      zeilen.forEach((z) => { z.wert = R.zahl(z.sum); });
-      const platz = zeilen.indexOf(ich) + 1, neu = !training && R.rekord("finale", ich.sum);
-      if (!training) { R.medaille(platz); if (platz <= 3) R.ton.jubel(); }
-      const beste = meine.reduce((a, b) => (b.wert > a.wert ? b : a));
-      R.stand({ kicker: training ? "Sapporo · Trickschule" : "Sapporo · Finale", titel: training ? `Bester Sprung: ${R.zahl(beste.wert)}` : platz === 1 ? "Sieg!" : `Platz ${platz}`, kopf: [["", "p"], ["", ""], ["", ""], ["1", "n"], ["2", "n"], ["3", "n"], ["Wertung", "n"]], zeilen,
-        note: `Dein bester Sprung: ${P.trickName(beste.trick, beste.rot)}.${neu ? " Neue Bestwertung." : ""} Es zählen die zwei besten Sprünge aus zwei verschiedenen Tricks.`,
-        knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => wettkampf(training) }] });
+    function tabelle() {
+      const n = meine.length, fertig = n >= RUNDEN, text = (x) => (x.sturz ? "Sturz" : x.flips ? x.flips + " Salto" + (x.flips > 1 ? "s" : "") : "gerade");
+      if (training) return R.stand({ kicker: "Sapporo · Trickschule", titel: fertig ? "Drei Sprünge geübt" : `Sprung ${n}: ${R.zahl(meine[n - 1].wert)} Punkte`, kopf: [["", "p"], ["", ""], ["", ""], ["Punkte", "n"]], zeilen: meine.map((m, i) => ({ platz: i + 1, name: text(m), nat: "", wert: R.zahl(m.wert), ich: i === n - 1 })),
+        note: "Mehr Höhe gibt mehr Zeit: Wer die Kante trifft, schafft zwei Saltos, mit Glück drei.", knoepfe: fertig ? [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => wettkampf(true) }] : [{ text: "Weiter", rot: true, fn: sprung }] });
+      const z = feld.map((f) => ({ name: f.name, nat: f.nat, spr: f.spr.slice(0, n), sum: zwei(f.spr.slice(0, n)) })).concat([{ name: R.myName(), nat: R.myNat(), spr: meine, sum: zwei(meine), ich: true }]).sort((a, b) => b.sum - a.sum), platz = z.findIndex((x) => x.ich) + 1;
+      if (fertig) { R.medaille(platz); R.rekord("finale", Math.round(zwei(meine) * 10) / 10); if (platz <= 3) R.ton.jubel(); }
+      R.stand({ kicker: `Sapporo · Finale · nach Sprung ${n} von ${RUNDEN}`, titel: fertig ? (platz <= 3 ? ["Gold!", "Silber!", "Bronze!"][platz - 1] : `Platz ${platz}`) : `Zwischenstand: Platz ${platz}`, kopf: [["", "p"], ["", ""], ["", ""], ["1", "n"], ["2", "n"], ["3", "n"], ["Summe", "n"]],
+        zeilen: z.map((x, i) => ({ platz: i + 1, name: x.name, nat: x.nat, spalten: [0, 1, 2].map((k) => (x.spr[k] ? R.zahl(x.spr[k].wert) : "")), wert: R.zahl(x.sum), ich: x.ich, strich: i === 2 })),
+        note: "Drei Sprünge, die zwei besten zählen. Sechs Punktrichter, höchste und niedrigste Note fallen weg.", knoepfe: fertig ? [{ text: "Menü", fn: R.menu }, { text: "Neues Finale", rot: true, fn: () => wettkampf(false) }] : [{ text: "Weiter", rot: true, fn: sprung }] });
     }
-    karte();
+    sprung();
   }
 
-  const demo = { trick: { richtung: "links", achse: "flach" }, phase: "flug", rot: 0, dreht: true, x: 49, y: 15, schuebe: [] };
   R = window.CMRahmen.spiel({
     id: "big-air", name: "Big Air", titel: ["Big", "Air"], band: "Sapporo · Japan", version: VERSION, kit: KIT,
-    satz: "Ein Sprung, ein Trick: drehen, greifen, im richtigen Moment aufmachen.",
-    modi: [
-      { id: "finale", name: "Finale", sub: (R) => (R.S.best.finale ? "Bestwertung " + R.zahl(R.S.best.finale) : "Drei Sprünge, zwei Tricks zählen"), start: () => wettkampf(false) },
-      { id: "train", name: "Trickschule", sub: () => "Drei Sprünge zum Üben, ohne Wertung", ohneName: true, start: () => wettkampf(true) },
-    ],
-    info: [["So geht’s", "Ein Knopf: Angeschoben wird von selbst. An der roten Kante drücken, gutes Timing gibt Höhe. Halten heißt drehen, loslassen heißt aufmachen. Den Griff setzt die Figur selbst. In der Trickschule wählst du vor dem ersten Sprung Achse und Griff."],
-      ["Landung", "Aufmachen, wenn der Zeiger im grünen Feld steht. Genau heißt sauber, knapp heißt Hand im Schnee, daneben heißt Sturz. Wer gar nicht dreht, springt gerade; das steht jeder."],
-      ["Wertung", "Sechs Punktrichter geben 0 bis 100 Punkte, die höchste und die niedrigste Wertung fallen weg. Es zählen Schwierigkeit, Ausführung, Höhe und Griff. Im Finale zählen die zwei besten Sprünge, aber nur aus zwei verschiedenen Tricks (andere Richtung oder andere Achse)."]],
-    plakat(c, t) { const cam = { x: 46, y: 9 }; demo.rot = (t * 160) % 720; demo.x = 50; demo.y = 15 + Math.sin(t * 1.3) * 1.2; anlage(c, t, cam); figur(c, demo, cam, R ? R.myLook() : undefined, t); },
+    satz: "Ein Knopf, ein Sprung: Kante treffen, Saltos drehen, sauber landen.",
+    modi: [{ id: "finale", name: "Finale", sub: (R) => (R.S.best.finale ? "Bestwertung " + R.zahl(R.S.best.finale) : "Drei Sprünge, die zwei besten zählen"), start: () => wettkampf(false) },
+      { id: "train", name: "Trickschule", sub: () => "Drei Sprünge zum Üben, ohne Wertung", ohneName: true, start: () => wettkampf(true) }],
+    info: [["So geht’s", "Die Anfahrt läuft von selbst. An der roten Kante tippen: Je genauer, desto höher und länger fliegst du. In der Luft halten heißt Salto rückwärts, loslassen stoppt die Drehung."],
+      ["Landung", "Das Brett muss bei der Landung wieder nach unten zeigen: ganze Saltos. Die Gradzahl oben wird grün, wenn es passt. Zu früh oder zu spät losgelassen heißt Sturz. Wer gar nicht dreht, springt gerade; das steht jeder, bringt aber wenig."],
+      ["Wertung", "Sechs Punktrichter geben 0 bis 100 Punkte, die höchste und die niedrigste Note fallen weg. Es zählen Höhe, Zahl der Saltos und die saubere Landung. Im Finale zählen die zwei besten von drei Sprüngen."],
+      ["Noch nicht drin", "Schrauben und Griffe zur Wahl, Qualifikation, Duell per Link."]],
+    plakat(c, t) { schanze(c, t); if (R) fahrer(c, { phase: "flug", t: 0.5 + 0.15 * Math.sin(t), T: 1, q: 0.9, h: 6.5, rot: (t * 140) % 360, dreht: true }, R.myLook()); },
   });
 })();
 </script>

@@ -2131,13 +2131,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Hörnerschlitten – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.HSPhys, F = window.CMFigur;
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
-  const PPM = 13, QY = 0.6, OBEN = 78;
+  const PPM = 11, QY = 0.8, OBEN = 30;
   let R;
-  const SX = (x, cam) => (x - cam.x) * PPM + 330, SY = (y, cam) => (y - cam.y) * PPM * QY + 240;
-  const ort = (B, s, y) => { const p = P.bei(B, s); return { x: p.x - Math.sin(p.h) * (y || 0), y: p.y + Math.cos(p.h) * (y || 0), h: p.h }; };
+  const SX = (x, cam) => (x - cam.x) * PPM + 422, SY = (y, cam) => (y - cam.y) * PPM * QY + 205;
+  // Die Bahn läuft im Bild von oben (Berg) nach unten (Tal): Weltachsen getauscht, so wird aus dem Rundkurs eine Abfahrt.
+  const ort = (B, s, y) => { const p = P.bei(B, s); return { x: p.y + Math.cos(p.h) * (y || 0), y: p.x - Math.sin(p.h) * (y || 0), h: Math.PI / 2 - p.h }; };
 
   function welt(B, seed) {     // Bäume, Zuschauer, Strohballen: einmal je Bahn
     const r = P.rng(seed ^ 0x77), baeume = [], leute = [], ballen = [];
@@ -2147,14 +2148,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
   function male(c, t, B, Wd, cam, schlitten) {
     R.kulisse("garmisch", OBEN + 30, "tag").zeichne(c, cam.x * 2, t);
-    c.fillStyle = "#F3F6F8"; c.fillRect(0, OBEN + 30, R.W, R.H);
-    const s0 = Math.max(0, Math.floor(cam.s - 40)), s1 = Math.min(B.pts.length - 1, Math.floor(cam.s + 70));
+    const hg = c.createLinearGradient(0, OBEN + 30, 0, R.H); hg.addColorStop(0, "#FBFCFD"); hg.addColorStop(1, "#DDE7EE"); c.fillStyle = hg; c.fillRect(0, OBEN + 30, R.W, R.H);
+    c.strokeStyle = "rgba(120,140,160,0.16)"; c.lineWidth = 2; for (let i = 0; i < 9; i++) { const y = OBEN + 30 + ((i * 40 - cam.y * PPM * QY) % 360 + 360) % 360; c.beginPath(); c.moveTo(0, y); c.quadraticCurveTo(R.W / 2, y + 16, R.W, y); c.stroke(); }   // Höhenlinien ziehen bergauf vorbei
+    const s0 = Math.max(0, Math.floor(cam.s - 26)), s1 = Math.min(B.pts.length - 1, Math.floor(cam.s + 70));
     // Ziehweg: festgefahrener Schnee mit Rändern
     for (const [w, col] of [[P.HALB + 0.5, "#D8C9B0"], [P.HALB, "#E3EBF0"]]) { c.fillStyle = col; c.beginPath();
       for (let s = s0; s <= s1; s += 2) { const o = ort(B, s, -w); c.lineTo(SX(o.x, cam), SY(o.y, cam)); } for (let s = s1; s >= s0; s -= 2) { const o = ort(B, s, w); c.lineTo(SX(o.x, cam), SY(o.y, cam)); } c.closePath(); c.fill(); }
     c.strokeStyle = "rgba(120,140,160,0.35)"; c.lineWidth = 1.5; for (const y of [-0.45, 0.45]) { c.beginPath(); for (let s = s0; s <= s1; s += 2) { const o = ort(B, s, y); c.lineTo(SX(o.x, cam), SY(o.y, cam)); } c.stroke(); }
     for (const m of [0, B.lang]) { const a = ort(B, m, -P.HALB), b = ort(B, m, P.HALB); c.strokeStyle = "#C23B2A"; c.lineWidth = 4; c.beginPath(); c.moveTo(SX(a.x, cam), SY(a.y, cam)); c.lineTo(SX(b.x, cam), SY(b.y, cam)); c.stroke(); R.tafel(c, SX(a.x, cam) - 26, SY(a.y, cam) - 34, 52, 20, [[m ? "ZIEL" : "START", 11, "#C23B2A"]]); }
-    const sicht = (o) => o.x > cam.x - 28 && o.x < cam.x + 44 && o.y > cam.y - 22 && o.y < cam.y + 20;
+    const sicht = (o) => o.x > cam.x - 40 && o.x < cam.x + 40 && o.y > cam.y - 15 && o.y < cam.y + 24;
     for (const b of Wd.ballen) if (sicht(b)) { const x = SX(b.x, cam), y = SY(b.y, cam); c.fillStyle = "#D9B25A"; c.strokeStyle = "#8A6A2E"; c.lineWidth = 1; c.fillRect(x - 8, y - 9, 16, 9); c.strokeRect(x - 8, y - 9, 16, 9); c.fillStyle = "#FFFFFF"; c.fillRect(x - 8, y - 11, 16, 3); }
     for (const l of Wd.leute) if (sicht(l)) { const x = SX(l.x, cam), y = SY(l.y, cam), bob = Math.max(0, Math.sin(t * 4 + l.ph)) * 2; c.fillStyle = ["#3F6B55", "#8E3B2E", "#23466B", "#7A4C2C", "#4D4237"][l.c]; c.fillRect(x - 3.5, y - 15 - bob, 7, 11); c.fillStyle = "#E8C9A8"; c.beginPath(); c.arc(x, y - 18 - bob, 3, 0, R.TAU); c.fill(); c.fillStyle = "#2E3B2F"; c.fillRect(x - 4, y - 22.5 - bob, 8, 2.5); }
     let gemalt = false; const sy = schlitten ? schlitten.o.y : 1e9;
