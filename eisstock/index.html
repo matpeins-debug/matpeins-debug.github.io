@@ -2407,7 +2407,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.10.0";
+  const VERSION = "0.10.1";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2479,7 +2479,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     T.zeichne(c, KAM, TEICH, t, jubel);
     c.strokeStyle = "rgba(194,59,42,0.75)"; c.lineWidth = 2; c.beginPath(); for (const x of [B.feld0, B.feld1]) { c.moveTo(SX(x, -h), SY(x)); c.lineTo(SX(x, h), SY(x)); } c.stroke();
     if (W.ringe) { const Z = W.ringe, ux = cam.mpx * sk(Z.x), fl = 0.24 * flach(Z.x); [...P.RINGE].reverse().forEach(([r], i) => { c.fillStyle = ["rgba(35,70,107,0.05)", "rgba(35,70,107,0.07)", "rgba(35,70,107,0.09)", "rgba(221,164,59,0.22)", "rgba(194,59,42,0.32)"][i]; c.strokeStyle = "rgba(35,70,107,0.5)"; c.lineWidth = 1.2; c.beginPath(); c.ellipse(SX(Z.x, Z.y), SY(Z.x), r * ux, r * ux * fl, 0, 0, R.TAU); c.fill(); c.stroke(); }); }
-    else if (!W.daube.aus) { c.strokeStyle = "rgba(35,70,107,0.35)"; c.lineWidth = 1; for (const r of [0.5, 1.5]) { c.beginPath(); c.ellipse(SX(W.daube.x, W.daube.y), SY(W.daube.x), r * cam.mpx * sk(W.daube.x), r * cam.mpx * sk(W.daube.x) * 0.24 * flach(W.daube.x), 0, 0, R.TAU); c.stroke(); } }
+    else { const mx = B.daubeX, k = 0.3; c.strokeStyle = "rgba(35,70,107,0.55)"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(SX(mx, -k), SY(mx)); c.lineTo(SX(mx, k), SY(mx)); c.moveTo(SX(mx - k, 0), SY(mx - k)); c.lineTo(SX(mx + k, 0), SY(mx + k)); c.stroke(); }   // Mittelkreuz: fest auf dem Eis, wandert nicht mit der Daube
     // Zielhilfe: Spur in der Breite des Stocks bis zur Stoppstelle oder zur ersten Berührung (danach wird nicht vorausgesagt)
     if (o && o.ziel) { const a = o.winkel * Math.PI / 180, lauf = o.nurSpur ? B.lang - P.X0 : Math.min(o.weite, B.lang - P.X0), ex = P.X0 + Math.cos(a) * lauf, ey = Math.sin(a) * lauf, nx = -Math.sin(a) * P.RS, ny = Math.cos(a) * P.RS;
       c.fillStyle = "rgba(20,27,37,0.10)"; c.beginPath(); c.moveTo(SX(P.X0 + nx, ny), SY(P.X0 + nx)); c.lineTo(SX(ex + nx, ey + ny), SY(ex + nx)); c.lineTo(SX(ex - nx, ey - ny), SY(ex - nx)); c.lineTo(SX(P.X0 - nx, -ny), SY(P.X0 - nx)); c.closePath(); c.fill();
