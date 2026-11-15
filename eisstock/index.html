@@ -1828,7 +1828,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "wintermehrkampf", name: "Wintermehrkampf", pfad: "/wintermehrkampf/", satz: "Fünf Spiele, eine Wertung.", gruppen: false },
     { id: "schuetzenfest", name: "Schützenfest", pfad: "/schuetzenfest/", satz: "Ruhige Hand am Schießstand: Atem, Zug, Treffer.", gruppen: false },
     { id: "penaltyschiessen", name: "Penaltyschießen", pfad: "/penaltyschiessen/", satz: "Eins gegen eins auf dem Eis: antäuschen, schießen, halten.", gruppen: false },
-    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Fünf Sprünge über der Lippe: Höhe, Drehung, Griff.", gruppen: false },
+    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Acht Sprünge über der Kante: abspringen, drehen, landen.", gruppen: false },
   ];
   const live = () => LISTE.filter((s) => s.pfad);
   root.CMSpiele = {
@@ -2244,7 +2244,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const m = k * Math.min(2, 1 + 0.25 * t), A = (0.12 + 0.5 * u * u) * m, B = 0.008 * m;
     return { dw: A * (0.75 * Math.sin(2.6 * t) + 0.25 * Math.sin(6.1 * t + 1)), dv: B * (0.7 * Math.sin(3.7 * t + 2) + 0.3 * Math.sin(8.3 * t)) };
   }
-  const api = { schwank, ersterKontakt, kopie, lage, plan, zugFuerWeite, schnellRuhe, rng, G, DT, BAHN, X0, RS, RD, M_STOCK, M_DAUBE, E_STOCK, E_DAUBE, MU_DAUBE, EIS, SOHLE, V_MIN, V_MAX, mu, brems, weite, tempoFuer, tempoAusZug, zugFuer,
+  // Taktik-Aufgaben: eine Lage, ein Stock, drei Versuche. st: [x, y, wer] (0 = du, 1 = Blau); ziel(w) prüft die Wertung danach.
+  const DX = BAHN.daubeX, AUFGABEN = [
+    { titel: "Bestlage holen", text: "Blau liegt hinter der Daube. Leg dich näher hin.", st: [[DX + 0.85, 0.4, 1]], ziel: (w) => w.wer === 0 },
+    { titel: "Wegschießen", text: "Blau liegt direkt an der Daube. Schieß ihn weg und hol die Bestlage.", st: [[DX - 0.36, 0, 1]], ziel: (w) => w.wer === 0 },
+    { titel: "Am Riegel vorbei", text: "Ein Stock versperrt die Mitte. Ziel schräg daran vorbei an die Daube.", st: [[19.5, 0, 1], [DX + 0.9, -0.5, 1]], ziel: (w) => w.wer === 0 },
+    { titel: "Zwei Punkte", text: "Dein Stock liegt gut, aber Blau liegt besser. Hol dir zwei Punkte.", st: [[DX + 0.4, 0.5, 0], [DX, -0.55, 1]], ziel: (w) => w.wer === 0 && w.punkte >= 2 },
+    { titel: "Daube schieben", text: "Blau liegt vor der Daube, deine Stöcke dahinter. Schieb die Daube zu dir: zwei Punkte.", st: [[DX - 0.5, 0.3, 1], [DX - 0.35, -0.38, 1], [DX + 1.6, 0.15, 0], [DX + 1.9, -0.4, 0]], ziel: (w) => w.wer === 0 && w.punkte >= 2 },
+    { titel: "Doppelt besetzt", text: "Zwei Blaue an der Daube. Ein Stock, und du liegst am nächsten.", st: [[DX - 0.3, 0.22, 1], [DX + 0.3, -0.26, 1]], ziel: (w) => w.wer === 0 },
+  ];
+  const api = { AUFGABEN, schwank, ersterKontakt, kopie, lage, plan, zugFuerWeite, schnellRuhe, rng, G, DT, BAHN, X0, RS, RD, M_STOCK, M_DAUBE, E_STOCK, E_DAUBE, MU_DAUBE, EIS, SOHLE, V_MIN, V_MAX, mu, brems, weite, tempoFuer, tempoAusZug, zugFuer,
     neu, lege, schuss, schritt, ruht, bisRuhe, imFeld, mitte, abstand, wertung, bestlage, zielPunkte, ki, daubeAufsKreuz };
   root.ESPhys = api; if (typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
@@ -2256,21 +2265,22 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   "use strict";
   const TAU = Math.PI * 2, INK = "#141B25";
   function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  const KLEID = ["#B5442F", "#2F7F86", "#C99A2E", "#7B3F6E", "#3E6FA8", "#4F8A5B"], HAAR = ["#5A3A22", "#2B2320", "#C9A55A", "#8A4A2A"], TUCH = ["#F1E7D2", "#C23B2A", "#DDA43B", "#2F5FA8"];
   const MANTEL = ["#7A4C2C", "#3F6B55", "#8E3B2E", "#4D4237", "#23466B", "#6B5A3A", "#5A3550"], HUT = ["#3A2A1C", "#2B3A2E", "#4A1F1A", "#26303F"];
 
   // Was am Teich steht: x längs der Bahn (m ab Abspielstelle), y quer (Bahn ±1,5 m)
   function baue() {
-    const r = rng(1908), L = [], mensch = (x, y) => L.push({ art: "mensch", x, y, m: Math.floor(r() * MANTEL.length), h: Math.floor(r() * HUT.length), gr: 0.44 + r() * 0.12, haferl: r() < 0.3, schal: r() < 0.5, ph: r() * TAU });
+    const r = rng(1908), L = [], mensch = (x, y) => L.push({ art: "mensch", x, y, m: Math.floor(r() * MANTEL.length), h: Math.floor(r() * HUT.length), gr: 0.44 + r() * 0.12, haferl: r() < 0.3, schal: r() < 0.5, ph: r() * TAU, frau: r() < 0.55, k: Math.floor(r() * 6), haar: Math.floor(r() * 4) });
     for (let x = 2.4; x < 28.6; x += x > 19 ? 0.5 : 1.1) for (const sd of [-1, 1]) { if (r() < 0.14) continue; mensch(x + r() * 0.3, sd * (2.2 + r() * 0.45)); if (x > 19 && r() < 0.65) mensch(x + 0.2 + r() * 0.3, sd * (3.0 + r() * 0.5)); }
     for (let y = -3.3; y <= 3.3; y += 0.55) { if (r() < 0.2) continue; mensch(29.2 + r() * 0.5, y + r() * 0.2); if (r() < 0.5) mensch(30.1 + r() * 0.4, y + 0.25); }
     L.push({ art: "feuer", x: 8, y: -3.4 }, { art: "feuer", x: 23.2, y: 4.3 }, { art: "tafel", x: 19.3, y: -3.3 }, { art: "bank", x: 1.6, y: 2.7 }, { art: "huette", x: 36, y: -6.2 });
-    for (let i = 0; i < 46; i++) { const x = 9 + r() * 36, sd = r() < 0.5 ? -1 : 1, y = x > 31.5 ? (r() * 2 - 1) * 10 : sd * (5.4 + r() * 6.5); if (x > 33 && x < 39 && y < -3.6 && y > -8.8) continue; L.push({ art: "tanne", x, y, gr: 1.1 + r() * 0.9, ph: r() * TAU }); }
+    for (let i = 0; i < 46; i++) { const x = 9 + r() * 36, sd = r() < 0.5 ? -1 : 1, y = x > 31.5 ? (r() * 2 - 1) * 10 : sd * (5.4 + r() * 6.5); if (x > 33 && x < 39 && y < -3.6 && y > -8.8) continue; if (x > 31.5 && y > -4.6 && y < 1.6) continue;   // Blick auf die Felstürme frei lassen L.push({ art: "tanne", x, y, gr: 1.1 + r() * 0.9, ph: r() * TAU }); }
     const kratzer = []; for (let i = 0; i < 46; i++) { const x = r() * 27, y = (r() * 2 - 1) * 1.35; kratzer.push([x, y, 0.5 + r() * 2.2, (r() - 0.5) * 0.12]); }
     return { dinge: L.sort((a, b) => b.x - a.x), kratzer };
   }
 
   const ZEICHNE = {
-    mensch(c, d, px, py, u, t, jubel) {
+    mensch(c, d, px, py, u, t, jubel) { if (d.frau) return ZEICHNE.frau(c, d, px, py, u, t, jubel);
       const h = d.gr * u, b = h * 0.3, hupf = (jubel > 0 ? Math.abs(Math.sin(t * 9 + d.ph)) * jubel * 0.09 : Math.max(0, Math.sin(t * 1.3 + d.ph)) * 0.012) * h, y = py - hupf;
       c.fillStyle = "rgba(30,45,70,0.16)"; c.beginPath(); c.ellipse(px + h * 0.1, py, b * 0.75, b * 0.2, 0, 0, TAU); c.fill();
       c.fillStyle = "#2E2A28"; c.fillRect(px - b * 0.36, y - h * 0.36, b * 0.3, h * 0.36); c.fillRect(px + b * 0.06, y - h * 0.36, b * 0.3, h * 0.36);
@@ -2280,6 +2290,25 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       c.fillStyle = "#E8C9A8"; c.beginPath(); c.arc(px, y - h * 0.89, h * 0.085, 0, TAU); c.fill();
       c.fillStyle = HUT[d.h]; c.beginPath(); c.ellipse(px, y - h * 0.95, h * 0.13, h * 0.03, 0, 0, TAU); c.fill(); c.fillRect(px - h * 0.075, y - h * 1.04, h * 0.15, h * 0.09);
       if (d.haferl && jubel <= 0.3) { const hx = px + b * 0.52, hy = y - h * 0.6; c.fillStyle = "#F1E7D2"; c.fillRect(hx, hy, b * 0.24, h * 0.07); if (u > 60) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(hx + b * 0.12, hy - 1); c.quadraticCurveTo(hx + b * 0.3 * Math.sin(t * 2 + d.ph), hy - h * 0.07, hx + b * 0.12, hy - h * 0.13); c.stroke(); } }
+    },
+    // Frau am Teich: langer Mantel oder Rock bis zum Knöchel, Kopftuch, Mütze mit Bommel oder Zopf, Muff oder Haferl
+    frau(c, d, px, py, u, t, jubel) {
+      const h = d.gr * 0.95 * u, b = h * 0.3, hupf = (jubel > 0 ? Math.abs(Math.sin(t * 9 + d.ph)) * jubel * 0.09 : Math.max(0, Math.sin(t * 1.3 + d.ph)) * 0.012) * h, y = py - hupf, kl = KLEID[d.k], art = d.haar;
+      c.fillStyle = "rgba(30,45,70,0.16)"; c.beginPath(); c.ellipse(px + h * 0.1, py, b * 0.85, b * 0.2, 0, 0, TAU); c.fill();
+      c.fillStyle = "#2E2A28"; c.fillRect(px - b * 0.24, y - h * 0.1, b * 0.18, h * 0.1); c.fillRect(px + b * 0.06, y - h * 0.1, b * 0.18, h * 0.1);
+      c.fillStyle = kl; c.beginPath(); c.moveTo(px - b * 0.62, y - h * 0.08); c.quadraticCurveTo(px - b * 0.5, y - h * 0.5, px - b * 0.34, y - h * 0.8); c.lineTo(px + b * 0.34, y - h * 0.8); c.quadraticCurveTo(px + b * 0.5, y - h * 0.5, px + b * 0.62, y - h * 0.08); c.closePath(); c.fill();
+      c.fillStyle = "rgba(255,255,255,0.28)"; c.fillRect(px - b * 0.6, y - h * 0.13, b * 1.2, h * 0.035);   // Saum
+      c.fillStyle = "rgba(20,27,37,0.22)"; c.fillRect(px - b * 0.36, y - h * 0.52, b * 0.72, h * 0.03);   // Gürtel
+      if (jubel > 0.3) { c.strokeStyle = kl; c.lineWidth = Math.max(1.5, b * 0.18); c.lineCap = "round"; c.beginPath(); c.moveTo(px - b * 0.32, y - h * 0.74); c.lineTo(px - b * 0.7, y - h * 0.98); c.moveTo(px + b * 0.32, y - h * 0.74); c.lineTo(px + b * 0.7, y - h * 0.98); c.stroke(); }
+      else if (!d.haferl) { c.fillStyle = "#EFE6D2"; c.beginPath(); c.ellipse(px, y - h * 0.58, b * 0.3, h * 0.045, 0, 0, TAU); c.fill(); }   // Muff
+      c.fillStyle = "#F1E7D2"; c.fillRect(px - b * 0.3, y - h * 0.83, b * 0.6, h * 0.05);   // Pelzkragen
+      c.fillStyle = "#EBCBAA"; c.beginPath(); c.arc(px, y - h * 0.89, h * 0.08, 0, TAU); c.fill();
+      const hc = HAAR[d.h % HAAR.length], tc = TUCH[d.m % TUCH.length];
+      if (art === 0) { c.fillStyle = tc; c.beginPath(); c.arc(px, y - h * 0.905, h * 0.098, Math.PI * 0.95, Math.PI * 2.05); c.lineTo(px + h * 0.07, y - h * 0.8); c.lineTo(px, y - h * 0.84); c.lineTo(px - h * 0.07, y - h * 0.8); c.closePath(); c.fill(); }   // Kopftuch
+      else if (art === 1) { c.fillStyle = hc; c.beginPath(); c.arc(px, y - h * 0.9, h * 0.095, Math.PI, 0); c.fill(); c.fillRect(px - h * 0.1, y - h * 0.9, h * 0.035, h * 0.16); c.fillRect(px + h * 0.065, y - h * 0.9, h * 0.035, h * 0.16); c.fillStyle = tc; c.beginPath(); c.arc(px, y - h * 0.93, h * 0.092, Math.PI, 0); c.fill(); c.beginPath(); c.arc(px, y - h * 1.03, h * 0.035, 0, TAU); c.fill(); }   // Mütze mit Bommel, langes Haar
+      else if (art === 2) { c.fillStyle = hc; c.beginPath(); c.arc(px, y - h * 0.905, h * 0.095, Math.PI * 0.9, Math.PI * 2.1); c.fill(); c.strokeStyle = hc; c.lineWidth = Math.max(1.5, h * 0.035); c.lineCap = "round"; c.beginPath(); c.moveTo(px + h * 0.07, y - h * 0.88); c.quadraticCurveTo(px + h * 0.13, y - h * 0.8, px + h * 0.1, y - h * 0.68); c.stroke(); }   // Zopf
+      else { c.fillStyle = hc; c.beginPath(); c.arc(px, y - h * 0.9, h * 0.1, Math.PI * 0.85, Math.PI * 2.15); c.fill(); c.fillStyle = tc; c.beginPath(); c.ellipse(px, y - h * 0.965, h * 0.15, h * 0.028, -0.12, 0, TAU); c.fill(); c.fillRect(px - h * 0.07, y - h * 1.03, h * 0.14, h * 0.07); }   // Hut mit breiter Krempe, Bubikopf
+      if (d.haferl && jubel <= 0.3) { const hx = px + b * 0.46, hy = y - h * 0.6; c.fillStyle = "#F1E7D2"; c.fillRect(hx, hy, b * 0.24, h * 0.07); if (u > 60) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(hx + b * 0.12, hy - 1); c.quadraticCurveTo(hx + b * 0.3 * Math.sin(t * 2 + d.ph), hy - h * 0.07, hx + b * 0.12, hy - h * 0.13); c.stroke(); } }
     },
     feuer(c, d, px, py, u, t) {
       const s = u * 0.5; c.fillStyle = "rgba(240,144,42,0.16)"; c.beginPath(); c.ellipse(px, py, s * 1.5, s * 0.42, 0, 0, TAU); c.fill();
@@ -2354,7 +2383,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.6.0";
+  const VERSION = "0.7.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2366,7 +2395,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   const mitArm = (p, a) => Object.assign({}, p, { aF: [a, p.aF[1]] }), weichP = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
   // Abgabe in WURF_SEK: kurz ganz ausholen, Ausfallschritt, aufsetzen
   function wurfPose(von, k) { return k < 0.25 ? F.mix(von, POSE.rueck, weichP(k / 0.25)) : k < 0.62 ? F.mix(POSE.rueck, POSE.schritt, weichP((k - 0.25) / 0.37)) : F.mix(POSE.schritt, POSE.setz, weichP((k - 0.62) / 0.38)); }
-  const FARBE = ["#C23B2A", "#23466B"], KEHREN = 4, STOECKE = 3;
+  const FARBE = ["#C23B2A", "#23466B"], KEHREN = 4, STOECKE = 4;
   // Stufen: Stärke des Gegners, Schwanken der Hand (P.schwank) und wie viel die Zielhilfe verrät (2 = Stoppstelle und Berührung, 1 = nur die Spur)
   const GEGNER = { hobby: { st: 0.3, schwank: 0, hilfe: 2, name: "Hobby", satz: "Hobby: ruhige Hand, die Hilfe zeigt Stoppstelle und Berührung.", gegner: " Der Gegner legt einfach an." },
     verein: { st: 0.6, schwank: 1, hilfe: 2, name: "Verein", satz: "Verein: Die Hand schwankt, bei festem Zug stärker. Im richtigen Moment loslassen.", gegner: " Der Gegner schießt dich auch einmal weg." },
@@ -2414,7 +2443,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       if (o.kontakt) { const d = o.kontakt.ding, r2 = (d.r + 0.05) * cam.mpx * sk(d.x); c.strokeStyle = "#C23B2A"; c.lineWidth = 2.5; c.beginPath(); c.ellipse(SX(d.x, d.y), SY(d.x) - (d.daube ? 0 : r2 * 0.2), r2 * 1.25, r2 * 1.25 * 0.3 * flach(d.x), 0, 0, R.TAU); c.stroke(); } }
     // Daube und Stöcke von hinten nach vorn
     const dinge = W.st.filter((s) => s.lebt).concat(W.daube.aus ? [] : [W.daube]).sort((a, b) => b.x - a.x);
+    const beste = W.st.filter(P.imFeld).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0];
     for (const s of dinge) { if (!sichtbar(s.x)) continue; const px = SX(s.x, s.y), py = SY(s.x), r = s.r * cam.mpx * sk(s.x), q = flach(s.x);
+      if (s === beste && P.ruht(W)) { c.strokeStyle = "#DDA43B"; c.lineWidth = 3; c.beginPath(); c.ellipse(px, py, r * 1.3, r * 1.3 * 0.3 * q, 0, 0, R.TAU); c.stroke(); }   // goldener Ring: Bestlage
       if (s.daube) { c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.2, py + r * 0.1, r * 1.1, r * 0.34 * q, 0, 0, R.TAU); c.fill(); c.fillStyle = "#DDA43B"; c.strokeStyle = "#141B25"; c.lineWidth = 1.2; c.beginPath(); c.ellipse(px, py - r * 0.2, r * 1.3, r * 0.5 * Math.min(q, 2), 0, 0, R.TAU); c.fill(); c.stroke(); continue; }
       T.stock(c, px, py, r, q, s, FARBE[s.wer], (P.SOHLE[s.sohle] || P.SOHLE.mittel).farbe); }
   }
@@ -2449,9 +2480,12 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     c.restore(); R.text(c, "ZIELFELD 6 × 3 M", x0 + bw / 2, y0 + bh + 10, 9, "#141B25");
   }
 
-  function spiel(duell) {
+  const AUFGABEN = P.AUFGABEN, VERSUCHE = 3;
+
+  function spiel(modus) {
+    const duell = modus === "duell", aufg = modus === "aufg";
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, rnd = P.rng(seed), eis = ["glatt", "rau", "stumpf"][Math.floor(rnd() * 3)], feld = R.feld(11, seed, 0.6), geg = feld[0];
-    R.wahl({ kicker: `Lana · Eisbericht: ${P.EIS[eis].name}`, titel: duell ? `Duell gegen ${geg.name}` : "Zielschießen", knopf: "Aufs Eis",
+    R.wahl({ kicker: `Lana · Eisbericht: ${P.EIS[eis].name}`, titel: duell ? `Duell gegen ${geg.name}` : aufg ? "Taktik-Aufgaben" : "Zielschießen", knopf: "Aufs Eis",
       gruppen: [{ id: "sohle", label: "Laufsohle", list: Object.entries(P.SOHLE).map(([k, v]) => [k, v.name]), wert: "mittel" }].concat([{ id: "gegner", label: "Stufe", list: Object.entries(GEGNER).map(([k, v]) => [k, v.name]), wert: "verein" }]),
       aendern: (w) => ({ schnell: "Schwarze Sohle: wenig Widerstand, läuft bei gleichem Zug am weitesten.", mittel: "Gelbe Sohle: ausgewogen, für jedes Eis in Ordnung.", langsam: "Blaue Sohle: mehr Widerstand, braucht mehr Zug, verzeiht aber mehr." })[w.sohle] + (eis === "glatt" ? " Heute läuft das Eis schnell." : eis === "stumpf" ? " Heute bremst das Eis." : "") + " " + GEGNER[w.gegner].satz + (duell ? GEGNER[w.gegner].gegner : ""),
       fn: (w) => los(w.sohle, GEGNER[w.gegner]) });
@@ -2462,27 +2496,34 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       let oben = true; const kOben = R.knopf({ seite: "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
-      function abgeben(w, v) { if (phase !== "zielen") return; zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? F.mix(POSE.ziel, POSE.rueck, weichP(u * 1.5)) : POSE.rueck }; phase = "wurf"; tPh = 0; R.tippWeg(); }
+      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? F.mix(POSE.ziel, POSE.rueck, weichP(u * 1.5)) : POSE.rueck }; phase = "wurf"; tPh = 0; R.tippWeg(); }
+      let aNr = 0, aVersuch = 1, aGeloest = [], vorBest = null, nachMessen = null;
+      function lade() { W = P.neu(eis); for (const [x, y, wer] of AUFGABEN[aNr].st) P.lege(W, x, y, wer); dran = 0; phase = "zielen"; tPh = 0; winkel = 0; u = 0; zug = null; msg = null; }
       function naechster() {
-        const fertig = n[0] >= (duell ? STOECKE : 5) && (!duell || n[1] >= STOECKE);
+        const fertig = !aufg && n[0] >= (duell ? STOECKE : 5) && (!duell || n[1] >= STOECKE);
         if (fertig) { phase = "messen"; tPh = 0; const w = P.wertung(W);
           if (duell) { if (w.wer != null) stand[w.wer] += w.punkte; verlauf.push(w); msg = w.gleich ? "Gleich weit: keine Punkte" : w.wer == null ? "Kein Stock im Zielfeld" : `${w.punkte} ${w.punkte === 1 ? "Punkt" : "Punkte"} für ${w.wer === 0 ? R.myName() : geg.name}`; w.wer === 0 ? R.ton.jubel() : R.ton.raunen(); jubel = w.wer === 0 ? 1 : 0.4; }
           else { msg = `${ziel.reduce((s, v) => s + v, 0)} Punkte`; R.ton.glocke(); }
           return; }
         // Es spielt, wer nicht die Bestlage hat; ohne Bestlage, wer mehr Stöcke übrig hat, sonst wer die Kehre anspielt
+        if (aufg) return lade();
         if (duell) { const best = P.bestlage(W), an = (kehre + 1) % 2; dran = best != null ? 1 - best : n[0] > n[1] ? 1 : n[1] > n[0] ? 0 : an; if (n[dran] >= STOECKE) dran = 1 - dran; } else dran = 0;
         phase = "zielen"; tPh = 0; winkel = 0; u = 0; zug = null; W.lauf = null; W.aus = false; W.klack = 0; kiPlan = null;
       }
       function ende() {
+        if (aufg) { const g = aGeloest.filter(Boolean).length, neu = R.rekord("aufg", g); if (g >= 4) { R.medaille(7 - g); R.ton.jubel(); }
+          return R.stand({ kicker: "Lana · Taktik-Aufgaben", titel: `${g} von ${AUFGABEN.length} gelöst`, kopf: [["", "p"], ["", ""], ["", ""], ["", "n"]],
+            zeilen: AUFGABEN.map((a, i) => ({ name: a.titel, nat: "", wert: aGeloest[i] ? `${aGeloest[i]}. Versuch` : "offen", ich: !!aGeloest[i] })),
+            note: (neu ? "Neue Bestleistung. " : "") + "Alle sechs: Gold, fünf: Silber, vier: Bronze.", knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => spiel("aufg") }] }); }
         if (duell) { const sieg = stand[0] > stand[1], sp = (wer) => verlauf.map((w) => (w.wer === wer ? String(w.punkte) : "–"));
           if (sieg) { R.medaille(1); R.ton.jubel(); } R.rekord("duell", stand[0] - stand[1]);
           return R.stand({ kicker: "Lana · Duell", titel: sieg ? "Sieg!" : stand[0] === stand[1] ? "Unentschieden" : "Verloren", kopf: [["", "p"], ["", ""], ["", ""], ...verlauf.map((_, i) => [String(i + 1), "n"]), ["Punkte", "n"]],
             zeilen: [{ name: R.myName(), nat: R.myNat(), spalten: sp(0), wert: stand[0], ich: true, s: stand[0] }, { name: geg.name, nat: geg.nat, spalten: sp(1), wert: stand[1], s: stand[1] }].sort((a, b) => b.s - a.s),
-            note: "Je Kehre: 1 Punkt für jeden eigenen Stock, der näher an der Daube liegt als der beste fremde.", knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Revanche", rot: true, fn: () => spiel(true) }] }); }
+            note: "Je Kehre: 1 Punkt für jeden eigenen Stock, der näher an der Daube liegt als der beste fremde.", knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Revanche", rot: true, fn: () => spiel("duell") }] }); }
         const sum = ziel.reduce((s, v) => s + v, 0), zeilen = feld.map((f, i) => { const r2 = P.rng(seed + i * 13); let p = 0; for (let k = 0; k < 5; k++) { const Wk = P.neu(eis), a = P.ki(Wk, 1, f.st, r2), s = P.schuss(Wk, 1, a.winkel, a.v, a.sohle); P.bisRuhe(Wk); p += P.imFeld(s) ? P.zielPunkte(P.mitte(Wk, s)) : 0; } return { name: f.name, nat: f.nat, s: p, wert: p }; });
         zeilen.push({ name: R.myName(), nat: R.myNat(), s: sum, wert: sum, ich: true, spalten: [] }); zeilen.sort((a, b) => b.s - a.s);
         const platz = zeilen.findIndex((z) => z.ich) + 1, neu = R.rekord("ziel", sum); R.medaille(platz); if (platz <= 3) R.ton.jubel();
-        R.stand({ kicker: "Lana · Zielschießen", titel: platz === 1 ? "Sieg!" : `Platz ${platz}`, zeilen, note: `Deine fünf Stöcke: ${ziel.join(", ")} Punkte.${neu ? " Neue Bestleistung." : ""} Bis 30 cm an der Daube gibt es 10 Punkte.`, knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => spiel(false) }] });
+        R.stand({ kicker: "Lana · Zielschießen", titel: platz === 1 ? "Sieg!" : `Platz ${platz}`, zeilen, note: `Deine fünf Stöcke: ${ziel.join(", ")} Punkte.${neu ? " Neue Bestleistung." : ""} Bis 30 cm an der Daube gibt es 10 Punkte.`, knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => spiel("ziel") }] });
       }
       R.szene({
         onDown(x, y, id) { if (phase === "zielen" && dran === 0 && !zug) { zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
@@ -2498,10 +2539,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             if (tPh >= WURF_SEK) { P.schuss(W, wurf.wer, wurf.w, wurf.v, wurf.sohle); n[wurf.wer]++; phase = "lauf"; tPh = 0; akk = 0; dz = W.daubeZurueck; R.ton.wusch(); }
           } else if (phase === "lauf") {
             akk += dt * (dran === 1 ? 2.5 : 1.4);   // Zeitraffer nur fürs Zuschauen, die Rechnung bleibt dieselbe
-            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { R.ton.klack(); jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
+            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { R.ton.klack(); if (!R.schnell && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* egal */ } } jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
             if (W.daubeZurueck > dz) { dz = W.daubeZurueck; R.sag("Daube zurück aufs Mittelkreuz", 1.6); }
-            if (P.ruht(W) || tPh > 30) { const s = W.lauf; if (!duell && s) { const p = P.imFeld(s) ? P.zielPunkte(P.mitte(W, s)) : 0; ziel.push(p); R.sag(p ? `${p} Punkte` : "Nicht im Feld", 1.4, !p); if (p >= 7) { R.ton.gut(); jubel = 1; } s.lebt = false; W.daube = P.neu(eis).daube; }
-              else if (s && !s.lebt && dran === 0) R.sag("Aus!", 1.2, true); naechster(); }
+            if ((P.ruht(W) || tPh > 30) && aufg) { const ok = AUFGABEN[aNr].ziel(P.wertung(W), W); phase = "messen"; tPh = 0;
+              if (ok) { aGeloest[aNr] = aVersuch; msg = "Gelöst!"; jubel = 1; R.ton.jubel(); } else if (aVersuch < VERSUCHE) { msg = `Noch nicht. Versuch ${aVersuch + 1} von ${VERSUCHE}`; R.ton.raunen(); } else { msg = "Nicht gelöst"; R.ton.raunen(); }
+              nachMessen = () => { if (ok || aVersuch >= VERSUCHE) { aNr++; aVersuch = 1; if (aNr >= AUFGABEN.length) return ende(); } else aVersuch++; lade(); }; }
+            else if (P.ruht(W) || tPh > 30) { const s = W.lauf; if (!duell && s) { const p = P.imFeld(s) ? P.zielPunkte(P.mitte(W, s)) : 0; ziel.push(p); R.sag(p ? `${p} Punkte` : "Nicht im Feld", 1.4, !p); if (p >= 7) { R.ton.gut(); jubel = 1; } s.lebt = false; W.daube = P.neu(eis).daube; }
+              else if (s && !s.lebt && dran === 0) R.sag("Aus!", 1.2, true);
+              else if (duell) { const nach = P.bestlage(W), nm = geg.name.split(" ")[0]; if (nach === dran && vorBest !== dran) { if (dran === 0) { R.sag(vorBest === 1 ? "Bestlage geholt!" : "Bestlage!", 1.4); jubel = 1; R.ton.gut(); } else R.sag(`${nm} holt die Bestlage`, 1.4, true); } }
+              naechster(); }
+          } else if (phase === "messen" && aufg) { if (tPh > 2.2) { const f = nachMessen; nachMessen = null; if (f) f(); }
           } else if (phase === "messen" && tPh > 2.8) {
             if (duell && kehre < KEHREN) { kehre++; W = P.neu(eis); n = [0, 0]; msg = null; naechster(); } else ende();
           }
@@ -2509,7 +2556,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           cam = mixCam(cam, kameraZiel(W, phase === "wurf" ? "zielen" : phase, phase === "wurf" ? wurf.wer : dran), R.schnell ? 1 : 1 - Math.exp(-dt * 3.2));
           const karte = dran === 0 && (phase === "zielen" || phase === "wurf");
           kOben.set({ aktiv: oben, hidden: !karte });
-          R.chips(duell ? [[`Kehre ${kehre}/${KEHREN}`, "dark"], [`${R.myName()} ${stand[0]} : ${stand[1]} ${geg.name.split(" ")[0]}`, "gold"], [dran === 0 ? "Du bist dran" : `${geg.name.split(" ")[0]} ist dran`, dran === 0 ? "good" : ""], [`Stöcke ${STOECKE - n[0]} : ${STOECKE - n[1]}`], [`Eis: ${P.EIS[eis].name}`]]
+          const bl = duell ? P.bestlage(W) : null;
+          R.chips(aufg ? [[`Aufgabe ${Math.min(aNr + 1, AUFGABEN.length)}/${AUFGABEN.length}`, "dark"], [AUFGABEN[Math.min(aNr, AUFGABEN.length - 1)].titel, "gold"], [`Versuch ${aVersuch}/${VERSUCHE}`], [`${aGeloest.filter(Boolean).length} gelöst`, "good"]] : duell ? [[`Kehre ${kehre}/${KEHREN}`, "dark"], [`${R.myName()} ${stand[0]} : ${stand[1]} ${geg.name.split(" ")[0]}`, "gold"], [dran === 0 ? "Du bist dran" : `${geg.name.split(" ")[0]} ist dran`, dran === 0 ? "good" : ""], [`Stöcke ${STOECKE - n[0]} : ${STOECKE - n[1]}`], [`Bestlage: ${bl === 0 ? "Du" : bl === 1 ? geg.name.split(" ")[0] : "frei"}`, bl === 0 ? "good" : ""]]
             : [["Zielschießen", "dark"], [`Stock ${Math.min(5, n[0] + (phase === "zielen" || phase === "wurf" ? 1 : 0))}/5`], [`${ziel.reduce((s, v) => s + v, 0)} Punkte`, "gold"], [`Eis: ${P.EIS[eis].name}`]]);
         },
         draw(c, t) {
@@ -2527,6 +2575,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
               let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
               if (k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so);
               else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } }
+          if (aufg && phase === "zielen" && !(zug && u > 0)) R.tafel(c, R.W / 2 - 250, 50, 500, 30, [[AUFGABEN[aNr].text, 13]]);
           if (zug && phase === "zielen") {   // der Zug unter dem Finger und das Abgabetempo
             c.strokeStyle = "rgba(20,27,37,0.7)"; c.lineWidth = 3; c.beginPath(); c.moveTo(zug.x0, zug.y0); c.lineTo(zug.x, zug.y); c.stroke();
             c.fillStyle = "#F1E7D2"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.beginPath(); c.arc(zug.x0, zug.y0, 6, 0, R.TAU); c.fill(); c.stroke();
@@ -2536,8 +2585,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             R.tafel(c, R.W / 2 - 130, 50, 260, 46, [[hilfe && hilfe.kontakt ? `Trifft ${hilfe.kontakt.ding.daube ? "die Daube" : hilfe.kontakt.ding.wer === 0 ? "deinen Stock" : "den fremden Stock"} nach ${R.zahl(hilfe.kontakt.weg, 1)} m` : zuWeit ? "Harter Schuss: läuft über die Bahn hinaus" : `Stock läuft ${R.zahl(lauf, 1)} m`, hilfe && hilfe.kontakt || zuWeit ? 14 : 17, hilfe && hilfe.kontakt || zuWeit ? "#C23B2A" : "#141B25"], [`Daube liegt bei ${R.zahl(W.daube.x - P.X0, 1)} m`, 12]]);
           }
           if (oben && dran === 0 && (phase === "zielen" || phase === "wurf")) draufsicht(c, W, hilfe);
-          if (phase === "messen" && msg) { const s = W.st.filter(P.imFeld).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0];
-            if (s && duell) { c.strokeStyle = "#DDA43B"; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(W.daube.x, W.daube.y), SY(W.daube.x)); c.lineTo(SX(s.x, s.y), SY(s.x)); c.stroke(); R.tafel(c, SX(s.x, s.y) - 34, SY(s.x) - 44, 68, 22, [[R.zahl(P.abstand(W, s) * 100, 0) + " cm", 12]]); }
+          if (phase === "messen" && msg) {
+            if (duell || aufg) for (const wer of [1, 0]) { const s = W.st.filter((q) => P.imFeld(q) && q.wer === wer).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0]; if (!s) continue;   // Maßband zum besten Stock jeder Seite
+              c.strokeStyle = FARBE[wer]; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(W.daube.x, W.daube.y), SY(W.daube.x)); c.lineTo(SX(s.x, s.y), SY(s.x)); c.stroke(); R.tafel(c, SX(s.x, s.y) - 34, SY(s.x) - 52, 68, 22, [[R.zahl(P.abstand(W, s) * 100, 0) + " cm", 12, FARBE[wer]]]); }
             R.tafel(c, R.W / 2 - 170, 84, 340, 36, [[msg, 17, "#C23B2A"]]); }
         },
       });
@@ -2550,11 +2600,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     id: "eisstock", name: "Eisstock", titel: ["Eis", "stock"], band: "Lana · Südtirol", version: VERSION, kit: KIT,
     satz: "Mit Gefühl an die Daube, mit Kraft den anderen weg.",
     modi: [
-      { id: "duell", name: "Duell", sub: () => `Eins gegen Eins, ${KEHREN} Kehren mit je ${STOECKE} Stöcken`, start: () => spiel(true) },
-      { id: "ziel", name: "Zielschießen", sub: (R) => (R.S.best.ziel ? `Bestleistung ${R.S.best.ziel} Punkte` : "Allein: fünf Stöcke an die Daube"), start: () => spiel(false) },
+      { id: "duell", name: "Duell", sub: () => `Eins gegen Eins, ${KEHREN} Kehren mit je ${STOECKE} Stöcken`, start: () => spiel("duell") },
+      { id: "ziel", name: "Zielschießen", sub: (R) => (R.S.best.ziel ? `Bestleistung ${R.S.best.ziel} Punkte` : "Allein: fünf Stöcke an die Daube"), start: () => spiel("ziel") },
+      { id: "aufg", name: "Taktik-Aufgaben", sub: (R) => (R.S.best.aufg != null ? `Bestleistung ${R.S.best.aufg} von ${AUFGABEN.length}` : "Sechs Lagen, je ein Stock, drei Versuche"), start: () => spiel("aufg") },
     ],
     info: [["So geht’s", "Finger aufs Eis legen, nach hinten ziehen und loslassen. Je länger der Zug, desto fester der Schuss; seitlich ziehen zielt wie bei einer Schleuder. Die gestrichelte Spur ist so breit wie dein Stock: Du siehst, ob er an einem anderen vorbeikommt. Der rote Kreis zeigt, wo er liegen bleibt; berührt er vorher etwas, endet die Spur dort und der getroffene Stock ist rot umrandet. Was nach dem Stoß passiert, sagt die Hilfe nicht."],
       ["Die Zuganzeige", "Neben dem Finger steht ein Balken: Er zeigt, wie weit du ziehen kannst (bis MAX). Grün ist der Zug, mit dem der Stock im Zielfeld liegen bleibt, der gelbe Strich ist die Daube, rot darunter wird der Schuss hart: zum Wegschießen. Oben steht, wie viele Meter der Stock läuft und wo die Daube liegt. Eis und Sohle sind schon eingerechnet: Du musst nichts umrechnen, nur den Strich treffen."],
+      ["Taktik-Aufgaben", "Sechs vorgegebene Lagen. Du hast einen Stock und drei Versuche: Bestlage holen, wegschießen, am Riegel vorbei, zwei Punkte mit einem Schuss, die Daube zu deinen Stöcken schieben. Der goldene Ring zeigt, wer gerade am nächsten liegt."],
       ["Drei Stufen", "Hobby: ruhige Hand, die Hilfe zeigt alles. Verein: Die Hand schwankt, Spur und Stoppstelle wandern hin und her; bei festem Zug stärker, und je länger du hältst, desto mehr. Es gilt, was die Anzeige im Moment des Loslassens zeigt. Meister: Die Hand schwankt stark, und die Hilfe zeigt nur noch die Spur, keine Stoppstelle und keine Berührung. Mit der Stufe wird auch der Gegner stärker."],
       ["Eis und Sohle", "Der Stock gleitet gerade und bremst gleichmäßig: doppeltes Tempo, vierfache Weite. Der Eisbericht sagt, wie das Eis läuft. Die Laufsohle wählst du selbst: Schwarz läuft weit, Blau bremst. Keine ist besser, du musst nur den Zug dazu finden."],
       ["Stöße", "Ein Treffer in die Mitte schiebt den anderen Stock geradeaus weg, dein Stock bleibt bald liegen. Seitlich getroffen laufen beide schräg auseinander. Die Daube ist leicht und rutscht mit: Fliegt sie aus dem Zielfeld, kommt sie zurück aufs Mittelkreuz."],
