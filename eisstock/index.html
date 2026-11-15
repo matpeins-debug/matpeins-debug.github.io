@@ -2395,24 +2395,34 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // Der Stock auf dem Eis: Laufsohle (Farbe der Sohle), Stockkörper mit Ring in der Mannschaftsfarbe, gebogener Stiel.
   // Die Biegung des Stiels zeigt die Eigendrehung (phi); beim Abgeben zeigt sie nach hinten zum Schützen.
   function stock(c, px, py, r, q, s, farbe, sohle) {
-    const d = r * 0.36, ry = r * 0.3 * q;
+    // Aufbau wie ein Turnierstock: Laufsohle unten, breiter Stahlring, darauf der Stockkörper als flacher Kegel in der Mannschaftsfarbe,
+    // oben der Stiel mit dunklem Griff. Der Stiel ist leicht gebogen; die Biegung zeigt die Eigendrehung (phi).
+    const ry = r * 0.3 * q, ring = r * 0.2, kegel = r * 0.42, hals = r * 0.2, yR = py - ring, yH = yR - kegel;
     c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.22, py + r * 0.08, r * 1.12, ry * 1.15, 0, 0, TAU); c.fill();
-    c.globalAlpha = 0.16; c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py + ry * 0.9, r * 0.9, ry * 0.85, 0, 0, TAU); c.fill(); c.strokeStyle = "#8A6238"; c.lineWidth = Math.max(1.5, r * 0.16); c.beginPath(); c.moveTo(px, py + ry * 1.2); c.lineTo(px, py + ry * 1.2 + r * 0.7); c.stroke(); c.globalAlpha = 1;   // Spiegelung im Eis
-    c.fillStyle = sohle; c.beginPath(); c.ellipse(px, py, r, ry, 0, 0, TAU); c.fill();
-    c.fillStyle = "#2B2F36"; c.beginPath(); c.ellipse(px, py - d * 0.25, r * 0.95, ry * 0.95, 0, 0, Math.PI); c.lineTo(px - r * 0.95, py - d); c.ellipse(px, py - d, r * 0.95, ry * 0.95, 0, Math.PI, 0, true); c.closePath(); c.fill();
-    c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py - d * 0.48, r * 0.95, ry * 0.95, 0, 0, Math.PI); c.lineTo(px - r * 0.95, py - d * 0.8); c.ellipse(px, py - d * 0.8, r * 0.95, ry * 0.95, 0, Math.PI, 0, true); c.closePath(); c.fill();
-    c.fillStyle = farbe; c.strokeStyle = INK; c.lineWidth = 1.3; c.beginPath(); c.ellipse(px, py - d, r * 0.95, ry * 0.95, 0, 0, TAU); c.fill(); c.stroke();
-    c.fillStyle = "#2B2F36"; c.beginPath(); c.ellipse(px, py - d, r * 0.4, ry * 0.4, 0, 0, TAU); c.fill();
-    const phi = s.phi || 0, kx = Math.cos(phi) * r * 0.42, ky = Math.sin(phi) * ry * 1.1, hx = px + kx, hy = py - d - r * 1.3 + ky;
-    c.strokeStyle = "#8A6238"; c.lineWidth = Math.max(2, r * 0.2); c.lineCap = "round"; c.beginPath(); c.moveTo(px, py - d); c.quadraticCurveTo(px - kx * 0.25, py - d - r * 0.8, hx, hy); c.stroke();
-    c.fillStyle = "#3A2A1C"; c.beginPath(); c.arc(hx, hy, Math.max(1.8, r * 0.19), 0, TAU); c.fill();
+    c.globalAlpha = 0.16; c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py + ry * 0.9, r * 0.9, ry * 0.85, 0, 0, TAU); c.fill(); c.globalAlpha = 1;   // Spiegelung im Eis
+    c.fillStyle = sohle; c.beginPath(); c.ellipse(px, py, r * 0.94, ry * 0.94, 0, 0, TAU); c.fill();
+    // Stahlring: Mantelfläche und Oberkante
+    c.fillStyle = "#8D969F"; c.beginPath(); c.ellipse(px, py - ring * 0.15, r, ry, 0, 0, Math.PI); c.lineTo(px - r, yR); c.ellipse(px, yR, r, ry, 0, Math.PI, 0, true); c.closePath(); c.fill();
+    c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(px - r * 0.62, yR + ry * 0.55, r * 0.3, ring * 0.75);   // Glanzlicht
+    c.fillStyle = "#B9C1C8"; c.strokeStyle = INK; c.lineWidth = 1.1; c.beginPath(); c.ellipse(px, yR, r, ry, 0, 0, TAU); c.fill(); c.stroke();
+    // Stockkörper: Kegel vom Ring zum Hals
+    c.fillStyle = farbe; c.beginPath(); c.moveTo(px - r * 0.86, yR); c.quadraticCurveTo(px - r * 0.5, yH + kegel * 0.25, px - hals, yH); c.lineTo(px + hals, yH); c.quadraticCurveTo(px + r * 0.5, yH + kegel * 0.25, px + r * 0.86, yR); c.ellipse(px, yR, r * 0.86, ry * 0.86, 0, 0, Math.PI); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "rgba(20,27,37,0.18)"; c.beginPath(); c.moveTo(px + hals, yH); c.quadraticCurveTo(px + r * 0.5, yH + kegel * 0.25, px + r * 0.86, yR); c.quadraticCurveTo(px + r * 0.5, yR + ry * 0.7, px + r * 0.2, yR + ry * 0.84); c.closePath(); c.fill();   // Schattenseite
+    c.fillStyle = "#2B2A28"; c.beginPath(); c.ellipse(px, yH, hals, Math.max(1, hals * 0.3 * q), 0, 0, TAU); c.fill();
+    // Stiel: Holz unten, dunkler Griff oben
+    const phi = s.phi || 0, kx = Math.cos(phi) * r * 0.3, ky = Math.sin(phi) * ry * 0.8, L = r * 1.25, mx = px + kx * 0.35, my = yH - L * 0.55 + ky * 0.35, hx = px + kx, hy = yH - L + ky;
+    c.lineCap = "round"; c.strokeStyle = INK; c.lineWidth = Math.max(3, r * 0.26); c.beginPath(); c.moveTo(px, yH); c.quadraticCurveTo(px - kx * 0.2, yH - L * 0.5, hx, hy); c.stroke();
+    c.strokeStyle = "#9A6E3E"; c.lineWidth = Math.max(2, r * 0.18); c.beginPath(); c.moveTo(px, yH); c.quadraticCurveTo(px - kx * 0.2, yH - L * 0.5, hx, hy); c.stroke();
+    c.strokeStyle = "#2B2A28"; c.lineWidth = Math.max(2.6, r * 0.24); c.beginPath(); c.moveTo(mx, my); c.lineTo(hx, hy); c.stroke(); c.lineCap = "butt";
   }
-  // Der Stock in der Hand, von der Seite: hängt am Stiel und schwingt mit dem Arm (a = Winkel des Unterarms, 0 = nach unten)
+  // Der Stock in der Hand, von der Seite: hängt am Griff und schwingt mit dem Arm (a = Winkel des Unterarms, 0 = nach unten)
   function stockInHand(c, hx, hy, a, k, farbe, sohle) {
-    c.save(); c.translate(hx, hy); c.rotate(-a);
-    c.strokeStyle = "#8A6238"; c.lineWidth = 3.2 * k; c.lineCap = "round"; c.beginPath(); c.moveTo(0, -3 * k); c.quadraticCurveTo(-3 * k, 7 * k, 0, 15 * k); c.stroke();
-    c.fillStyle = "#2B2F36"; c.fillRect(-13 * k, 15 * k, 26 * k, 5 * k); c.fillStyle = farbe; c.fillRect(-13 * k, 16.4 * k, 26 * k, 2.2 * k);
-    c.fillStyle = sohle; c.fillRect(-14 * k, 20 * k, 28 * k, 2.4 * k); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(-13 * k, 15 * k, 26 * k, 5 * k);
+    c.save(); c.translate(hx, hy); c.rotate(-a); c.lineCap = "round";
+    c.strokeStyle = "#2B2A28"; c.lineWidth = 4.2 * k; c.beginPath(); c.moveTo(0, -4 * k); c.lineTo(0, 5 * k); c.stroke();   // Griff
+    c.strokeStyle = "#9A6E3E"; c.lineWidth = 3 * k; c.beginPath(); c.moveTo(0, 5 * k); c.quadraticCurveTo(-1.5 * k, 10 * k, 0, 14 * k); c.stroke(); c.lineCap = "butt";
+    c.fillStyle = farbe; c.strokeStyle = INK; c.lineWidth = 1; c.beginPath(); c.moveTo(-3 * k, 13.5 * k); c.lineTo(3 * k, 13.5 * k); c.quadraticCurveTo(8 * k, 15 * k, 12.5 * k, 19 * k); c.lineTo(-12.5 * k, 19 * k); c.quadraticCurveTo(-8 * k, 15 * k, -3 * k, 13.5 * k); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = "#9AA3AD"; c.fillRect(-14 * k, 19 * k, 28 * k, 3.4 * k); c.strokeRect(-14 * k, 19 * k, 28 * k, 3.4 * k);
+    c.fillStyle = sohle; c.fillRect(-13 * k, 22.4 * k, 26 * k, 2.2 * k);
     c.restore();
   }
   // Laternenpfähle an der Bande mit Wimpelketten dazwischen; am Abend leuchten die Laternen. LICHTER: was am Abend Licht aufs Eis wirft.
@@ -2452,7 +2462,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.11.1";
+  const VERSION = "0.12.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2467,19 +2477,24 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // Pendeln vor der Abgabe: Der Arm schwingt vor und zurück, mit dem Zug weiter (bis 70°), der Oberkörper neigt sich dabei etwas vor
   function pendelPose(t, u) { const k = Math.min(1, u * 1.5), A = 14 + 56 * k, p = mitArm(F.mix(POSE.ziel, POSE.rueck, k * 0.45), A * Math.sin(t * 2.6)); return p; }
   // Nach dem Loslassen: nachschwingen, drei Schritte dem Stock nach, dann stehen und schauen. Rückgabe [Pose, Weg nach vorn in Metern]
-  function nachPose(t) {
-    if (t < 0.4) return [F.mix(POSE.setz, POSE.nach, weichP(t / 0.4)), 0];
-    const q = (t - 0.4) / 0.42, weg = 1.5 * weichP(q / 3); if (q >= 3) return [F.mix(POSE.gehA, POSE.schau, weichP(q - 3)), 1.5];
-    const folge = [POSE.nach, POSE.gehA, POSE.gehB, POSE.gehA], i = Math.floor(q); return [F.mix(folge[i], folge[i + 1], weichP(q - i)), weg];
+  // Die Abgabe richtet sich nach der Kraft k (0 = sanftes Maß, 1 = harter Schuss): wie hoch der Rückschwung geht, wie tief der
+  // Ausfallschritt wird, wie schnell alles abläuft, wie weit der Arm nachschwingt und wie weit die Figur dem Stock nachläuft.
+  const SANFT = { schritt: { lean: 18, crouch: 0, sL: [22, 26], fL: [-14, 12], aF: [-14, -2], aB: [10, 14], hd: -3 }, setz: { lean: 26, crouch: 0, sL: [30, 36], fL: [-22, 10], aF: [22, 4], aB: [-18, -10], hd: -6 }, nach: { lean: 18, crouch: 0, sL: [26, 30], fL: [-18, 12], aF: [42, 8], aB: [-20, -10], hd: -2 } };
+  const HART = { schritt: { lean: 40, crouch: 0, sL: [46, 56], fL: [-30, 14], aF: [-34, -2], aB: [22, 20], hd: -9 }, setz: { lean: 56, crouch: 0, sL: [64, 80], fL: [-48, 8], aF: [38, 4], aB: [-42, -10], hd: -14 }, nach: { lean: 46, crouch: 0, sL: [56, 68], fL: [-42, 12], aF: [98, 10], aB: [-52, -10], hd: -6 } };
+  const jeKraft = (name, k) => F.mix(SANFT[name], HART[name], k), rueckK = (k) => mitArm(F.mix(POSE.ziel, POSE.rueck, 0.35 + 0.65 * k), -(26 + 50 * k)), wurfDauer = (k) => 0.95 - 0.45 * k;
+  function nachPose(t, k) {
+    const weit = 0.5 + 1.6 * k, tn = 0.5 - 0.15 * k;
+    if (t < tn) return [F.mix(jeKraft("setz", k), jeKraft("nach", k), weichP(t / tn)), 0];
+    const q = (t - tn) / (0.5 - 0.12 * k), weg = weit * weichP(q / 3); if (q >= 3) return [F.mix(POSE.gehA, POSE.schau, weichP(q - 3)), weit];
+    const folge = [jeKraft("nach", k), POSE.gehA, POSE.gehB, POSE.gehA], i = Math.floor(q); return [F.mix(folge[i], folge[i + 1], weichP(q - i)), weg];
   }
-  // Abgabe in WURF_SEK: kurz ganz ausholen, Ausfallschritt, aufsetzen
-  function wurfPose(von, k) { return k < 0.25 ? F.mix(von, POSE.rueck, weichP(k / 0.25)) : k < 0.62 ? F.mix(POSE.rueck, POSE.schritt, weichP((k - 0.25) / 0.37)) : F.mix(POSE.schritt, POSE.setz, weichP((k - 0.62) / 0.38)); }
+  function wurfPose(von, q, k) { const r = rueckK(k); return q < 0.25 ? F.mix(von, r, weichP(q / 0.25)) : q < 0.62 ? F.mix(r, jeKraft("schritt", k), weichP((q - 0.25) / 0.37)) : F.mix(jeKraft("schritt", k), jeKraft("setz", k), weichP((q - 0.62) / 0.38)); }
   const FARBE = ["#C23B2A", "#23466B"], KEHREN = 4, STOECKE = 4;
   // Stufen: Stärke des Gegners, Schwanken der Hand (P.schwank) und wie viel die Zielhilfe verrät (2 = Stoppstelle und Berührung, 1 = nur die Spur)
   const GEGNER = { hobby: { st: 0.3, schwank: 0, hilfe: 2, name: "Hobby", satz: "Hobby: ruhige Hand, die Hilfe zeigt Stoppstelle und Berührung.", gegner: " Der Gegner legt einfach an." },
     verein: { st: 0.6, schwank: 1, hilfe: 2, name: "Verein", satz: "Verein: Die Hand schwankt, bei festem Zug stärker. Im richtigen Moment loslassen.", gegner: " Der Gegner schießt dich auch einmal weg." },
     meister: { st: 0.9, schwank: 1.7, hilfe: 1, name: "Meister", satz: "Meister: Die Hand schwankt stark, die Hilfe zeigt nur noch die Spur.", gegner: " Der Gegner rechnet voraus und schiebt die Daube." } };
-  const ZUG_MAX = 220, ZUG_MIN = 0.05, GRAD_JE_PX = 0.035, WINKEL_MAX = 6, WURF_SEK = 0.7;   // Wischen: 220 px voller Zug, 1 px seitlich = 0,035°
+  const ZUG_MAX = 220, ZUG_MIN = 0.05, GRAD_JE_PX = 0.035, WINKEL_MAX = 6;   // Wischen: 220 px voller Zug, 1 px seitlich = 0,035°
   let R;
   // Kamera: Tiefe x, quer y. cx = Stelle auf der Bahn, d0 = Abstand der Kamera dahinter, mpx = Pixel je Meter dort, hpx = Höhe, hor = Horizont.
   // Drei Blicke: Zielen (von hinten über die ganze Bahn), Gleiten (fährt mit dem Stock mit), Zielfeld (groß und schräg von oben).
@@ -2603,7 +2618,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       let oben = true; const kOben = R.knopf({ seite: "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
-      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? pendelPose(R.t, u) : pendelPose(R.t, 0.67) }; phase = "wurf"; tPh = 0; R.tippWeg(); }
+      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? pendelPose(R.t, u) : pendelPose(R.t, 0.67), k: R.clamp((v - 3) / 3.2, 0, 1), dauer: wurfDauer(R.clamp((v - 3) / 3.2, 0, 1)) }; phase = "wurf"; tPh = 0; R.tippWeg(); }
       let aNr = 0, aVersuch = 1, aGeloest = [], vorBest = null, nachMessen = null;
       function lade() { W = P.neu(eis); for (const [x, y, wer] of AUFGABEN[aNr].st) P.lege(W, x, y, wer); dran = 0; phase = "zielen"; tPh = 0; winkel = 0; u = 0; zug = null; msg = null; }
       let zv = 0; const zD = () => Math.min(3, Math.floor(zv / 6));
@@ -2646,7 +2661,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             if (dran === 0) { R.tipp("wisch", "Finger aufs Eis, nach hinten ziehen und loslassen. Je länger der Zug, desto fester; seitlich ziehen zielt.", 7); if (stufe.schwank && zug && zug.seit > 0.6) R.tipp("ruhe", "Die Hand schwankt: loslassen, wenn die Spur dort liegt, wo du sie willst. Langes Halten macht es schlimmer.", 6); }
             else { if (!kiPlan && tPh > 0.5) kiPlan = P.plan(W, 1, gegSt, rnd); if (kiPlan && tPh > 1.3) { const wer = geg.name.split(" ")[0], art = kiPlan.art; abgeben(kiPlan.winkel, kiPlan.v); if (art === "schuss") R.sag(`${wer} schießt!`, 1.2); else if (art === "daube") R.sag(`${wer} geht auf die Daube`, 1.4); } }
           } else if (phase === "wurf") {
-            if (tPh >= WURF_SEK) { P.schuss(W, wurf.wer, wurf.w, wurf.v, wurf.sohle); n[wurf.wer]++; phase = "lauf"; tPh = 0; akk = 0; dz = W.daubeZurueck; R.ton.wusch(); }
+            if (tPh >= wurf.dauer) { P.schuss(W, wurf.wer, wurf.w, wurf.v, wurf.sohle); n[wurf.wer]++; phase = "lauf"; tPh = 0; akk = 0; dz = W.daubeZurueck; R.ton.wusch(); }
           } else if (phase === "lauf") {
             akk += dt * (dran === 1 ? 2.5 : 1.4);   // Zeitraffer nur fürs Zuschauen, die Rechnung bleibt dieselbe
             while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { const q = W.lauf && W.lauf.lebt ? W.lauf : null; if (q && !R.schnell) for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 0.6 + Math.random() * 1.6; splitter.push({ x: q.x + 0.1, y: q.y, z: 0.05, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 1.2 + Math.random() * 1.6, t: 0 }); } R.ton.klack(); if (!R.schnell && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* egal */ } } jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
@@ -2679,12 +2694,12 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           const hilfe = zieht ? { ziel: true, winkel: winkelE(), weite: P.weite(tempo(), eis, sohle), nurSpur: stufe.hilfe < 2 } : null; if (hilfe && !hilfe.nurSpur) hilfe.kontakt = P.ersterKontakt(W, hilfe.winkel, hilfe.weite);
           // Schütze an der Abspielstelle mit dem Stock in der Hand: pendeln, ausholen, Ausfallschritt, aufsetzen, nachschwingen
           const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look;
-          const zielP = wer === 1 ? pendelPose(t, weichP((tPh - 0.4) / 0.9) * 0.67) : pendelPose(t, zug ? u : 0), [lp, vor] = phase === "lauf" ? nachPose(tPh) : [null, 0];
-          const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / WURF_SEK) : lp;
+          const zielP = wer === 1 ? pendelPose(t, weichP((tPh - 0.4) / 0.9) * 0.67) : pendelPose(t, zug ? u : 0), [lp, vor] = phase === "lauf" ? nachPose(tPh, wurf ? wurf.k : 0.3) : [null, 0];
+          const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / wurf.dauer, wurf.k) : lp;
           const fk = sk(vor) * cam.mpx / 205;
           bahn(c, t, W, hilfe, (c) => { if (phase !== "messen" && sichtbar(vor + 0.5) && fk < 2.4) { const fx = SX(vor, -0.3), fy = SY(vor) + 14 * fk, fs = 1.25 * fk;
             R.figur(c, { x: fx, y: fy, s: fs, pose: ps, look, kit: KIT, dir: 1 });
-            if (phase === "zielen" || phase === "wurf") { const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / WURF_SEK - 0.7) / 0.3) : 0;
+            if (phase === "zielen" || phase === "wurf") { const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / wurf.dauer - 0.7) / 0.3) : 0;
               let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
               if (k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so);
               else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } } });
