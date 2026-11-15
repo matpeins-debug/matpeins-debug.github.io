@@ -2462,7 +2462,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.12.0";
+  const VERSION = "0.12.1";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2585,9 +2585,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const tx = gx + b + 6, al = "left"; if (!ohneMarke) R.text(c, W.ringe ? (W.zielstock ? "ZIELSTOCK" : "RINGE") : "DAUBE", tx, Y(d), 10, "#141B25", al); R.text(c, "ZIELFELD", tx, (Y(f0) + Y(f1)) / 2 + (!ohneMarke && Math.abs((Y(f0) + Y(f1)) / 2 - Y(d)) < 11 ? 13 : 0), 9, "#2F6B2C", al); R.text(c, "HART", tx, (Y(f1) + Y(1)) / 2, 9, "#C23B2A", al); R.text(c, "MAX", tx, Y(1) - 4, 9, "#141B25", al);
   }
 
+  // Die Karte liegt auf der Seite, auf der nicht gezogen wird: links für Rechtshänder (Voreinstellung), rechts, sobald jemand im linken Drittel zieht
+  let karteLinks = true;
   // Draufsicht auf das Zielfeld (6 × 3 m), maßstäblich: Abstände und Lage auf einen Blick
   function draufsicht(c, W, o) {
-    const B = P.BAHN, m = 46, bw = B.breit * m, bh = (B.feld1 - B.feld0) * m, x0 = R.W - bw - 16, y0 = 52, X = (y) => x0 + bw / 2 + y * m, Y = (x) => y0 + (B.feld1 - x) * m;
+    const B = P.BAHN, m = 46, bw = B.breit * m, bh = (B.feld1 - B.feld0) * m, x0 = karteLinks ? 16 : R.W - bw - 16, y0 = 52, X = (y) => x0 + bw / 2 + y * m, Y = (x) => y0 + (B.feld1 - x) * m;
     c.fillStyle = "#EAF3F7"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.fillRect(x0, y0, bw, bh); c.strokeRect(x0, y0, bw, bh);
     c.strokeStyle = "rgba(35,70,107,0.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(X(-0.25), Y(B.daubeX)); c.lineTo(X(0.25), Y(B.daubeX)); c.moveTo(X(0), Y(B.daubeX - 0.25)); c.lineTo(X(0), Y(B.daubeX + 0.25)); c.stroke();
     c.save(); c.beginPath(); c.rect(x0, y0, bw, bh); c.clip();
@@ -2615,7 +2617,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const gegSt = stufe.st;
       let W = P.neu(eis), kehre = 1, stand = [0, 0], verlauf = [], dran = 0, n = [0, 0], phase = "zielen", tPh = 0, winkel = 0, u = 0, zug = null, wurf = null, akk = 0, dz = 0, msg = null, ziel = [], kiPlan = null;
       const sw = () => (zug ? P.schwank(zug.seit, u, stufe.schwank) : { dw: 0, dv: 0 }), tempo = () => R.clamp(P.tempoAusZug(u) * (1 + sw().dv), P.V_MIN, P.V_MAX), winkelE = () => winkel + sw().dw; cam = Object.assign({}, CAM_ZIEL); abend = amAbend; spur = []; splitter = [];
-      let oben = true; const kOben = R.knopf({ seite: "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
+      if (R.S.karteLinks != null) karteLinks = !!R.S.karteLinks;
+      let oben = true; const kOben = R.knopf({ seite: karteLinks ? "rechts" : "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
       function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? pendelPose(R.t, u) : pendelPose(R.t, 0.67), k: R.clamp((v - 3) / 3.2, 0, 1), dauer: wurfDauer(R.clamp((v - 3) / 3.2, 0, 1)) }; phase = "wurf"; tPh = 0; R.tippWeg(); }
@@ -2651,7 +2654,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         R.stand({ kicker: "Lana · Zielwettbewerb", titel: platz === 1 ? "Sieg!" : `Platz ${platz}`, zeilen, note: `Deine Durchgänge: ${P.ZW.map((D, d) => `${D.name} ${teil[d]}`).join(", ")}. Zusammen ${sum} von 240.${neu ? " Neue Bestleistung." : ""}`, knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => spiel("ziel") }] });
       }
       R.szene({
-        onDown(x, y, id) { if (phase === "zielen" && dran === 0 && !zug) { zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
+        onDown(x, y, id) { if (phase === "zielen" && dran === 0 && !zug) { if (karteLinks ? x < R.W * 0.36 : x > R.W * 0.64) { karteLinks = !karteLinks; R.S.karteLinks = karteLinks; }   // nur wechseln, wenn der Finger auf der Seite der Karte ansetzt zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
         onMove(x, y, id) { if (zug && (id == null || zug.id == null || id === zug.id)) zieh(x, y); },
         onUp(x, y, id) { if (!zug || (id != null && zug.id != null && id !== zug.id)) return; zieh(x, y); if (u > ZUG_MIN && zug.bewegt) abgeben(winkelE(), tempo()); else { zug = null; u = 0; winkel = 0; } },
         bot() { if (phase === "zielen" && dran === 0 && tPh > 0.3) abgeben((n[0] % 3 - 1) * 0.4, P.tempoFuer(P.BAHN.daubeX - 0.5 - P.X0 + (n[0] % 2) * 0.3, eis, sohle)); },
@@ -2684,7 +2687,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           for (const q of splitter) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z = Math.max(0, q.z + q.vz * dt); q.vz -= 6 * dt; } if (splitter.length) splitter = splitter.filter((q) => q.t < 0.6);
           cam = mixCam(cam, kameraZiel(W, phase === "wurf" ? "zielen" : phase, phase === "wurf" ? wurf.wer : dran), R.schnell ? 1 : 1 - Math.exp(-dt * 3.2));
           const karte = dran === 0 && (phase === "zielen" || phase === "wurf");
-          kOben.set({ aktiv: oben, hidden: !karte });
+          kOben.set({ aktiv: oben, hidden: !karte, seite: karteLinks ? "rechts" : "links" });
           const bl = duell ? P.bestlage(W) : null;
           R.chips(aufg ? [[`Aufgabe ${Math.min(aNr + 1, AUFGABEN.length)}/${AUFGABEN.length}`, "dark"], [AUFGABEN[Math.min(aNr, AUFGABEN.length - 1)].titel, "gold"], [`Versuch ${aVersuch}/${VERSUCHE}`], [`${aGeloest.filter(Boolean).length} gelöst`, "good"]] : duell ? [[`Kehre ${kehre}/${KEHREN}`, "dark"], [`${R.myName()} ${stand[0]} : ${stand[1]} ${geg.name.split(" ")[0]}`, "gold"], [dran === 0 ? "Du bist dran" : `${geg.name.split(" ")[0]} ist dran`, dran === 0 ? "good" : ""], [`Stöcke ${STOECKE - n[0]} : ${STOECKE - n[1]}`], [`Bestlage: ${bl === 0 ? "Du" : bl === 1 ? geg.name.split(" ")[0] : "frei"}`, bl === 0 ? "good" : ""]]
             : [["Zielwettbewerb", "dark"], [`Durchgang ${zD() + 1}/4`], [`Versuch ${Math.min(6, zv % 6 + 1)}/6`], [`${ziel.reduce((s, v) => s + v, 0)} Punkte`, "gold"]]);
