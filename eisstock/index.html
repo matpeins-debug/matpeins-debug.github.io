@@ -415,7 +415,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       if (L.licht) { const g = x.createRadialGradient(px + dx * s, y - 42 * s, 1, px + dx * s, y - 42 * s, 46 * s); g.addColorStop(0, "rgba(255,243,196,0.5)"); g.addColorStop(1, "rgba(255,243,196,0)"); x.fillStyle = g; x.fillRect(px + (dx - 46) * s, y - 88 * s, 92 * s, 92 * s); } } },
     // drei Felstürme der Dolomiten im hellen Dolomit, auf einem Schuttkegel im Schnee (ferne Ebene; Eisstock, seit 15.11.2026)
     zinnen(x, px, y, s, O, L) {
-      const fels = mix("#D8C3AC", L.fern, 0.18 + L.licht * 0.5), dunkel = mix("#A38C78", L.fern, 0.25 + L.licht * 0.5), y0 = y - 30 * s;
+      const fels = L.licht ? mix("#F2A074", L.fern, 0.16) : mix("#D8C3AC", L.fern, 0.18), dunkel = L.licht ? mix("#B4604C", L.fern, 0.3) : mix("#A38C78", L.fern, 0.25), y0 = y - 30 * s;   // am Abend glühen die Türme rot (Alpenglühen)
       x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 190 * s, y); x.quadraticCurveTo(px - 90 * s, y - 52 * s, px, y - 46 * s); x.quadraticCurveTo(px + 100 * s, y - 50 * s, px + 200 * s, y); x.closePath(); x.fill();
       x.fillStyle = L.schatten; x.beginPath(); x.moveTo(px + 20 * s, y - 46 * s); x.quadraticCurveTo(px + 110 * s, y - 48 * s, px + 200 * s, y); x.lineTo(px + 90 * s, y); x.closePath(); x.fill();
       const turm = (cx, w, h) => { const P = (a, b) => [px + cx + a * w, y0 - b * h];
@@ -2384,6 +2384,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   function stock(c, px, py, r, q, s, farbe, sohle) {
     const d = r * 0.36, ry = r * 0.3 * q;
     c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.22, py + r * 0.08, r * 1.12, ry * 1.15, 0, 0, TAU); c.fill();
+    c.globalAlpha = 0.16; c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py + ry * 0.9, r * 0.9, ry * 0.85, 0, 0, TAU); c.fill(); c.strokeStyle = "#8A6238"; c.lineWidth = Math.max(1.5, r * 0.16); c.beginPath(); c.moveTo(px, py + ry * 1.2); c.lineTo(px, py + ry * 1.2 + r * 0.7); c.stroke(); c.globalAlpha = 1;   // Spiegelung im Eis
     c.fillStyle = sohle; c.beginPath(); c.ellipse(px, py, r, ry, 0, 0, TAU); c.fill();
     c.fillStyle = "#2B2F36"; c.beginPath(); c.ellipse(px, py - d * 0.25, r * 0.95, ry * 0.95, 0, 0, Math.PI); c.lineTo(px - r * 0.95, py - d); c.ellipse(px, py - d, r * 0.95, ry * 0.95, 0, Math.PI, 0, true); c.closePath(); c.fill();
     c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py - d * 0.48, r * 0.95, ry * 0.95, 0, 0, Math.PI); c.lineTo(px - r * 0.95, py - d * 0.8); c.ellipse(px, py - d * 0.8, r * 0.95, ry * 0.95, 0, Math.PI, 0, true); c.closePath(); c.fill();
@@ -2401,13 +2402,44 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     c.fillStyle = sohle; c.fillRect(-14 * k, 20 * k, 28 * k, 2.4 * k); c.strokeStyle = INK; c.lineWidth = 1; c.strokeRect(-13 * k, 15 * k, 26 * k, 5 * k);
     c.restore();
   }
-  root.ESTeich = { baue, zeichne, eisspuren, stock, stockInHand };
+  // Laternenpfähle an der Bande mit Wimpelketten dazwischen; am Abend leuchten die Laternen. LICHTER: was am Abend Licht aufs Eis wirft.
+  const PFAHL_X = [2, 6, 10, 14, 18, 22, 26, 29.3], PFAHL_Y = 1.92, PFAHL_H = 0.86, WIMPEL = ["#C23B2A", "#F1E7D2", "#3F6B55", "#DDA43B"];
+  const LICHTER = [{ x: 8, y: -3.4, h: 0.6, r: 2.4, a: 0.55, flacker: 1 }, { x: 23.2, y: 4.3, h: 0.6, r: 2.4, a: 0.55, flacker: 1 }, { x: 36, y: -6.2, h: 0.45, r: 1.5, a: 0.3 }]
+    .concat(...PFAHL_X.map((x) => [-1, 1].map((sd) => ({ x, y: sd * PFAHL_Y, h: PFAHL_H, r: 0.95, a: 0.3, kern: 1 }))));
+  function kette(c, ax, ay, bx, by, durch, n) {
+    const mx = (ax + bx) / 2, my = (ay + by) / 2 + durch; c.strokeStyle = "rgba(20,27,37,0.55)"; c.lineWidth = 1; c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo(mx, my, bx, by); c.stroke();
+    for (let i = 1; i <= n; i++) { const q = i / (n + 1), x = (1 - q) * (1 - q) * ax + 2 * q * (1 - q) * mx + q * q * bx, y = (1 - q) * (1 - q) * ay + 2 * q * (1 - q) * my + q * q * by, g = Math.max(2.5, durch * 0.5);
+      c.fillStyle = WIMPEL[i % WIMPEL.length]; c.beginPath(); c.moveTo(x - g * 0.6, y); c.lineTo(x + g * 0.6, y); c.lineTo(x, y + g * 1.3); c.closePath(); c.fill(); }
+  }
+  function pfaehle(c, K, t, abend) {
+    const kopf = (x, y) => [K.SX(x, y), K.SY(x) - PFAHL_H * K.u(x)];
+    for (const sd of [-1, 1]) for (let i = PFAHL_X.length - 1; i >= 0; i--) { const x = PFAHL_X[i]; if (!K.sichtbar(x)) continue; const u = K.u(x), px = K.SX(x, sd * PFAHL_Y), py = K.SY(x), [kx, ky] = kopf(x, sd * PFAHL_Y);
+      if (i > 0 && K.sichtbar(PFAHL_X[i - 1])) { const [qx, qy] = kopf(PFAHL_X[i - 1], sd * PFAHL_Y); kette(c, kx, ky, qx, qy, 0.16 * (u + K.u(PFAHL_X[i - 1])) / 2, 6); }
+      if (i === PFAHL_X.length - 1 && sd === 1) { const [qx, qy] = kopf(x, -PFAHL_Y); kette(c, kx, ky, qx, qy, 0.2 * u, 12); }
+      c.strokeStyle = "#5C3D24"; c.lineWidth = Math.max(1.5, u * 0.035); c.beginPath(); c.moveTo(px, py); c.lineTo(kx, ky); c.stroke();
+      const l = Math.max(3, u * 0.07); c.fillStyle = abend ? "#FFD98A" : "#EFE6D2"; c.strokeStyle = INK; c.lineWidth = 1; c.fillRect(kx - l * 0.6, ky - l * 1.5, l * 1.2, l * 1.5); c.strokeRect(kx - l * 0.6, ky - l * 1.5, l * 1.2, l * 1.5); c.fillStyle = "#3A2A1C"; c.fillRect(kx - l * 0.8, ky - l * 1.8, l * 1.6, l * 0.35); }
+  }
+  // Warmes Licht am Abend: ein Schein um jede Laterne und jedes Feuer und ein heller Fleck auf Schnee und Eis darunter
+  function lichter(c, K, t) {
+    c.save(); c.globalCompositeOperation = "screen";
+    for (const L of LICHTER) { if (!K.sichtbar(L.x)) continue; const u = K.u(L.x), px = K.SX(L.x, L.y), py = K.SY(L.x), r = L.r * u, a = L.a * (L.flacker ? 0.85 + 0.15 * Math.sin(t * 9 + L.x) : 1); if (px < -r || px > K.W + r || py < -r || py > K.H + r * 2) continue;
+      let g = c.createRadialGradient(px, py - L.h * u, 0, px, py - L.h * u, r * 0.75); g.addColorStop(0, `rgba(255,186,96,${a})`); g.addColorStop(1, "rgba(255,150,60,0)"); c.fillStyle = g; c.fillRect(px - r, py - L.h * u - r, r * 2, r * 2);
+      if (L.kern) { c.fillStyle = "rgba(255,225,150,0.9)"; const l = Math.max(3, u * 0.07); c.fillRect(px - l * 0.5, py - L.h * u - l * 1.4, l, l * 1.3); }   // die Laterne selbst leuchtet
+      c.save(); c.translate(px, py); c.scale(1, 0.34); g = c.createRadialGradient(0, 0, 0, 0, 0, r); g.addColorStop(0, `rgba(255,170,80,${a * 0.7})`); g.addColorStop(1, "rgba(255,140,50,0)"); c.fillStyle = g; c.fillRect(-r, -r, r * 2, r * 2); c.restore(); }
+    c.restore();
+  }
+  // Glanz auf dem Eis: helle Bänder schräg über die Bahn
+  function glanz(c, K, h) {
+    c.fillStyle = "rgba(255,255,255,0.13)";
+    for (const x0 of [2.5, 9.5, 16, 21.5, 25.5]) { if (!K.sichtbar(x0)) continue; c.beginPath(); c.moveTo(K.SX(x0, -h), K.SY(x0)); c.lineTo(K.SX(x0 + 1.1, -h), K.SY(x0 + 1.1)); c.lineTo(K.SX(x0 + 3.4, h), K.SY(x0 + 3.4)); c.lineTo(K.SX(x0 + 2.3, h), K.SY(x0 + 2.3)); c.closePath(); c.fill(); }
+  }
+  root.ESTeich = { pfaehle, lichter, glanz, baue, zeichne, eisspuren, stock, stockInHand };
 })(typeof window !== "undefined" ? window : globalThis);
 
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.10.1";
+  const VERSION = "0.11.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2460,9 +2492,21 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     return mixCam(Object.assign({}, CAM_ZIEL, { cx: Math.max(0, s.x - 4) }), Object.assign({}, CAM_FELD, { cx: Math.min(CAM_FELD.cx, s.x - 0.9) }), weich((s.x - 13) / 7));
   }
 
-  function bahn(c, t, W, o) {
-    c.fillStyle = "#F2F6F8"; c.fillRect(0, 0, R.W, R.H);
-    if (cam.hor > -60) { c.save(); c.translate(0, cam.hor - 96); R.kulisse("lana", 150, "tag").zeichne(c, 0, t); c.fillStyle = "#F2F6F8"; c.fillRect(0, 150, R.W, R.H + 400); c.restore(); }
+  // Bild: Himmel, Berge und Schnee, davor die Welt (Bahn, Teich, Stöcke, Figur). Am Abend wird die Welt in eine eigene Schicht gezeichnet,
+  // blau abgedunkelt und mit warmem Licht von Laternen, Feuerkörben und Hütte überlagert.
+  let abend = false, SCH = null, spur = [], splitter = [];
+  function bahn(c, t, W, o, davor) {
+    const boden = abend ? "#8793BD" : "#F2F6F8";
+    c.fillStyle = boden; c.fillRect(0, 0, R.W, R.H);
+    if (cam.hor > -60) { c.save(); c.translate(0, cam.hor - 96); R.kulisse("lana", 150, abend ? "abend" : "tag").zeichne(c, 0, t); c.fillStyle = boden; c.fillRect(0, 150, R.W, R.H + 400); c.restore(); }
+    if (!abend) { welt(c, t, W, o); if (davor) davor(c); }
+    else { const d = R.dpr || 1; if (!SCH || SCH.cv.width !== Math.round(R.W * d)) { const cv = document.createElement("canvas"); cv.width = Math.round(R.W * d); cv.height = Math.round(R.H * d); SCH = { cv, x: cv.getContext("2d") }; }
+      const x = SCH.x; x.setTransform(d, 0, 0, d, 0, 0); x.globalCompositeOperation = "source-over"; x.clearRect(0, 0, R.W, R.H); welt(x, t, W, o); if (davor) davor(x);
+      x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(24,32,84,0.44)"; x.fillRect(0, 0, R.W, R.H); x.globalCompositeOperation = "source-over";
+      c.drawImage(SCH.cv, 0, 0, R.W, R.H); T.lichter(c, KAM, t); }
+    const v = c.createRadialGradient(R.W / 2, R.H * 0.55, R.H * 0.45, R.W / 2, R.H * 0.55, R.W * 0.62); v.addColorStop(0, "rgba(10,15,40,0)"); v.addColorStop(1, `rgba(10,15,40,${abend ? 0.36 : 0.16})`); c.fillStyle = v; c.fillRect(0, 0, R.W, R.H);   // Vignette
+  }
+  function welt(c, t, W, o) {
     const B = P.BAHN, h = B.breit / 2;
     // Eis und Banden
     const eisC = { glatt: ["#CFE8F2", "#EAF6FA"], rau: ["#C9DDE6", "#E4EEF2"], stumpf: ["#CAD6DB", "#E8EDEF"] }[W.eis];
@@ -2470,13 +2514,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const xn = Math.max(-1.5, cam.cx - 0.6 * cam.d0);   // vorderer Rand: nie hinter der Kamera
     c.fillStyle = g; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.closePath(); c.fill();
     c.strokeStyle = "#7A5636"; c.lineWidth = 5; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.stroke();
-    T.eisspuren(c, KAM, TEICH.kratzer);
+    T.glanz(c, KAM, h); T.eisspuren(c, KAM, TEICH.kratzer);
+    if (spur.length > 1) { for (let i = 1; i < spur.length; i++) { const a = spur[i - 1], b = spur[i]; if (!sichtbar(a[0])) continue; c.strokeStyle = `rgba(255,255,255,${0.5 * i / spur.length})`; c.lineWidth = Math.max(1.5, P.RS * 1.5 * cam.mpx * sk(b[0]) * 0.5); c.lineCap = "round"; c.beginPath(); c.moveTo(SX(a[0], a[1]), SY(a[0])); c.lineTo(SX(b[0], b[1]), SY(b[0])); c.stroke(); } }   // blanke Spur hinter dem laufenden Stock
     // Meterlinien alle 5 m mit Zahl am Rand: damit man sieht, wie lang die Bahn ist
     for (const x of [5, 10, 15, 20]) { if (!sichtbar(x)) continue; const y = SY(x), u = cam.mpx * sk(x), xl = SX(x, -h), xr = SX(x, h);
       c.strokeStyle = "rgba(35,70,107,0.4)"; c.lineWidth = Math.max(1, u * 0.012); c.beginPath(); c.moveTo(xl, y); c.lineTo(xr, y); c.stroke();
       for (const sd of [-1, 1]) R.text(c, `${x} m`, sd < 0 ? xl + u * 0.3 : xr - u * 0.3, y - Math.max(6, u * 0.07), Math.max(9, u * 0.11), "rgba(35,70,107,0.75)"); }   // Zahl aufs Eis gemalt, am Rand der Bahn
     c.strokeStyle = "rgba(60,90,120,0.22)"; c.lineWidth = 9; c.beginPath(); c.moveTo(SX(xn, -h) - 6, SY(xn)); c.lineTo(SX(B.lang, -h) - 6, SY(B.lang) - 3); c.lineTo(SX(B.lang, h) + 6, SY(B.lang) - 3); c.lineTo(SX(xn, h) + 6, SY(xn)); c.stroke();   // Schneewall hinter der Bande
-    T.zeichne(c, KAM, TEICH, t, jubel);
+    T.zeichne(c, KAM, TEICH, t, jubel); T.pfaehle(c, KAM, t, abend);
     c.strokeStyle = "rgba(194,59,42,0.75)"; c.lineWidth = 2; c.beginPath(); for (const x of [B.feld0, B.feld1]) { c.moveTo(SX(x, -h), SY(x)); c.lineTo(SX(x, h), SY(x)); } c.stroke();
     if (W.ringe) { const Z = W.ringe, ux = cam.mpx * sk(Z.x), fl = 0.24 * flach(Z.x); [...P.RINGE].reverse().forEach(([r], i) => { c.fillStyle = ["rgba(35,70,107,0.05)", "rgba(35,70,107,0.07)", "rgba(35,70,107,0.09)", "rgba(221,164,59,0.22)", "rgba(194,59,42,0.32)"][i]; c.strokeStyle = "rgba(35,70,107,0.5)"; c.lineWidth = 1.2; c.beginPath(); c.ellipse(SX(Z.x, Z.y), SY(Z.x), r * ux, r * ux * fl, 0, 0, R.TAU); c.fill(); c.stroke(); }); }
     else { const mx = B.daubeX, k = 0.3; c.strokeStyle = "rgba(35,70,107,0.55)"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(SX(mx, -k), SY(mx)); c.lineTo(SX(mx, k), SY(mx)); c.moveTo(SX(mx - k, 0), SY(mx - k)); c.lineTo(SX(mx + k, 0), SY(mx + k)); c.stroke(); }   // Mittelkreuz: fest auf dem Eis, wandert nicht mit der Daube
@@ -2494,6 +2539,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       if (s === beste && P.ruht(W)) { c.strokeStyle = "#DDA43B"; c.lineWidth = 3; c.beginPath(); c.ellipse(px, py, r * 1.3, r * 1.3 * 0.3 * q, 0, 0, R.TAU); c.stroke(); }   // goldener Ring: Bestlage
       if (s.daube) { c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.2, py + r * 0.1, r * 1.1, r * 0.34 * q, 0, 0, R.TAU); c.fill(); c.fillStyle = "#DDA43B"; c.strokeStyle = "#141B25"; c.lineWidth = 1.2; c.beginPath(); c.ellipse(px, py - r * 0.2, r * 1.3, r * 0.5 * Math.min(q, 2), 0, 0, R.TAU); c.fill(); c.stroke(); continue; }
       T.stock(c, px, py, r, q, s, FARBE[s.wer], (P.SOHLE[s.sohle] || P.SOHLE.mittel).farbe); }
+    c.fillStyle = "#FFFFFF"; for (const q of splitter) { if (!sichtbar(q.x)) continue; const u = cam.mpx * sk(q.x); c.globalAlpha = Math.max(0, 1 - q.t / 0.6); c.beginPath(); c.arc(SX(q.x, q.y), SY(q.x) - q.z * u, Math.max(1, u * 0.018), 0, R.TAU); c.fill(); } c.globalAlpha = 1;   // Eissplitter nach einem Treffer
   }
 
   // Zuganzeige neben dem Finger: wie weit man ziehen kann (bis MAX), wo der Zug fürs Zielfeld liegt (grün) und wo die Daube (Strich).
@@ -2532,14 +2578,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   function spiel(modus) {
     const duell = modus === "duell", aufg = modus === "aufg", zielM = modus === "ziel";
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, rnd = P.rng(seed), eis = ["glatt", "rau", "stumpf"][Math.floor(rnd() * 3)], feld = R.feld(11, seed, 0.6), geg = feld[0];
-    R.wahl({ kicker: `Lana · Eisbericht: ${P.EIS[eis].name}`, titel: duell ? `Duell gegen ${geg.name}` : aufg ? "Taktik-Aufgaben" : "Zielwettbewerb", knopf: "Aufs Eis",
+    const wunsch = /[?&]abend=([01])/.exec(location.search), amAbend = wunsch ? wunsch[1] === "1" : rnd() < 0.5;   // ?abend=1 oder ?abend=0 erzwingt die Tageszeit (für Tests und zum Anschauen)
+    R.wahl({ kicker: `Lana · ${amAbend ? "Abend" : "Tag"} · Eis: ${P.EIS[eis].name}`, titel: duell ? `Duell gegen ${geg.name}` : aufg ? "Taktik-Aufgaben" : "Zielwettbewerb", knopf: "Aufs Eis",
       gruppen: [{ id: "sohle", label: "Laufsohle", list: Object.entries(P.SOHLE).map(([k, v]) => [k, v.name]), wert: "mittel" }].concat([{ id: "gegner", label: "Stufe", list: Object.entries(GEGNER).map(([k, v]) => [k, v.name]), wert: "verein" }]),
       aendern: (w) => ({ schnell: "Schwarze Sohle: wenig Widerstand, läuft bei gleichem Zug am weitesten.", mittel: "Gelbe Sohle: ausgewogen, für jedes Eis in Ordnung.", langsam: "Blaue Sohle: mehr Widerstand, braucht mehr Zug, verzeiht aber mehr." })[w.sohle] + (eis === "glatt" ? " Heute läuft das Eis schnell." : eis === "stumpf" ? " Heute bremst das Eis." : "") + " " + GEGNER[w.gegner].satz + (duell ? GEGNER[w.gegner].gegner : ""),
       fn: (w) => los(w.sohle, GEGNER[w.gegner]) });
     function los(sohle, stufe) {
       const gegSt = stufe.st;
       let W = P.neu(eis), kehre = 1, stand = [0, 0], verlauf = [], dran = 0, n = [0, 0], phase = "zielen", tPh = 0, winkel = 0, u = 0, zug = null, wurf = null, akk = 0, dz = 0, msg = null, ziel = [], kiPlan = null;
-      const sw = () => (zug ? P.schwank(zug.seit, u, stufe.schwank) : { dw: 0, dv: 0 }), tempo = () => R.clamp(P.tempoAusZug(u) * (1 + sw().dv), P.V_MIN, P.V_MAX), winkelE = () => winkel + sw().dw; cam = Object.assign({}, CAM_ZIEL);
+      const sw = () => (zug ? P.schwank(zug.seit, u, stufe.schwank) : { dw: 0, dv: 0 }), tempo = () => R.clamp(P.tempoAusZug(u) * (1 + sw().dv), P.V_MIN, P.V_MAX), winkelE = () => winkel + sw().dw; cam = Object.assign({}, CAM_ZIEL); abend = amAbend; spur = []; splitter = [];
       let oben = true; const kOben = R.knopf({ seite: "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
@@ -2589,7 +2636,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             if (tPh >= WURF_SEK) { P.schuss(W, wurf.wer, wurf.w, wurf.v, wurf.sohle); n[wurf.wer]++; phase = "lauf"; tPh = 0; akk = 0; dz = W.daubeZurueck; R.ton.wusch(); }
           } else if (phase === "lauf") {
             akk += dt * (dran === 1 ? 2.5 : 1.4);   // Zeitraffer nur fürs Zuschauen, die Rechnung bleibt dieselbe
-            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { R.ton.klack(); if (!R.schnell && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* egal */ } } jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
+            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { const q = W.lauf && W.lauf.lebt ? W.lauf : null; if (q && !R.schnell) for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 0.6 + Math.random() * 1.6; splitter.push({ x: q.x + 0.1, y: q.y, z: 0.05, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 1.2 + Math.random() * 1.6, t: 0 }); } R.ton.klack(); if (!R.schnell && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* egal */ } } jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
             if (W.daubeZurueck > dz) { dz = W.daubeZurueck; R.sag("Daube zurück aufs Mittelkreuz", 1.6); }
             if ((P.ruht(W) || tPh > 30) && aufg) { const ok = AUFGABEN[aNr].ziel(P.wertung(W), W); phase = "messen"; tPh = 0;
               if (ok) { aGeloest[aNr] = aVersuch; msg = "Gelöst!"; jubel = 1; R.ton.jubel(); } else if (aVersuch < VERSUCHE) { msg = `Noch nicht. Versuch ${aVersuch + 1} von ${VERSUCHE}`; R.ton.raunen(); } else { msg = "Nicht gelöst"; R.ton.raunen(); }
@@ -2605,6 +2652,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             if (duell && kehre < KEHREN) { kehre++; W = P.neu(eis); n = [0, 0]; msg = null; naechster(); } else ende();
           }
           jubel = Math.max(0, jubel - dt * 0.55);
+          if (phase === "wurf") spur = []; if (phase === "lauf" && W.lauf && W.lauf.lebt && (W.lauf.vx || W.lauf.vy)) { const l = spur[spur.length - 1]; if (!l || Math.hypot(l[0] - W.lauf.x, l[1] - W.lauf.y) > 0.12) { spur.push([W.lauf.x, W.lauf.y]); if (spur.length > 60) spur.shift(); } }
+          for (const q of splitter) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z = Math.max(0, q.z + q.vz * dt); q.vz -= 6 * dt; } if (splitter.length) splitter = splitter.filter((q) => q.t < 0.6);
           cam = mixCam(cam, kameraZiel(W, phase === "wurf" ? "zielen" : phase, phase === "wurf" ? wurf.wer : dran), R.schnell ? 1 : 1 - Math.exp(-dt * 3.2));
           const karte = dran === 0 && (phase === "zielen" || phase === "wurf");
           kOben.set({ aktiv: oben, hidden: !karte });
@@ -2615,18 +2664,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         draw(c, t) {
           const zieht = phase === "zielen" && dran === 0 && zug && u > 0;
           const hilfe = zieht ? { ziel: true, winkel: winkelE(), weite: P.weite(tempo(), eis, sohle), nurSpur: stufe.hilfe < 2 } : null; if (hilfe && !hilfe.nurSpur) hilfe.kontakt = P.ersterKontakt(W, hilfe.winkel, hilfe.weite);
-          bahn(c, t, W, hilfe);
           // Schütze an der Abspielstelle mit dem Stock in der Hand: pendeln, ausholen, Ausfallschritt, aufsetzen, nachschwingen
           const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look;
           const zielP = wer === 1 ? pendelPose(t, weichP((tPh - 0.4) / 0.9) * 0.67) : pendelPose(t, zug ? u : 0), [lp, vor] = phase === "lauf" ? nachPose(tPh) : [null, 0];
           const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / WURF_SEK) : lp;
           const fk = sk(vor) * cam.mpx / 205;
-          if (phase !== "messen" && sichtbar(vor + 0.5) && fk < 2.4) { const fx = SX(vor, -0.3), fy = SY(vor) + 14 * fk, fs = 1.25 * fk;
+          bahn(c, t, W, hilfe, (c) => { if (phase !== "messen" && sichtbar(vor + 0.5) && fk < 2.4) { const fx = SX(vor, -0.3), fy = SY(vor) + 14 * fk, fs = 1.25 * fk;
             R.figur(c, { x: fx, y: fy, s: fs, pose: ps, look, kit: KIT, dir: 1 });
             if (phase === "zielen" || phase === "wurf") { const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / WURF_SEK - 0.7) / 0.3) : 0;
               let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
               if (k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so);
-              else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } }
+              else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } } });
           if ((aufg || zielM) && phase === "zielen" && !(zug && u > 0)) tafelMitte(c, R.W / 2, 50, 30, [[aufg ? AUFGABEN[aNr].text : P.ZW[zD()].text, 13]]);
           if (zug && phase === "zielen") {   // der Zug unter dem Finger und das Abgabetempo
             c.strokeStyle = "rgba(20,27,37,0.7)"; c.lineWidth = 3; c.beginPath(); c.moveTo(zug.x0, zug.y0); c.lineTo(zug.x, zug.y); c.stroke();
@@ -2663,7 +2711,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       ["Eis und Sohle", "Der Stock gleitet gerade und bremst gleichmäßig: doppeltes Tempo, vierfache Weite. Der Eisbericht sagt, wie das Eis läuft. Die Laufsohle wählst du selbst: Schwarz läuft weit, Blau bremst. Keine ist besser, du musst nur den Zug dazu finden."],
       ["Stöße", "Ein Treffer in die Mitte schiebt den anderen Stock geradeaus weg, dein Stock bleibt bald liegen. Seitlich getroffen laufen beide schräg auseinander. Die Daube ist leicht und rutscht mit: Fliegt sie aus dem Zielfeld, kommt sie zurück aufs Mittelkreuz."],
       ["Wertung", `Duell: ${KEHREN} Kehren mit je ${STOECKE} Stöcken. Es spielt immer, wer gerade nicht am nächsten liegt. Am Ende der Kehre gibt es 1 Punkt für jeden eigenen Stock, der näher an der Daube liegt als der beste fremde; gemessen wird von Rand zu Rand. Zielwettbewerb: vier Durchgänge mit je sechs Stöcken. Ringe zählen von innen 10, 8, 6, 4, 2. Durchgang 2: 10 Punkte, wenn der Zielstock aus den Ringen fliegt und deiner drin bleibt, 5, wenn beide draußen sind, 2 fürs Berühren. Durchgang 4: erst den Zielstock treffen, dann zählen die Ringe. Höchstens 240 Punkte.`]],
-    plakat(c, t) { cam = Object.assign({}, CAM_ZIEL); bahn(c, t, demoW); if (R) { const ps = pendelPose(t, 0), J = F.joints(ps), hd = J.aF[2], e = J.aF[1]; R.figur(c, { x: 360, y: 386, s: 1.25, pose: ps, look: R.myLook(), kit: KIT }); T.stockInHand(c, 360 + hd[0] * 1.25, 386 + hd[1] * 1.25, Math.atan2(hd[0] - e[0], hd[1] - e[1]), 1.19, FARBE[0], P.SOHLE.mittel.farbe); } },
+    plakat(c, t) { cam = Object.assign({}, CAM_ZIEL); abend = false; spur = []; splitter = []; bahn(c, t, demoW); if (R) { const ps = pendelPose(t, 0), J = F.joints(ps), hd = J.aF[2], e = J.aF[1]; R.figur(c, { x: 360, y: 386, s: 1.25, pose: ps, look: R.myLook(), kit: KIT }); T.stockInHand(c, 360 + hd[0] * 1.25, 386 + hd[1] * 1.25, Math.atan2(hd[0] - e[0], hd[1] - e[1]), 1.19, FARBE[0], P.SOHLE.mittel.farbe); } },
   });
 })();
 </script>
