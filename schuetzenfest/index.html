@@ -2112,7 +2112,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Schützenfest – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.SFPhys, F = window.CMFigur;
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", back: "rifle", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   const CX = 422, CY = 178, PX = 2.0;       // Mitte der Scheibe auf der Bühne, Bildpunkte je Einheit
@@ -2160,8 +2160,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const lage = () => o.lagen[Math.min(nr, o.n - 1)];
       const neuerSchuss = () => { st = P.neu({ lage: lage(), wind, puls: o.art === "klapp" ? Math.max(1, 2.1 - nr * 0.2) : o.abend ? 1.25 : 1, p: rnd() * 6, startX: (rnd() - 0.5) * 50 + (o.art === "klapp" ? (nr - 2) * 30 : 0), startY: (rnd() - 0.5) * 40 }); };
       neuerSchuss();
-      const stick = R.stick({ seite: "rechts", text: "Zielen", onMove: (dx, dy) => { if (!pause && nr < o.n && !laufT) P.ziele(st, dx, dy); } });
-      const kF = R.knopf({ seite: "links", text: "Feuer", symbol: "feuer", onDown: () => { if (!pause && nr < o.n && !laufT) P.halte(st, true); }, onUp: feuer });
+      const stick = R.stick({ seite: "rechts", text: "Zielen", onDown: () => { if (!pause && nr < o.n && !laufT) P.halte(st, true); }, onUp: () => feuer(), onMove: (dx, dy) => { if (!pause && nr < o.n && !laufT) P.ziele(st, dx, dy); } });
+      const kF = { set() {} };
       const mag = R.magazin(); mag.set({ shots, left: o.n });
       function feuer() {
         if (!st.halt || pause || nr >= o.n) return; P.halte(st, false);
@@ -2178,7 +2178,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         update(dt) {
           if (laufT) { laufT = Math.max(0, laufT - dt); R.sag("Eine Runde auf Ski … der Puls ist oben", 0.3); return; }
           if (pause) { pause = Math.max(0, pause - dt); return; }
-          if (nr < o.n) { P.schritt(st, dt); tLauf += dt; R.tipp("ziel", "Rechts zielen. Links halten = Luft anhalten, das Bild wird ruhig; loslassen = Schuss. Die Fahne zeigt den Wind.", 7); if (st.halt && st.haltT > 3) R.tipp("lang", "Zu lange gehalten: Es beginnt zu zittern. Absetzen und neu atmen.", 3); }
+          if (nr < o.n) { P.schritt(st, dt); tLauf += dt; R.tipp("ziel", "Ziehen = zielen, dabei wird das Bild ruhig. Loslassen = Schuss.", 5); if (st.halt && st.haltT > 3) R.tipp("lang", "Zu lange gehalten: Es beginnt zu zittern. Absetzen und neu atmen.", 3); }
           kF.set({ fill: st.halt ? Math.min(1, st.haltT / 3) : 0, ok: st.halt && st.haltT < 3, aktiv: st.halt });
           const sum = o.art === "ring" ? erg.reduce((s, v) => s + v, 0) : 0;
           R.chips([[o.titel, "dark"], [`Schuss ${Math.min(o.n, nr + 1)}/${o.n}`], [lage() === "liegend" ? "Liegend" : "Stehend"], ...(o.art === "ring" ? [[`${o.zehntel ? R.zahl(sum) : sum} Ringe`, "gold"]] : o.art === "klapp" ? [[`${erg.filter(Boolean).length} Treffer`, "gold"], [R.zeit(tLauf, 1)]] : []), ...(st.puls > 1.15 ? [[`Puls ${Math.round(70 + (st.puls - 1) * 90)}`, "warn"]] : [])]);
@@ -2214,7 +2214,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       { id: "fest", name: "Schützenfest", sub: (R) => (R.S.best.koenig ? `${R.S.best.koenig}× Königstitel` : "Scheibe, Biathlon, Festscheibe, Königsfinale"), start: () => fest(false) },
       { id: "train", name: "Training", sub: () => "Fünf Schuss auf die Ringscheibe", ohneName: true, start: () => fest(true) },
     ],
-    info: [["So geht’s", "Rechts der Stick: zielen. Das Zielbild schwankt mit dem Atem. Links „Feuer“ halten heißt Luft anhalten, das Bild wird ruhig; loslassen ist der Schuss. Wer länger als drei Sekunden hält, beginnt zu zittern. Wer beim Schuss noch zieht, verreißt. Die Fahne zeigt den Wind: Er versetzt den Schuss."],
+    info: [["So geht’s", "Ein Stick: ziehen heißt zielen, und solange der Daumen drauf ist, hältst du die Luft an und das Bild wird ruhig. Loslassen ist der Schuss. Wer länger als drei Sekunden hält, beginnt zu zittern. Die Fahne zeigt den Wind: Er versetzt den Schuss."],
       ["Das Fest", "Scheibenschießen: zehn Schuss, fünf liegend und fünf stehend, die Ringe zählen; ab 85 gibt es das Abzeichen. Biathlon-Durchgang: nach einer Runde auf Ski ist der Puls oben, dann fünf Klappscheiben; je Treffer 8 Punkte, dazu bis zu 10 für die Zeit. Festscheibe: ein Schuss, wer dem Zentrum am nächsten kommt, gewinnt die bemalte Scheibe."],
       ["Königsfinale", "Die besten sechs des Tages schießen am Abend fünf Schuss stehend, auf Zehntel gewertet. Wer gewinnt, wird Schützenkönigin oder Schützenkönig."],
       ["Noch nicht drin", "Feldschießen im Schnee, Diopter oder offene Visierung als Wahl, Gruppen."]],

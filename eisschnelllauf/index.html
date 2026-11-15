@@ -2148,7 +2148,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisschnelllauf – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.SLPhys, F = window.CMFigur;
   const KIT = { head: "cap", feet: "skates", torso: "plain", glove: true };
   // Posen: tiefe Hocke, Arme auf dem Rücken; Abstoß mit dem Spielbein nach hinten außen; im Sprint Armschwung
@@ -2207,7 +2207,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const I = P.neu(dist), O = training ? null : P.neu(dist, { kraft: 0.86 + 0.14 * geg.st });
     let phase = "bereit", tPh = 0, schussT = 1.3 + 1.0 * rnd() + 0.9, fehlstart = 0, cam = 0, zielT = 0, vorfahrt = false, botR = P.rng(seed ^ 77);
     const kR = R.knopf({ seite: "rechts", text: "Schub", symbol: "lauf", onDown: tipp });
-    const kL = R.knopf({ seite: "links", text: "Kurve", symbol: "links", onDown: () => P.halten(I, true), onUp: () => P.halten(I, false) });
+    const kL = { set() {} };
     function tipp() {
       if (phase === "bereit") {
         if (tPh < schussT) { fehlstart++; R.ton.schlecht(); if (fehlstart > 1) return aus("Zweiter Fehlstart"); R.sag("Fehlstart! Verwarnung", 1.6, true); tPh = 0; schussT = 1.3 + rnd() + 0.9; return; }
@@ -2233,9 +2233,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       taste(k, an) { if (k === "rechts" && an) tipp(); if (k === "links") P.halten(I, an); },
       bot() { if (phase === "bereit" && tPh > schussT + 0.2) tipp(); if (phase === "lauf") { P.halten(I, P.botHalt(I, 0.9)); if (!vorfahrt && P.botTipp(I, 0.85, botR)) tipp(); else if (vorfahrt) I.botZiel = null; } },
       update(dt) {
-        tPh += dt;
+        tPh += dt; if (phase === "lauf") P.halten(I, P.botHalt(I, 0.9));
         if (phase === "bereit") { if (tPh > schussT && !I._schuss) { I._schuss = true; R.ton.schuss(); } if (tPh < schussT) I._schuss = false;
-          R.tipp("start", "Nach dem Schuss rechts tippen. Dann im Takt: tippen, wenn sich der Ring schließt.", 6);
+          R.tipp("start", "Nach dem Schuss tippen. Dann im Takt: immer wenn sich der Ring schließt.", 5);
         }
         if (O && !O.los && (phase === "bereit" || phase === "lauf") && tPh > schussT + 0.18 + 0.2 * (1 - geg.st)) { P.start(O, 0.2); O.t0 = O.t - 0.2; }
         P.schritt(I, dt);
@@ -2246,7 +2246,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         if (phase === "lauf") {
           const bisKurve = P.inKurve(I.s) ? -1 : (P.SEK - (I.s % P.SEK)) / Math.max(1, I.v), naechste = P.abschnitt(I.s) + 1;
           kL.set({ puls: bisKurve >= 0 && bisKurve < 0.9 && naechste * P.SEK < dist && !I.halt, aktiv: I.halt });
-          if (bisKurve >= 0 && bisKurve < 1.4 && naechste * P.SEK < dist) R.tipp("kurve", "Kurve: links halten, am Ausgang loslassen.", 4);
+          
           if (I.fertig) { phase = "ziel"; tPh = 0; R.ton.glocke(); R.sag(R.zeit(I.zeit), 2.4); }
         }
         kR.set({ zu: I.los ? Math.min(1, I.phi) : phase === "bereit" && tPh > schussT ? 1 : null, ok: I.los && Math.abs(I.phi - 1) < P.FENSTER * 0.6, puls: phase === "bereit" && tPh > schussT });
@@ -2280,7 +2280,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       { id: "s1500", name: "1500 m", sub: (R) => (R.S.best.z1500 ? "Bestzeit " + R.zeit(R.S.best.z1500) : "Kraft einteilen, 3¾ Runden"), start: () => lauf(1500) },
       { id: "train", name: "Training", sub: () => "500 m allein, ohne Wertung", ohneName: true, start: () => lauf(500, true) },
     ],
-    info: [["So geht’s", "Rechts „Schub“: tippen, wenn sich der goldene Ring schließt. Hämmern bringt nichts, daneben getippt kostet Kraft. Links „Kurve“: am Kurveneingang halten (du übersetzt), am Ausgang loslassen. Ohne Halten trägt es dich hinaus."],
+    info: [["So geht’s", "Ein Knopf: tippen, wenn sich der goldene Ring schließt. Hämmern bringt nichts, daneben getippt kostet Kraft. Die Kurven läuft deine Figur von selbst."],
       ["Start", "Auf „Fertig“ folgt nach ein bis anderthalb Sekunden der Schuss. Wer vorher tippt, wird verwarnt, beim zweiten Mal disqualifiziert."],
       ["Bahnwechsel", "Auf der Gegengeraden wechselt ihr von selbst die Bahn. Wird es eng, hat Vorfahrt, wer von außen nach innen läuft; zeigt die Tafel „Vorfahrt“, einen Schub aussetzen."],
       ["Kraft", "Jeder Schub bringt Säure in die Beine, sie geht nur langsam weg. Über 1500 m gewinnt, wer ab und zu einen Schub auslässt."]],

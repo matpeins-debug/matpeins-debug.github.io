@@ -2145,7 +2145,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Skibergsteigen – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.SMPhys, F = window.CMFigur, K = P.K;
   const KIT = { head: "helmet", feet: "xcSki", torso: "bib", hands: "poles", glove: true }, KIT_FUSS = { head: "helmet", feet: "skiBoots", torso: "bib", glove: true };
   const POSE = {
@@ -2191,8 +2191,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const rnd = P.rng(seed + runde * 31), name = LAEUFE[runde];
       const alle = [Object.assign(P.laeufer({ bahn: 2 }), { ich: true, look: R.myLook(), name: R.myName(), nat: R.myNat(), staerke: 0.85 })].concat(gegner.map((g, i) => Object.assign(P.laeufer({ bahn: [0, 1, 3, 4, 5][i], kraft: 0.9 + 0.12 * g.st }), { look: g.look, name: g.name, nat: g.nat, staerke: g.st, g })));
       const ich = alle[0], cam = { s: 0, h: 0 }; let tPh = 0, los = false, tEnd = 0, wy = null;
-      const kR = R.knopf({ seite: "rechts", text: "Schritt", symbol: "lauf", onDown: () => { if (!los) return; const q = P.tipp(ich); if (ich.phase === "wechsel") { q ? R.ton.klack() : (R.ton.schlecht(), R.sag("Erst die Felle ab!", 1, true)); } else if (ich.phase === "auf") { q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.schlecht(); } } });
-      const kL = R.knopf({ seite: "links", text: "Kehre", symbol: "links", onDown: () => { if (ich.phase === "wechsel") { if (P.wisch(ich)) R.ton.schnee(); } else P.halten(ich, true); }, onUp: () => { const vor = ich.kehre; P.halten(ich, false); if (ich.kehre > vor) R.ton.gut(); } });
+      const kR = R.knopf({ seite: "rechts", text: "Schritt", symbol: "lauf", onDown: () => { if (!los) return; if (ich.phase === "wechsel" && ich.felle > 0) { if (P.wisch(ich)) R.ton.schnee(); return; } const q = P.tipp(ich); if (ich.phase === "wechsel") { q ? R.ton.klack() : (R.ton.schlecht(), R.sag("Erst die Felle ab!", 1, true)); } else if (ich.phase === "auf") { q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.schlecht(); } } });
+      const kL = { set() {} };
       function ende() {
         const rg = P.rang(alle), platz = rg.indexOf(ich) + 1, zeilen = rg.map((f) => ({ name: f.name, nat: f.nat, wert: R.zeit(f.zeit), ich: f.ich })); if (zeilen[2]) zeilen[2].strich = runde < 2;
         const hinweis = `Schritte im Takt: ${ich.treffer} von ${ich.schritte} · Wechsel ${R.zahl(ich.wechselT)} s.`;
@@ -2207,13 +2207,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         bot() { if (los) P.bot(ich, 0.85, rnd); },
         update(dt) {
           tPh += dt; if (!los && tPh > 1.6) { los = true; alle.forEach((f) => { f.los = true; f.phi = 1; }); R.ton.schuss(); }
+          if (los && ich.phase === "auf") { const k = P.K.kehren[ich.kehre]; if (k != null && P.teil(ich.s) === "diamant") { if (!ich.halt && k - ich.s < 4 && k - ich.s > 1) P.halten(ich, true); else if (ich.halt && ich.t - ich.haltSeit > 0.2 && ich.s >= k - 0.3) P.halten(ich, false); } else if (ich.halt) ich.halt = false; }   // Kehre und Hocke macht die Figur selbst
+          else if (los && ich.phase !== "wechsel") { const kn = P.K.kanten[ich.kante]; ich.halt = !(kn != null && kn - ich.s < ich.v * 0.4); }
           for (const f of alle) { if (!f.ich && los) P.bot(f, f.staerke, rnd); P.schritt(f, dt, alle); }
           const tl = ich.phase === "auf" ? P.teil(ich.s) : ich.phase;
-          if (!los) R.tipp("start", "Nach dem Schuss rechts im Takt tippen: jeder Treffer ist ein Schritt bergauf.", 5);
-          else if (tl === "diamant") R.tipp("diamant", "Spitzkehre: links halten und am Fähnchen loslassen. Überholen geht hier nicht.", 5);
+          if (!los) R.tipp("start", "Nach dem Schuss im Takt tippen: jeder Treffer ist ein Schritt bergauf.", 5);
+          
           else if (tl === "treppe") R.tipp("treppe", "Treppe: Ski auf dem Rucksack, der Takt wird schneller.", 4);
-          else if (tl === "wechsel") R.tipp("wechsel", "Wechsel: links zweimal tippen (oder nach oben wischen) = Felle ab, dann rechts = Schuh auf Abfahrt.", 6);
-          else if (tl === "ab") R.tipp("ab", "Abfahrt: links halten = Hocke. Vor der roten Kante kurz loslassen.", 5);
+          else if (tl === "wechsel") R.tipp("wechsel", "Wechsel: schnell tippen, bis die Felle ab und die Schuhe zu sind.", 5);
+          else if (tl === "ab") R.tipp("ab", "Abfahrt: Die fährt sich von selbst. Durchatmen.", 4);
           const k = K.kehren[ich.kehre], kn = K.kanten[ich.kante];
           kR.set({ hidden: ich.phase === "ab" || ich.fertig, text: ich.phase === "wechsel" ? "Schuh" : "Schritt", zu: ich.phase === "auf" && los ? Math.min(1, ich.phi) : null, ok: Math.abs(ich.phi - 1) < 0.18, puls: ich.phase === "wechsel" && ich.felle <= 0 && !ich.schuh });
           kL.set({ hidden: ich.fertig || (ich.phase === "auf" && tl !== "diamant"), text: ich.phase === "wechsel" ? "Fell ab" : ich.phase === "ab" ? "Hocke" : "Kehre", symbol: ich.phase === "ab" ? "hocke" : "links",
@@ -2234,7 +2236,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     id: "skibergsteigen", name: "Skibergsteigen", titel: ["Ski", "bergsteigen"], band: "Chamonix · Frankreich", version: VERSION, kit: KIT,
     satz: "Bergauf auf Fellen und zu Fuß, oben die Felle ab, dann bergab ins Ziel.",
     modi: [{ id: "sprint", name: "Sprint", sub: (R) => (R.S.best.zeit ? "Bestzeit " + R.zeit(R.S.best.zeit) : "Vorlauf, Halbfinale, Finale zu sechst"), start: sprint }],
-    info: [["So geht’s", "Rechts „Schritt“: tippen, wenn sich der Ring schließt; das Tempo wächst nur mit Treffern. Im Diamant links „Kehre“ halten und am Fähnchen loslassen. Auf der Treppe wird der Takt schneller. Oben beim Wechsel links zweimal tippen (Felle ab), dann rechts (Schuh auf Abfahrt). In der Abfahrt links halten heißt Hocke; vor der roten Kante kurz loslassen, sonst hebt es dich aus."],
+    info: [["So geht’s", "Ein Knopf: tippen, wenn sich der Ring schließt; das Tempo wächst nur mit Treffern. Auf der Treppe wird der Takt schneller. Oben beim Wechsel schnell tippen, bis Felle und Schuhe fertig sind. Kehren und Abfahrt macht deine Figur selbst."],
       ["Kraft", "Steile Stücke bringen Säure in die Beine. Wer immer drückt, hat oben nichts mehr; ab und zu einen Schritt gleiten lassen."],
       ["Wertung", "Sechs starten zugleich, die ersten drei kommen weiter: Vorlauf, Halbfinale, Finale. Im Diamant geht es nur hintereinander; wer zuerst hineinkommt, bestimmt das Tempo."],
       ["Noch nicht drin", "Mixed-Staffel, Etappenrennen, Vertical und die Patrouille 1924 kommen später."]],

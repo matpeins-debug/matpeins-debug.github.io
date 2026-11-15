@@ -2127,7 +2127,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Penaltyschießen – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.EHPhys, F = window.CMFigur;
   const KIT = { head: "helmet", feet: "skates", torso: "bib", glove: true };
   const POSE = { a: { lean: 34, crouch: 0, sL: [40, 60], fL: [-30, 20], aF: [50, 30], aB: [40, 26], hd: -14 }, b: { lean: 34, crouch: 0, sL: [-20, 16], fL: [44, 64], aF: [54, 34], aB: [44, 30], hd: -14 }, schuss: { lean: 46, crouch: 0, sL: [50, 60], fL: [-36, 10], aF: [80, 10], aB: [70, 14], hd: -16 } };
@@ -2168,15 +2168,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     function weiter() { if (fertig()) return ende(); if (verlauf[0].length > verlauf[1].length) halten(); else { runde = verlauf[0].length + 1; schiessen(); } }
     function schiessen() {
       const a = P.anlauf(st); let tEnd = 0, puck = null, fing = false;
-      const kR = R.knopf({ seite: "rechts", text: "Anlauf", symbol: "lauf", onDown: () => { if (!a.schuss && !a.aus) { const q = P.schritt(a); q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.schlecht(); } } });
+      const kR = { set() {} };
       const stick = R.stick({ seite: "links", text: "Zielen", onDown: () => { fing = true; }, onMove: (dx, dy) => { if (!a.schuss) P.ziele(a, dx, dy); }, onUp: () => { fing = false; schuss(); } });
       function schuss() { const s = P.schiesse(a, rnd); if (!s) return; R.ton.klack(); R.ton.wusch(); puck = 0; R.tippWeg(); }
       R.szene({
         taste(k, an) { if (k === "rechts" && an) P.schritt(a); if (k === "links" && !an) schuss(); },
         bot() { if (!a.schuss && !a.aus) { if (P.botSchuetze(a, rnd)) { R.ton.klack(); puck = 0; } } },
         update(dt) {
-          P.lauf(a, dt);
-          if (!a.schuss && !a.aus) { R.tipp("schuss", "Rechts im Takt anlaufen. Links zielen und antäuschen: der Torhüter geht mit. Loslassen = Schuss (ab der Schusslinie).", 7); if (a.d < P.SCHUSS_AB && a.d > 6) R.tipp("finte", "Erst eine Seite zeigen, dann schnell in die andere Ecke ziehen und loslassen.", 4); }
+          if (!a.schuss && !a.aus && a.phi >= 1) P.schritt(a); P.lauf(a, dt);
+          if (!a.schuss && !a.aus) { R.tipp("schuss", "Ziehen = zielen, der Torhüter geht mit. Loslassen = Schuss.", 5);  }
           kR.set({ zu: !a.schuss && !a.aus ? Math.min(1, a.phi) : null, ok: Math.abs(a.phi - 1) < 0.18, hidden: !!a.schuss });
           if (a.schuss && puck != null) { puck = Math.min(1, puck + dt / Math.max(0.16, a.schuss.T)); if (puck >= 1 && !tEnd) { tEnd = 0.01; const e = a.schuss.erg, tor = e === "tor"; if (tor) tore[0]++; verlauf[0].push(tor); tor ? (R.ton.jubel(), R.sag("Tor!", 1.8)) : (e === "pfosten" ? R.ton.glocke() : R.ton.raunen(), R.sag(e === "pfosten" ? "Pfosten!" : e === "gehalten" ? "Gehalten!" : "Vorbei", 1.8, true)); } }
           if (a.aus && !tEnd) { tEnd = 0.01; verlauf[0].push(false); R.sag("Zu nah: der Torhüter stochert den Puck weg", 1.8, true); R.ton.schlecht(); }
@@ -2199,14 +2199,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     }
     function halten() {
       const g = P.gegner(st, rnd), look = R.aussehen(seed + runde * 9); let t0 = 0, p = null, erg = null, tEnd = 0, wischen = null, bleib = false;
-      const kL = R.knopf({ seite: "links", text: "Stehen", symbol: "hocke", onDown: () => { bleib = true; }, onUp: () => { bleib = false; } });
+      const kL = null;
       function springe(ecke) { if (p || erg) return; p = { ecke, t: t0 }; R.ton.wusch(); }
       R.szene({
         onDown(x, y) { wischen = [x, y]; }, onUp(x, y) { if (!wischen) return; const dx = x - wischen[0], dy = y - wischen[1]; wischen = null; if (Math.hypot(dx, dy) > 28) springe((dx < 0 ? "l" : "r") + (dy < -18 ? "o" : "u")); },
         taste(k, an) { if (an) springe(k === "links" ? "lu" : "ru"); },
         bot() { if (!p && t0 > g.tSchuss + 0.08) springe(rnd() < 0.5 ? g.ecke === "mitte" ? "lu" : g.ecke : P.ECKEN[Math.floor(rnd() * 4)]); },
         update(dt) {
-          t0 += dt; R.tipp("halten", "Du bist im Tor: Lies die Finte. Im Moment des Schusses in die Ecke wischen (hoch oder flach). Wer zu früh geht, bekommt ihn in die andere.", 7);
+          t0 += dt; R.tipp("halten", "Du bist im Tor: Wische beim Schuss in die Ecke.", 5);
           if (!erg && t0 > g.tSchuss + g.T) { erg = P.parade(g, p, rnd); tEnd = 0.01; const tor = erg.erg === "tor"; if (tor) tore[1]++; verlauf[1].push(tor); tor ? (R.ton.raunen(), R.sag(erg.grund ? `Tor (${erg.grund})` : "Tor für " + geg[1], 1.8, true)) : (R.ton.jubel(), R.sag("Gehalten!", 1.8)); }
           if (tEnd) { tEnd += dt; if (tEnd > 2.2) weiter(); }
           R.chips(kopf().concat([["Du hältst", "warn"]]));
@@ -2240,7 +2240,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     id: "penaltyschiessen", name: "Penaltyschießen", titel: ["Penalty", "schießen"], band: "Toronto · Kanada", version: VERSION, kit: KIT,
     satz: "Eins gegen eins auf dem Eis: antäuschen, schießen. Dann selbst ins Tor.",
     modi: [{ id: "spiel", name: "Länderspiel", sub: (R) => (R.S.medals[0] ? `${R.S.medals[0]} Siege` : "Fünf Schüsse, fünf Paraden, dann Sudden Death"), start: spiel }],
-    info: [["Schießen", "Rechts „Anlauf“ im Takt tippen. Links der Stick: Das Fadenkreuz zeigt deine Ecke, und der Torhüter liest mit. Zeig ihm eine Seite, zieh schnell in die andere und lass los: Das ist der Schuss (ab der Schusslinie). Flach zielen lockt ihn in die Knie, dann ist oben frei. Wer zu nah herankommt, verliert den Puck."],
+    info: [["Schießen", "Der Anlauf läuft von selbst. Mit dem Stick zielen: Das Fadenkreuz zeigt deine Ecke, und der Torhüter liest mit. Zeig ihm eine Seite, zieh schnell in die andere und lass los: Das ist der Schuss. Wer zu nah herankommt, verliert den Puck."],
       ["Halten", "Dann wechselst du die Seite: Der Gegner läuft an und täuscht. Wische im Moment des Schusses in die Ecke, nach oben für hohe Schüsse. Wer zu früh geht, bekommt den Puck in die andere Ecke. Manchmal kommt er durch die Mitte: stehen bleiben."],
       ["Wertung", "Wie bei Olympia: abwechselnd fünf Schüsse je Team, steht es dann gleich, geht es mit einzelnen Schüssen weiter, bis einer vorn liegt."],
       ["Noch nicht drin", "Länderturnier, Penalty 1934, Duell per Link, die Bahn in Ottawa."]],

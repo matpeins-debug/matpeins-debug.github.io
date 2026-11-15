@@ -2161,7 +2161,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Big Air – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.BAPhys, F = window.CMFigur;
   const KIT = { head: "helmet", feet: "xcSki", torso: "plain", glove: true };
   const POSE = {
@@ -2234,6 +2234,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     feld.forEach((f) => { f.spr = [0, 1, 2].map((i) => { const k = P.ki(f.st, rnd, i + f.id); return { trick: k.trick, wert: R.richter(k.basis, rnd).wert }; }); });
     const meine = [], RUNDEN = 3; let letzter = { richtung: "links", achse: "flach", griff: "spitze" };
     function karte() {
+      if (!training || meine.length) { const w = Object.assign({}, letzter, { richtung: meine.length % 2 ? "rechts" : "links" }); letzter = w; return sprung(w); }   // Trickkarte nur noch zu Beginn der Trickschule
       R.wahl({ kicker: training ? `Trickschule · Sprung ${meine.length + 1}` : `Finale · Sprung ${meine.length + 1} von ${RUNDEN}`, titel: "Trickkarte", knopf: "Zum Start",
         gruppen: [{ id: "richtung", label: "Richtung", list: [["links", "Links herum"], ["rechts", "Rechts herum"]], wert: meine.length === 1 ? (letzter.richtung === "links" ? "rechts" : "links") : letzter.richtung },
           { id: "achse", label: "Achse", list: [["flach", "Flach"], ["schraeg", "Schräg"], ["salto", "Salto"]], wert: letzter.achse },
@@ -2245,16 +2246,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     }
     function sprung(trick) {
       const st = P.neu(trick, { wind }), cam = { x: 14, y: 26 }; let wert = null, tEnd = 0, hielt = false;
-      const kR = R.knopf({ seite: "rechts", text: "Anschieben", symbol: "stock", onDown: () => { if (st.phase === "anfahrt") { const q = P.schub(st); if (st.schuebe.length <= P.SCHUEBE) { q > 0.7 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.schlecht(); } } else P.griff(st, true); }, onUp: () => P.griff(st, false) });
+      const kR = { set() {} };
       const kL = R.knopf({ seite: "links", text: "Absprung", symbol: "hocke", onDown: () => { hielt = true; if (st.phase === "anfahrt") { const p = P.absprung(st); if (p != null) { R.ton.wusch(); R.sag(p > 0.75 ? "Voll getroffen!" : p > 0.3 ? "Guter Absprung" : "Zu früh", 1, p <= 0.3); } } }, onUp: () => { hielt = false; P.halte(st, false); } });
       R.szene({
         taste(k, an) { if (k === "rechts") { if (an) { if (st.phase === "anfahrt") P.schub(st); else P.griff(st, true); } else P.griff(st, false); } if (k === "links") { if (an) { hielt = true; if (st.phase === "anfahrt") P.absprung(st); } else { hielt = false; P.halte(st, false); } } },
         bot() { if (st.phase === "anfahrt") { if (st.schuebe.length < P.SCHUEBE && st.phi >= 1) P.schub(st); if (st.absp == null && P.LIP.x * (1 - st.u) < 1.2) { hielt = true; P.absprung(st); } } else if (st.phase === "flug") { if (st.dreht && st.rot >= (meine.length === 2 ? 530 : 710)) { hielt = false; P.halte(st, false); } P.griff(st, st.tFlug > 0.25 && st.tFlug < 1.3 && !st.offen); } },
         update(dt) {
+          if (st.phase === "anfahrt" && st.schuebe.length < P.SCHUEBE && st.phi >= 1) P.schub(st); if (st.phase === "flug") P.griff(st, st.tFlug > 0.25 && st.tFlug < 1.3 && !st.offen);   // Anschieben und Griff von selbst
           const vor = st.phase; P.schritt(st, dt);
-          if (st.phase === "anfahrt") { if (st.schuebe.length < P.SCHUEBE) R.tipp("anfahrt", "Rechts dreimal im Takt anschieben. An der roten Kante links drücken und halten.", 6);
+          if (st.phase === "anfahrt") { if (st.schuebe.length < P.SCHUEBE) R.tipp("anfahrt", "An der roten Kante drücken und halten: Absprung.", 5);
             if (st.absp != null && !hielt) st.dreht = false; }
-          if (vor === "anfahrt" && st.phase === "flug") { kR.set({ text: "Griff", symbol: "wurf", zu: null }); kL.set({ text: "Öffnen", zu: null }); if (!hielt) st.dreht = false; R.tipp("flug", "Links halten = drehen, loslassen = aufmachen. Rechts halten = Griff.", 5); }
+          if (vor === "anfahrt" && st.phase === "flug") { kR.set({ text: "Griff", symbol: "wurf", zu: null }); kL.set({ text: "Öffnen", zu: null }); if (!hielt) st.dreht = false; R.tipp("flug", "Halten = drehen. Loslassen = aufmachen und landen.", 5); }
           if (vor === "flug" && st.phase === "aus") { const L = st.land; wert = R.richter(P.wertung(st), rnd); tEnd = 0; R.tippWeg();
             if (L.sturz) { R.ton.schlecht(); R.ton.raunen(); R.sag("Sturz!", 1.6, true); } else if (L.art === "hand") { R.ton.knapp(); R.sag("Hand im Schnee", 1.6); } else { R.ton.gut(); R.ton.jubel(); R.sag("Stomp!", 1.6); }
             meine.push({ trick, wert: wert.wert, rot: L.rot, art: L.art }); }
@@ -2292,7 +2294,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       { id: "finale", name: "Finale", sub: (R) => (R.S.best.finale ? "Bestwertung " + R.zahl(R.S.best.finale) : "Drei Sprünge, zwei Tricks zählen"), start: () => wettkampf(false) },
       { id: "train", name: "Trickschule", sub: () => "Drei Sprünge zum Üben, ohne Wertung", ohneName: true, start: () => wettkampf(true) },
     ],
-    info: [["So geht’s", "Vor dem Sprung wählst du auf der Trickkarte Richtung, Achse und Griff. Rechts dreimal im Takt anschieben (goldener Ring). An der roten Kante links drücken: gutes Timing gibt Höhe. Links halten heißt drehen, loslassen heißt aufmachen; die Anzeige zählt die Drehung. Rechts halten heißt greifen, vor der Landung loslassen."],
+    info: [["So geht’s", "Ein Knopf: Angeschoben wird von selbst. An der roten Kante drücken, gutes Timing gibt Höhe. Halten heißt drehen, loslassen heißt aufmachen. Den Griff setzt die Figur selbst. In der Trickschule wählst du vor dem ersten Sprung Achse und Griff."],
       ["Landung", "Aufmachen, wenn der Zeiger im grünen Feld steht. Genau heißt sauber, knapp heißt Hand im Schnee, daneben heißt Sturz. Wer gar nicht dreht, springt gerade; das steht jeder."],
       ["Wertung", "Sechs Punktrichter geben 0 bis 100 Punkte, die höchste und die niedrigste Wertung fallen weg. Es zählen Schwierigkeit, Ausführung, Höhe und Griff. Im Finale zählen die zwei besten Sprünge, aber nur aus zwei verschiedenen Tricks (andere Richtung oder andere Achse)."]],
     plakat(c, t) { const cam = { x: 46, y: 9 }; demo.rot = (t * 160) % 720; demo.x = 50; demo.y = 15 + Math.sin(t * 1.3) * 1.2; anlage(c, t, cam); figur(c, demo, cam, R ? R.myLook() : undefined, t); },

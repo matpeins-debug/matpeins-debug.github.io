@@ -2124,7 +2124,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // 0.1 ist ein eigenständiger Vorgeschmack: Sprung und Lauf sind hier vereinfacht. Das Ziel laut Konzept bleibt die Reihe aus Skispringen und Biathlon-Loipe.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.NKPhys, F = window.CMFigur;
   const KIT_S = { head: "helmet", feet: "xcSki", torso: "bib", glove: true }, KIT_L = { head: "cap", feet: "xcSki", torso: "bib", hands: "poles", glove: true };
   const POSE = { hocke: { lean: 62, crouch: 0.9, sL: [70, 100], fL: [60, 100], aF: [-150, 10], aB: [-150, 10], hd: -30 }, flug: { lean: 80, crouch: 0, sL: [-52, 0], fL: [-58, 0], aF: [-160, 6], aB: [-164, 6], hd: -40 }, tele: { lean: 12, crouch: 0.4, sL: [44, 40], fL: [-34, 50], aF: [-80, 10], aB: [80, 10], hd: 0 }, steh: { lean: 10, crouch: 0.5, sL: [30, 50], fL: [20, 50], aF: [-40, 30], aB: [-30, 30], hd: 0 },
@@ -2151,25 +2151,24 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     function springen() {
       const s = P.sprung(wind); let steuer = 0, tEnd = 0, pkt = null;
       const kR = R.knopf({ seite: "rechts", text: "Absprung", symbol: "hocke", onDown: () => { if (s.phase === "anlauf") { P.absprung(s); R.ton.klack(); } else if (s.phase === "flug") P.landen(s); } });
-      R.stick({ seite: "links", text: "Haltung", onMove: (dx) => { steuer = P.clamp(dx, -1, 1); }, onUp: () => { steuer = 0; } });
-      R.szene({
+            R.szene({
         taste(k, an) { if (k === "rechts" && an) { if (s.phase === "anlauf") P.absprung(s); else P.landen(s); } if (k === "links") steuer = an ? -1 : 0; },
         bot() { if (s.phase === "anlauf" && s.u >= P.TISCH - 0.01) P.absprung(s); if (s.phase === "flug") { steuer = P.clamp(-s.b * 4, -1, 1); if (s.t > s.T - 0.2) P.landen(s); } },
         update(dt) {
-          const e = P.fliege(s, dt, steuer, rnd);
-          if (s.phase === "anlauf") { R.tipp("ab", "Rechts „Absprung“ genau an der Tischkante drücken, wenn der Ring sich schließt.", 5); kR.set({ zu: s.qA == null ? P.clamp((s.u - 0.3) / (P.TISCH - 0.3), 0, 1) : null, ok: Math.abs(s.u - P.TISCH) < P.FENSTER * 0.5 }); }
-          if (e === "ab") { R.ton.wusch(); kR.set({ text: "Landen", zu: null }); R.tipp("flug", "Links den Stick: Halte die Ski ruhig, der Zeiger soll in der Mitte bleiben. Kurz vor dem Aufsetzen rechts „Landen“ für den Telemark.", 6); }
+          steuer = P.clamp(-s.b * 3, -1, 1); const e = P.fliege(s, dt, steuer, rnd);
+          if (s.phase === "anlauf") { R.tipp("ab", "An der Tischkante drücken, wenn der Ring sich schließt.", 5); kR.set({ zu: s.qA == null ? P.clamp((s.u - 0.3) / (P.TISCH - 0.3), 0, 1) : null, ok: Math.abs(s.u - P.TISCH) < P.FENSTER * 0.5 }); }
+          if (e === "ab") { R.ton.wusch(); kR.set({ text: "Landen", zu: null }); R.tipp("flug", "Kurz vor dem Aufsetzen noch einmal drücken: Telemark.", 5); }
           if (s.phase === "flug") kR.set({ zu: P.clamp(s.t / s.T, 0, 1), ok: s.t > s.T - P.TELEMARK });
           if (s.phase === "aus" && !pkt) { pkt = P.punkte(s, rnd); tEnd = 0.01; R.tippWeg(); R.ton.schnee(); s.weite >= P.K ? R.ton.jubel() : R.ton.glocke(); R.sag(`${R.zahl(s.weite)} m${s.tele ? " · Telemark" : ""}`, 2); }
           if (tEnd) { tEnd += dt; if (tEnd > 2.8) { ich = { name: R.myName(), nat: R.myNat(), ich: true, weite: s.weite, punkte: pkt.wert }; nachSprung(); } }
-          R.chips([["Sprung · Lahti", "dark"], [`Wind ${wind > 0 ? "+" : ""}${R.zahl(wind)} m/s`, wind >= 0 ? "good" : "warn"], s.phase === "flug" ? [Math.abs(s.b) < 0.28 ? "Ruhig" : "Unruhig", Math.abs(s.b) < 0.28 ? "good" : "warn"] : ["K 116"]]);
+          R.chips([["Sprung · Lahti", "dark"], [`Wind ${wind > 0 ? "+" : ""}${R.zahl(wind)} m/s`, wind >= 0 ? "good" : "warn"], ["K 116"]]);
         },
         draw(c, t) {
           schanze(c, t); let x, y, pose, w = 0;
           if (s.phase === "anlauf") { const u = s.u, q = 1 - u; x = q * q * 52 + 2 * q * u * 186 + u * u * TX; y = q * q * 44 + 2 * q * u * 150 + u * u * TY; pose = POSE.hocke; w = 0.5 * (1 - u); }
           else { const ziel = s.phase === "aus" ? s.weite : 84 + 24 * s.qA + 22 * (s.t > 0 ? s.ruhig / s.t : 1), k = s.phase === "aus" ? 1 : s.t / s.T, zx = wx(ziel); x = TX + (zx - TX) * k; y = TY + (hang(zx) - TY) * k * k - Math.sin(k * Math.PI) * 54; pose = s.phase === "aus" ? (s.tele ? POSE.tele : POSE.steh) : POSE.flug; w = s.phase === "aus" ? 0.35 : s.b * 0.5 + 0.1; }
           c.save(); c.translate(x, y); c.rotate(w); R.figur(c, { x: 0, y: 0, s: 0.62, pose, look: R.myLook(), kit: KIT_S }); c.restore();
-          if (s.phase === "flug") { const bx = R.W / 2; c.fillStyle = "rgba(20,27,37,0.6)"; c.fillRect(bx - 110, 64, 220, 12); c.fillStyle = "#3F6B55"; c.fillRect(bx - 31, 64, 62, 12); c.fillStyle = "#F1E7D2"; c.fillRect(bx + s.b * 110 - 3, 58, 6, 24); R.text(c, "HALTUNG", bx, 48, 10, "#F1E7D2"); }
+          if (false) { const bx = R.W / 2; c.fillStyle = "rgba(20,27,37,0.6)"; c.fillRect(bx - 110, 64, 220, 12); c.fillStyle = "#3F6B55"; c.fillRect(bx - 31, 64, 62, 12); c.fillStyle = "#F1E7D2"; c.fillRect(bx + s.b * 110 - 3, 58, 6, 24); R.text(c, "HALTUNG", bx, 48, 10, "#F1E7D2"); }
           if (pkt) R.tafel(c, R.W / 2 - 140, 86, 280, 76, [["WEITE " + R.zahl(s.weite) + " m · NOTEN " + pkt.noten.map((n) => R.zahl(n)).join(" "), 11, "#2C6FB3"], [R.zahl(pkt.wert), 32, "#141B25"], ["PUNKTE", 10, "#8A8F9C"]]);
         },
       });
@@ -2183,14 +2182,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     function laufen(z) {
       const l = P.lauf(ich.ab), geg = z.filter((x) => !x.ich).map((x) => Object.assign(x, { ki: P.kiLauf(x.stLauf, x.ab) })); let tEnd = 0, uhr = 0, schritt = 0;
       const kR = R.knopf({ seite: "rechts", text: "Schub", symbol: "lauf", onDown: () => { const q = P.schub(l); if (l.t >= 0) { schritt++; q > 0.7 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.schlecht(); } } });
-      const kL = R.knopf({ seite: "links", text: "Hocke", symbol: "hocke", onDown: () => { l.hocke = true; }, onUp: () => { l.hocke = false; } });
+      const kL = { set() {} };
       const platz = () => 1 + geg.filter((g) => (l.zeit != null ? g.ki.zeit < ich.ab + l.zeit : g.ki.ort(uhr) > l.x)).length;
       R.szene({
         taste(k, an) { if (k === "rechts" && an) P.schub(l); if (k === "links") l.hocke = an; },
         bot() { const b = P.botLauf(l); l.hocke = b.hocke; if (b.schub && l.t >= 0) { P.schub(l); schritt++; } },
         update(dt) {
-          P.laufe(l, dt); uhr = l.t + ich.ab; const g = P.gelaende(l.x);
-          if (l.t < 0) R.tipp("warten", "Die Besseren im Springen sind schon unterwegs. Gleich bist du dran.", 4); else R.tipp("lauf", "Rechts „Schub“ im Takt tippen, wenn der Ring sich schließt. In der Abfahrt links „Hocke“ halten, sonst nie.", 6);
+          l.hocke = P.gelaende(l.x) < 0; P.laufe(l, dt); uhr = l.t + ich.ab; const g = P.gelaende(l.x);
+          if (l.t < 0) R.tipp("warten", "Die Besseren im Springen sind schon unterwegs. Gleich bist du dran.", 4); else R.tipp("lauf", "Im Takt tippen, wenn der Ring sich schließt. Nicht hämmern.", 5);
           kR.set({ zu: l.t >= 0 && l.zeit == null && g >= 0 ? Math.min(1, l.phi) : null, ok: Math.abs(l.phi - 1) < 0.15 }); kL.set({ aktiv: l.hocke, puls: g < 0 && !l.hocke });
           if (l.zeit != null && !tEnd) { tEnd = 0.01; const p = platz(); p <= 3 ? R.ton.jubel() : R.ton.glocke(); R.sag(p === 1 ? "Als Erster im Ziel!" : `Platz ${p}`, 2); }
           if (tEnd) { tEnd += dt; if (tEnd > 2.4) ergebnis(l, geg); }
@@ -2222,9 +2221,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     id: "nordische-kombination", name: "Nordische Kombination", titel: ["Nordische", "Kombination"], band: "Lahti · Finnland", version: VERSION, kit: KIT_L,
     satz: "Erst springen, dann laufen: Wer weit fliegt, startet vorn. Wer zuerst im Ziel ist, gewinnt.",
     modi: [{ id: "wettkampf", name: "Einzel nach Gundersen", sub: (R) => (R.S.best && R.S.best.platz ? `Beste Platzierung: ${R.S.best.platz}.` : "Ein Sprung, dann die Verfolgung gegen neun Gegner"), start: wettkampf }],
-    info: [["Springen", "Rechts „Absprung“ an der Tischkante. Im Flug mit dem Stick links die Haltung ruhig halten: Der Zeiger soll im grünen Feld bleiben. Kurz vor dem Aufsetzen rechts „Landen“ für den Telemark. Zu früh gelandet kostet Weite."],
+    info: [["Springen", "Ein Knopf: an der Tischkante drücken, kurz vor dem Aufsetzen noch einmal für den Telemark. Zu früh gelandet kostet Weite."],
       ["Gundersen", "Die Sprungpunkte werden zu Sekunden: Der Beste läuft zuerst los, alle anderen mit ihrem Rückstand hinterher. Gute Springer sind oft die schwächeren Läufer: Aufholen ist möglich."],
-      ["Laufen", "Rechts „Schub“ im Takt tippen, nicht hämmern. Im Anstieg wird es langsam, in der Abfahrt links „Hocke“ halten. In der Ebene bremst die Hocke."],
+      ["Laufen", "Derselbe Knopf: im Takt tippen, nicht hämmern. Im Anstieg wird es langsam, in der Abfahrt geht die Figur von selbst in die Hocke."],
       ["Stand 0.1", "Ein eigenständiger Vorgeschmack. Laut Konzept wird daraus eine Reihe aus dem Skisprung-Spiel und der Loipe des Biathlon-Spiels. Noch nicht drin: Team, Massenstart, Windschatten."]],
     plakat(c, t) { schanze(c, t); if (!R) return; c.save(); c.translate(520, 170 + Math.sin(t) * 6); c.rotate(0.12); R.figur(c, { x: 0, y: 0, s: 0.8, pose: POSE.flug, look: R.myLook(), kit: KIT_S }); c.restore(); },
   });

@@ -2154,7 +2154,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Ski Cross – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.SXPhys, F = window.CMFigur;
   const KIT = { head: "helmet", feet: "xcSki", torso: "bib", hands: "poles", glove: true };
   const POSE = {
@@ -2204,8 +2204,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         .concat(gegner.map((g, i) => Object.assign(P.fahrer({ linie: [0, 2, 1][i], kraft: 0.93 + 0.09 * g.st }), { id: i + 1, look: g.look, name: g.name, nat: g.nat, staerke: g.st, typ: typen[i], g })));
       const ich = alle[0], cam = { s: 0, h: 0 }; let phase = "tor", tPh = 0, tor = 1.6 + rnd() * 1.2, acc = 0, tEnd = 0;
       const kR = R.knopf({ seite: "rechts", text: "Schub", symbol: "stock", onDown: druck });
-      const stick = R.stick({ seite: "links", text: "Linie", onDown: () => { ich.hocke = true; acc = 0; }, onMove: (dx, dy) => { acc += dy; if (Math.abs(acc) > 20) { wechsel(acc > 0 ? 1 : -1); acc = 0; } }, onUp: () => { ich.hocke = false; } });
-      function druck() { if (phase === "tor") { if (tPh < tor) { R.sag("Zu früh! Das Tor ist noch zu", 1.2, true); ich.v = -1; tor = tPh + 1.2; R.ton.schlecht(); } return; } const q = P.druecke(ich, K); q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.tick(); }
+            function druck() { if (phase === "tor") { if (tPh < tor) { R.sag("Zu früh! Das Tor ist noch zu", 1.2, true); ich.v = -1; tor = tPh + 1.2; R.ton.schlecht(); } return; } const q = P.druecke(ich, K); q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.tick(); }
       function wechsel(d) { const r = P.linie(ich, d, alle); if (r === "beruehrt") { R.ton.klack(); R.sag(ich.karte ? "Gelbe Karte!" : "Berührung!", 1.2, true); } else if (r) R.ton.schnee(); }
       function ende() {
         const rg = P.rang(alle), platz = rg.indexOf(ich) + 1, zeilen = rg.map((f, i) => ({ platz: platzAb + i, name: f.name + ` (${LNAME[f.id]})`, nat: f.nat, wert: f.karte ? "Gelb" : f.fertig ? R.zeit(f.zeit) : "–", ich: f.ich }));
@@ -2221,9 +2220,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         bot() { if (phase === "lauf") P.bot(ich, K, alle, rnd); },
         update(dt) {
           tPh += dt;
-          if (phase === "tor") { R.tipp("start", "Wenn das Tor fällt: rechts dreimal im Takt. Danach in Senken (blauer Ring) und an Kanten (rot) tippen.", 6); if (tPh >= tor) { phase = "lauf"; alle.forEach((f) => { f.los = true; f.phi = 1; }); R.ton.klack(); R.ton.glocke(); } }
-          else { for (const f of alle) { if (!f.ich) P.bot(f, K, alle, rnd); P.schritt(f, K, dt, alle); }
-            if (ich.inKurve) R.tipp("kurve", "Steilkurve: Stick nach innen ziehen. Zu lange in der Hocke trägt es dich nach außen.", 5);
+          if (phase === "tor") { R.tipp("start", "Wenn das Tor fällt: dreimal im Takt tippen. Danach an jeder Welle tippen, wenn sich der Ring schließt.", 5); if (tPh >= tor) { phase = "lauf"; alle.forEach((f) => { f.los = true; f.phi = 1; }); R.ton.klack(); R.ton.glocke(); } }
+          else { { const k = K.el.find((x) => x.art === "kurve" && x.s - ich.s < 18 && ich.s < x.s + x.l); ich.hocke = !k || ich.s < k.s || ich.hockeT < 1.0;   // Linie und Hocke fährt die Figur selbst
+              if (k && ich.zielLinie !== k.innen) { const d = k.innen < ich.zielLinie ? -1 : 1, z = ich.zielLinie + d; if (!alle.some((o) => o !== ich && !o.fertig && o.zielLinie === z && Math.abs(o.s - ich.s) < 4.5)) P.linie(ich, d, alle); } }
+            for (const f of alle) { if (!f.ich) P.bot(f, K, alle, rnd); P.schritt(f, K, dt, alle); }
+            
             const e = K.el.find((x) => x.art !== "kurve" && !x.hit0 && x.s - ich.s > -3 && x.s - ich.s < 16);
             kR.set({ zu: ich.schuebe < P.STARTSCHUEBE ? Math.min(1, ich.phi) : e ? R.clamp(1 - (e.s - ich.s) / 16, 0, 1) : null, ok: e ? Math.abs(e.s - ich.s) < 3 : Math.abs(ich.phi - 1) < 0.18 }); }
           const ziel = ich.fertig ? K.lang + 4 : ich.s + 6; cam.s += (ziel - cam.s) * Math.min(1, dt * 6); cam.h += (P.hoehe(K, cam.s) - cam.h) * Math.min(1, dt * 6);
@@ -2243,7 +2244,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     id: "ski-cross", name: "Ski Cross", titel: ["Ski", "Cross"], band: "Idre Fjäll · Schweden", version: VERSION, kit: KIT,
     satz: "Vier zugleich über Wellen, Sprünge und Steilkurven. Die ersten zwei kommen weiter.",
     modi: [{ id: "turnier", name: "Rennen", sub: (R) => (R.S.best.platz ? `Bester Platz: ${R.S.best.platz}` : "Halbfinale und Finale zu viert"), start: turnier }],
-    info: [["So geht’s", "Wenn das Starttor fällt, rechts dreimal im Takt tippen. Danach rechts tippen, wenn du in einer Senke bist (blauer Ring: Schwung) oder an einer Kante (rot: du bleibst flach, ein hoher Sprung kostet Zeit). Links der Stick: Daumen drauf heißt Hocke und ist schneller; nach oben oder unten ziehen wechselt die Linie."],
+    info: [["So geht’s", "Ein Knopf: Wenn das Starttor fällt, dreimal im Takt tippen. Danach an jeder Welle tippen, wenn sich der Ring schließt: In der Senke gibt das Schwung, an der Kante bleibst du flach. Linie und Hocke fährt deine Figur selbst."],
       ["Linie", "In der Steilkurve ist innen kürzer. Wer in der Kurve zu lange in der Hocke bleibt, den trägt es nach außen. Direkt hinter jemandem fährst du im Windschatten und wirst schneller; zum Überholen die Linie wechseln."],
       ["Karten", "Wer in eine besetzte Linie zieht, berührt den anderen: Beide verlieren Tempo. Zwei Verwarnungen ergeben eine Gelbe Karte, und Gelb heißt Letzter im Lauf."],
       ["Noch nicht drin", "Setzlauf, Turnier mit 16 und die Massenabfahrt wie um 1930 kommen später."]],

@@ -2135,7 +2135,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Halfpipe – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.2.0";
   const P = window.HPPhys, F = window.CMFigur;
   const KIT = { head: "helmet", feet: "skiBoots", torso: "plain", glove: true };
   const POSE = { fahrt: { lean: 18, crouch: 0.35, sL: [34, 50], fL: [-6, 40], aF: [40, 30], aB: [-30, 40], hd: -6 }, tief: { lean: 30, crouch: 0.8, sL: [60, 90], fL: [20, 80], aF: [60, 40], aB: [-10, 60], hd: -10 }, luft: { lean: 8, crouch: 0.3, sL: [40, 60], fL: [0, 50], aF: [-70, 20], aB: [-110, 30], hd: 0 }, griff: { lean: 40, crouch: 0.9, sL: [80, 100], fL: [50, 100], aF: [110, 10], aB: [-60, 50], hd: -14 } };
@@ -2180,16 +2180,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     feld.forEach((f) => { f.l = [0, 1].map(() => R.richter(P.ki(f.st, rnd).basis, rnd).wert); });
     function lauf() {
       const s = P.lauf(), ein = { pump: false, dreh: false, grab: false }; let tEnd = 0, wert = null;
-      const kL = R.knopf({ seite: "links", text: "Griff", symbol: "wurf", onDown: () => { ein.grab = true; }, onUp: () => { ein.grab = false; } });
+      const kL = { set() {} };
       const kR = R.knopf({ seite: "rechts", text: "Pumpen", symbol: "hocke", onDown: () => { s.phase === "luft" ? (ein.dreh = true) : (ein.pump = true); }, onUp: () => { ein.dreh = false; ein.pump = false; } });
       R.szene({
         taste(k, an) { if (k === "links") ein.grab = an; if (k === "rechts") { if (s.phase === "luft") ein.dreh = an; else ein.pump = an; if (!an) ein.dreh = ein.pump = false; } },
         bot() { Object.assign(ein, P.bot(s)); },
         update(dt) {
-          const e = P.schritt(s, dt, ein);
-          if (e === "ab") { ein.pump = false; kR.set({ text: "Drehen", zu: null }); R.ton.wusch(); if (s.luft.q > 0.75) R.ton.gut(); R.tipp("luft", "In der Luft: rechts halten = drehen, loslassen = stoppen. Zur Landung muss das Brett wieder in Fahrtrichtung zeigen. Links halten = Griff, vor der Landung lösen.", 7); }
+          if (s.phase === "luft") ein.grab = ein.dreh && s.luft.t < s.luft.T - 0.3; const e = P.schritt(s, dt, ein);
+          if (e === "ab") { ein.pump = false; kR.set({ text: "Drehen", zu: null }); R.ton.wusch(); if (s.luft.q > 0.75) R.ton.gut(); R.tipp("luft", "In der Luft halten = drehen. Rechtzeitig loslassen: Zur Landung muss das Brett gerade stehen.", 5); }
           if (e === "landung" || e === "sturz") { ein.dreh = false; kR.set({ text: "Pumpen" }); const h = s.letzter; h.sturz ? (R.ton.schlecht(), R.ton.raunen(), R.sag("Sturz: " + h.sturz, 1.6, true)) : (R.ton.schnee(), R.sag(`${h.rot ? h.rot + "°" : "Gerader Sprung"} · ${R.zahl(h.h)} m${h.grab > 0.5 ? " · Griff" : ""}`, 1.4)); }
-          if (s.phase === "fahrt") { R.tipp("pump", "Rechts im Tal drücken und halten, an der Lippe loslassen: Das gibt Höhe. Fünf Sprünge je Lauf.", 6); kR.set({ zu: s.hielt && s.los == null ? P.clamp((s.u - 0.4) / (P.LIPPE - 0.4), 0, 1) : null, ok: Math.abs(s.u - P.LIPPE) < P.FENSTER * 0.45, aktiv: ein.pump }); kL.set({ aktiv: false }); }
+          if (s.phase === "fahrt") { R.tipp("pump", "Im Tal drücken und halten, an der Lippe loslassen: Das gibt Höhe.", 5); kR.set({ zu: s.hielt && s.los == null ? P.clamp((s.u - 0.4) / (P.LIPPE - 0.4), 0, 1) : null, ok: Math.abs(s.u - P.LIPPE) < P.FENSTER * 0.45, aktiv: ein.pump }); kL.set({ aktiv: false }); }
           else if (s.phase === "luft") { kR.set({ aktiv: ein.dreh }); kL.set({ aktiv: ein.grab }); }
           if (s.phase === "ende" && wert == null) { wert = R.richter(P.wertung(s.hits), rnd); tEnd = 0.01; R.tippWeg(); wert.wert > 80 ? R.ton.jubel() : R.ton.glocke(); }
           if (tEnd) { tEnd += dt; if (tEnd > 2.6) { meine.push({ wert: wert.wert, hits: s.hits }); tabelle(); } }
@@ -2219,8 +2219,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     satz: "Fünf Sprünge über der Lippe: Höhe halten, drehen, greifen, sauber landen.",
     modi: [{ id: "finale", name: "Finale", sub: (R) => (R.S.best && R.S.best.punkte ? `Bestwert ${R.zahl(R.S.best.punkte)}` : "Acht Starter, zwei Läufe, der bessere zählt"), start: () => finale(false) },
       { id: "train", name: "Training", sub: () => "Ein Lauf ohne Gegner", start: () => finale(true), ohneName: true }],
-    info: [["Höhe", "Rechts „Pumpen“ im Tal drücken und halten, genau an der Lippe loslassen. Ein sauberer Zug trägt dich über fünf Meter hinaus, ein verpasster kostet Höhe für alle folgenden Sprünge. Hämmern bringt nichts."],
-      ["Tricks", "In der Luft wird derselbe Knopf zu „Drehen“: halten dreht, loslassen stoppt. Gelandet wird in halben Drehungen (180, 360, 540 …), die Gradzahl oben wird grün, wenn es passt. Links „Griff“ halten gibt Stilpunkte, rechtzeitig vor der Landung lösen."],
+    info: [["Höhe", "Ein Knopf: im Tal drücken und halten, genau an der Lippe loslassen. Ein sauberer Zug trägt dich über fünf Meter hinaus, ein verpasster kostet Höhe. Hämmern bringt nichts."],
+      ["Tricks", "In der Luft derselbe Knopf: halten dreht, loslassen stoppt. Gelandet wird in halben Drehungen (180, 360, 540 …), die Gradzahl oben wird grün, wenn es passt. Den Griff setzt die Figur selbst, solange du drehst."],
       ["Wertung", "Sechs Punktrichter, 0 bis 100, die höchste und die niedrigste Note fallen weg. Es zählen Höhe, Schwierigkeit, Griffe, Abwechslung und saubere Landungen. Nach zwei Stürzen ist der Lauf vorbei."],
       ["Noch nicht drin", "Trickkarte mit Namen, Qualifikation, Superpipe 1998, Duell per Link."]],
     plakat(c, t) { roehre(c, t); const s = { phase: "luft", seite: 1, luft: { t: 0.5 + 0.2 * Math.sin(t), T: 1, h: 4.6, rot: t * 120 } }; if (R) fahrer(c, s, R.myLook(), { grab: true }); },
