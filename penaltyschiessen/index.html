@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#162442">
+<title>Cold Medal · Penaltyschießen</title>
+
+<style>/* oberflaeche/rahmen.css – Aussehen des Rahmens für neue Spiele (rahmen.js), Farben und Schriften wie Schneeball und Skispringen. */
+:root {
+  --paper: #F1E7D2; --paper-2: #E6D6B7; --ink: #1E2734; --ink-deep: #141B25; --red: #C23B2A; --blue: #23466B; --gold: #DDA43B; --green: #3F6B55;
+  --muted: #6E6656; --good: #6E9A4E; --warn: #D9682B; --ice: #7FB3D5;
+  --font-display: "Futura", "Avenir Next Condensed", "Bahnschrift Condensed", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --font-label: var(--font-display);
+  --font-body: "Iowan Old Style", "Charter", "Georgia", serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: #0E1626; overflow: hidden; }
+body { font-family: var(--font-body); color: var(--ink); -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
+html, body, body * { -webkit-hyphens: manual; hyphens: manual; }
+button, input, select { font: inherit; color: inherit; }
+button { border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+a.mid { text-decoration: none; color: inherit; display: block; }
+#wrap { position: fixed; inset: 0; overflow: hidden; }
+#stage { position: absolute; left: 0; top: 0; width: 844px; height: 390px; transform-origin: 0 0; overflow: hidden; background: #C7DAE5; }
+#cv { position: absolute; inset: 0; width: 844px; height: 390px; display: block; touch-action: none; }
+.grain { position: absolute; inset: 0; pointer-events: none; opacity: 0.08;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.15  0 0 0 0.9 0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>"); }
+.kicker { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.2em; font-weight: 600; color: var(--red); text-transform: uppercase; white-space: nowrap; }
+[hidden] { display: none !important; }
+
+.scr { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px 18px; }
+.card { position: relative; background: var(--paper); border: 3px solid var(--ink-deep); box-shadow: 5px 5px 0 rgba(0,0,0,0.4); padding: 14px 16px; }
+#scrStand, #scrInfo, #scrPass { background: rgba(14,22,38,0.38); }
+h2 { font-family: var(--font-display); font-size: 21px; line-height: 1.3; text-transform: uppercase; margin: 1px 0 6px; white-space: nowrap; overflow: hidden; flex: none; }
+.col { display: flex; flex-direction: column; gap: 7px; }
+.row2 { display: flex; gap: 7px; }
+.row2 > * { flex: 1 1 0; min-width: 0; }
+.big, .mid { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border: 2px solid var(--ink-deep); background: var(--paper); white-space: nowrap; }
+.big { display: flex; flex-direction: column; align-items: flex-start; padding: 6px 10px; font-size: 18px; box-shadow: 3px 3px 0 var(--ink-deep); text-align: left; }
+.big > span { display: block; overflow: hidden; align-self: stretch; width: 100%; line-height: 1.1; }
+.big small { display: block; align-self: stretch; overflow: hidden; font-family: var(--font-body); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12px; line-height: 1.2; opacity: 0.85; white-space: nowrap; }
+.mid { padding: 8px 6px; font-size: 12.5px; letter-spacing: 0.03em; text-align: center; line-height: 1.15; box-shadow: 2px 2px 0 var(--ink-deep); overflow: hidden; }
+.rpBtns .mid { padding: 9px 14px; font-size: 14px; }
+.red { background: var(--red); color: var(--paper); }
+.big:active, .mid:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink-deep); }
+.foot { font-size: 10.5px; line-height: 1.25; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.lnk { text-decoration: underline; font-size: 10.5px; color: var(--ink); padding: 0; }
+.done { position: absolute; right: 16px; bottom: 14px; }
+.rpBtns { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Startbildschirm als Plakat: links Titel über der Szene, rechts das Programm */
+#scrMenu { justify-content: space-between; align-items: center; padding: 16px 24px 16px 26px; background: radial-gradient(ellipse 62% 70% at 18% 18%, rgba(14,22,38,0.62), rgba(14,22,38,0) 72%); }
+#scrMenu .hero { align-self: flex-start; margin-top: 8px; max-width: 420px; pointer-events: none; }
+#scrMenu .heroK { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--paper); text-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+#scrMenu .heroT { font-family: var(--font-display); font-weight: 800; font-size: 52px; line-height: 0.92; letter-spacing: 0.01em; text-transform: uppercase; color: var(--paper);
+  text-shadow: 4px 4px 0 var(--ink-deep), 0 0 24px rgba(0,0,0,0.25); margin-top: 4px; }
+#scrMenu .heroT span { color: #F4C9A0; display: block; }
+#scrMenu .ribbon { display: inline-block; margin-top: 10px; padding: 4px 14px 4px 12px; background: var(--red); color: var(--paper); font-family: var(--font-display); font-weight: 700;
+  font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; box-shadow: 3px 3px 0 var(--ink-deep); transform: rotate(-2deg); white-space: nowrap; }
+#scrMenu .heroP { display: block; width: fit-content; margin-top: 10px; padding: 3px 8px; background: rgba(14,22,38,0.55); max-width: 300px; font-size: 13px; line-height: 1.3; color: var(--paper); text-shadow: 0 1px 2px rgba(0,0,0,0.7); font-style: italic; }
+#scrMenu .card.menu { width: 318px; max-height: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 10px; transform: rotate(0.6deg); }
+#scrMenu .card.menu::before { content: ""; position: absolute; left: 50%; top: -9px; width: 46px; height: 16px; margin-left: -23px; background: rgba(230,214,183,0.85); transform: rotate(-3deg); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
+/* Endstand */
+.card.stand { width: 540px; max-height: 100%; display: flex; flex-direction: column; }
+.stScroll { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; min-height: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+td { padding: 2px 5px; border-bottom: 1px solid rgba(30,39,52,0.15); white-space: nowrap; }
+td.n { text-align: right; font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+td.p { width: 26px; font-family: var(--font-display); }
+td.nm { overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+td.t { font-family: var(--font-display); font-size: 11.5px; color: var(--muted); }
+tr.hd td { font-family: var(--font-display); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+tr.me td { background: var(--gold); font-weight: 700; }
+tr.cut td { border-bottom: 2px dashed var(--red); }
+.stand .note { margin: 7px 0 8px; }
+
+/* Info */
+.card.info { width: 100%; height: 100%; display: flex; flex-direction: column; }
+.ifBody { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding-right: 8px; margin: 6px 0 44px; columns: 2; column-gap: 22px; }
+.ifBody h3 { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin: 6px 0 2px; break-after: avoid; }
+.ifBody p { font-size: 12.5px; line-height: 1.35; margin-bottom: 4px; }
+
+/* Im Spiel */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud button, #hud .cs-stick { pointer-events: auto; }
+#chips { position: absolute; left: 10px; top: 8px; display: flex; gap: 5px; flex-wrap: wrap; max-width: 760px; }
+.chip { font-family: var(--font-display); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; padding: 3px 7px; background: rgba(241,231,210,0.92); border: 2px solid var(--ink-deep); color: var(--ink); white-space: nowrap; }
+.chip.dark { background: var(--ink); color: var(--paper); }
+.chip.good { background: var(--green); color: var(--paper); }
+.chip.warn { background: var(--warn); color: var(--paper); }
+.chip.gold { background: var(--gold); }
+.ibtn { position: absolute; right: 10px; top: 8px; width: 34px; height: 34px; border: 2px solid var(--ink-deep); background: rgba(241,231,210,0.92); font-size: 22px; line-height: 1; font-family: var(--font-display); }
+#say { position: absolute; left: 50%; top: 92px; transform: translateX(-50%) rotate(-1.5deg); background: #F4EBDA; color: #3A2A1C; border: 2px solid #3A2A1C; padding: 5px 14px;
+  font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: 0.02em; box-shadow: 3px 3px 0 rgba(0,0,0,0.25); pointer-events: none; white-space: nowrap; animation: sayIn 0.25s ease-out; }
+#say.bad { color: #9E2B1E; }
+@keyframes sayIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px) rotate(-1.5deg); } to { opacity: 1; } }
+#hud .cs-hint.cs-oben { top: 48px; }
+
+/* Auswahl vor einem Durchgang */
+#scrWahl { background: rgba(14,22,38,0.38); }
+.card.wahl { width: 560px; max-height: 100%; display: flex; flex-direction: column; }
+.waBody { display: flex; flex-direction: column; gap: 7px; margin-bottom: 8px; }
+.waRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.waLbl { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.04em; font-size: 13px; text-transform: uppercase; white-space: nowrap; }
+.waSeg { display: flex; gap: 5px; flex: 0 1 auto; min-width: 0; }
+.pill { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; border: 2px solid var(--ink-deep); background: var(--paper); white-space: nowrap; font-size: 12.5px; padding: 6px 10px; min-width: 34px; overflow: hidden; }
+.pill.on { background: var(--ink); color: var(--paper); }
+.pill:active { transform: translate(1px, 1px); }
+.wahl .note { margin: 0 0 8px; }
+
+/* Cold Medal Games · Fenster „Deine Figur“ (pass/pass.css)
+   Aussehen wie die Menüs des Skispringens: Papier mit Doppelrahmen, Knöpfe wie Druckmarken, Futura für Titel und Knöpfe,
+   Buchschrift für Lesetext. Farben und Schriften kommen aus den Variablen des Spiels (alle Spiele der Reihe haben sie),
+   sonst gelten die Werte des Skispringens. Nur Klassen mit ps-, damit nichts im Spiel verrutscht. Grundstock für oberflaeche/. */
+.ps-dialog {
+  --ps-paper: var(--paper, #F1E7D2); --ps-ink: var(--ink, #1E2734); --ps-ink-deep: var(--ink-deep, #141B25);
+  --ps-red: var(--red, #C23B2A); --ps-warn: var(--warn, #D9682B);
+  --ps-text: #1E2734; --ps-text-2: #3A4454; --ps-muted: #786D59;
+  --ps-row: rgba(30, 39, 52, 0.055); --ps-row-2: rgba(30, 39, 52, 0.1); --ps-line: rgba(30, 39, 52, 0.22); --ps-line-2: rgba(30, 39, 52, 0.45);
+  --ps-hi: #B23524; --ps-hi-ink: #FBF4E4;
+  --ps-display: var(--font-display, "Futura", "Avenir Next Condensed", "Bahnschrift Condensed", "Roboto Condensed", "Arial Narrow", sans-serif);
+  --ps-body: var(--font-body, "Iowan Old Style", "Charter", "Georgia", serif);
+  --ps-label: var(--font-label, "Futura", "Avenir Next", "Segoe UI", Roboto, Arial, sans-serif);
+  display: flex; flex-direction: column; gap: 10px; box-sizing: border-box;
+  width: 760px; max-width: calc(100% - 32px); max-height: calc(100% - 20px); overflow: auto; padding: 14px 20px 16px; touch-action: pan-y;
+  color: var(--ps-text); font-family: var(--ps-body); text-align: left;
+  background-color: var(--ps-paper);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.36  0 0 0 0 0.28  0 0 0 0 0.16  0 0 0 0.075 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  border: 2px solid var(--ps-ink-deep); border-radius: 4px;
+  box-shadow: inset 0 0 0 4px var(--ps-paper), inset 0 0 0 5px rgba(30, 39, 52, 0.38), 0 5px 0 rgba(8, 12, 18, 0.5);
+  -webkit-user-select: none; user-select: none;
+}
+.ps-dialog *, .ps-dialog *::before, .ps-dialog *::after { box-sizing: border-box; }
+.ps-dialog [hidden] { display: none !important; }
+.ps-dialog button, .ps-dialog input, .ps-dialog select, .ps-stage { -webkit-tap-highlight-color: transparent; }
+.ps-dialog button:focus-visible, .ps-dialog input:focus-visible, .ps-dialog select:focus-visible, .ps-stage:focus-visible { outline: 2px solid var(--ps-hi); outline-offset: 2px; }
+
+/* Kopf: Titel in Versalien, rechts nur „Fertig“ */
+.ps-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ps-title { margin: 0; font-family: var(--ps-display); font-style: normal; font-weight: 800; font-size: 32px; line-height: 34px;
+  letter-spacing: 0.015em; text-transform: uppercase; color: var(--ps-ink); text-wrap: balance; }
+.ps-btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 18px; margin: 0;
+  border-radius: 4px; font-family: var(--ps-display); font-weight: 700; font-size: 19px; letter-spacing: 0.07em; text-transform: uppercase;
+  white-space: nowrap; cursor: pointer; }
+.ps-btn svg { display: block; flex: none; }
+.ps-btn-1 { background: var(--ps-red); color: #FBF4E4; border: 2px solid var(--ps-ink-deep);
+  box-shadow: inset 0 0 0 2px var(--ps-red), inset 0 0 0 3px rgba(251, 244, 228, 0.5), 0 3px 0 var(--ps-ink-deep); }
+.ps-btn-2 { background: var(--ps-paper); color: var(--ps-ink); border: 2px solid var(--ps-ink-deep); box-shadow: 0 3px 0 var(--ps-ink-deep); }
+.ps-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ps-ink-deep); }
+.ps-btn:disabled { opacity: 0.55; cursor: default; }
+
+/* links die Figur (antippen wechselt die Haltung), rechts die Reiter */
+.ps-grid { display: grid; grid-template-columns: 268px minmax(0, 1fr); gap: 20px; align-items: start; }
+.ps-left { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ps-stage { height: 236px; border-radius: 4px; overflow: hidden; border: 2px solid var(--ps-ink-deep); background: #E9E4D3; cursor: pointer;
+  box-shadow: 0 3px 0 rgba(20, 27, 37, 0.35); }
+.ps-stage:active { transform: translateY(1px); box-shadow: 0 2px 0 rgba(20, 27, 37, 0.35); }
+.ps-canvas { display: block; width: 100%; height: 100%; }
+.ps-cap { margin: 0; font-family: var(--ps-body); font-size: 12.5px; line-height: 16px; color: var(--ps-muted); text-align: center; }
+.ps-opts { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+/* Reiter über die ganze Breite */
+.ps-seg { display: flex; flex-shrink: 0; border: 2px solid var(--ps-line-2); border-radius: 4px; overflow: hidden; }
+.ps-seg button { height: 34px; margin: 0; padding: 0 10px; border: none; border-radius: 0; background: transparent; color: var(--ps-text-2);
+  font-family: var(--ps-display); font-weight: 700; font-size: 16px; letter-spacing: 0.04em; cursor: pointer; }
+.ps-seg button + button { border-left: 1px solid var(--ps-line); }
+.ps-seg button[aria-checked="true"] { background: var(--ps-hi); color: var(--ps-hi-ink); }
+.ps-tabs { align-self: stretch; border-color: var(--ps-ink-deep); }
+.ps-tabs button { flex: 1 1 auto; padding: 0 8px; }
+.ps-tabbox { display: flex; flex-direction: column; gap: 6px; }
+
+/* Zeilen, Farbfelder, Eingaben */
+.ps-row { display: flex; align-items: center; justify-content: flex-start; gap: 12px; min-height: 32px; }
+.ps-lbl { flex: none; width: 92px; font-size: 15px; font-weight: 600; color: var(--ps-text-2); white-space: normal;
+  -webkit-hyphens: auto; hyphens: auto; overflow-wrap: break-word; }
+.ps-row-wrap { align-items: flex-start; }
+.ps-row-wrap .ps-lbl { padding-top: 7px; }
+.ps-swatches { display: flex; flex-wrap: wrap; gap: 5px 7px; max-width: calc(var(--ps-per, 8) * 39px - 7px); }
+.ps-swatch { width: 32px; height: 32px; margin: 0; padding: 0; border-radius: 16px; border: 2px solid transparent; cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(30, 39, 52, 0.18) inset; }
+.ps-swatch[aria-checked="true"] { border-color: var(--ps-text); box-shadow: 0 0 0 2px rgba(17, 25, 36, 0.9) inset; }
+.ps-dim .ps-swatches { opacity: 0.35; }
+.ps-name, .ps-select, .ps-input { height: 38px; margin: 0; padding: 0 12px; border-radius: 3px; border: 1px solid var(--ps-line-2); background: var(--ps-row);
+  color: var(--ps-text); font-family: var(--ps-display); font-weight: 700; font-size: 19px; letter-spacing: 0.04em; }
+.ps-name, .ps-input { flex: 1; min-width: 0; width: auto; text-transform: uppercase; -webkit-user-select: text; user-select: text; }
+.ps-name.ps-mixed { text-transform: none; }
+.ps-name::placeholder, .ps-input::placeholder { color: var(--ps-muted); opacity: 1; text-transform: none; letter-spacing: 0.02em; }
+.ps-select option { background: #FBF4E4; color: #1E2734; }
+.ps-id { gap: 10px; }
+.ps-id .ps-nation { flex: none; width: 172px; }
+.ps-row-sel { gap: 10px; }
+.ps-row-sel .ps-select { flex: 1; min-width: 0; width: auto; }
+.ps-need { outline: 3px solid var(--ps-warn); outline-offset: 1px; }
+.ps-hint { margin: 2px 0 0; max-width: 420px; font-family: var(--ps-body); font-size: 12.5px; line-height: 17px; color: var(--ps-muted); }
+.ps-plain { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; margin: 0; padding: 0 10px; border-radius: 4px;
+  border: 2px solid var(--ps-line-2); background: transparent; color: var(--ps-text); font-family: var(--ps-label); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.04em; cursor: pointer; }
+.ps-plain svg { display: block; flex: none; }
+.ps-random { margin-left: auto; width: 38px; height: 38px; padding: 0; justify-content: center; }
+
+/* erster Start: Name oder als Gast */
+.ps-ask { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: -2px 0 2px;
+  font-family: var(--ps-body); font-size: 12.5px; line-height: 16px; color: var(--ps-muted); }
+.ps-warn { color: var(--ps-warn); font-weight: 600; }
+
+/* Reiter Code */
+.ps-codebox { gap: 7px; }
+.ps-code-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 36px; }
+.ps-code-val { flex: 1; min-width: 0; font-family: var(--ps-display); font-weight: 800; font-size: 26px; line-height: 30px; letter-spacing: 0.1em;
+  color: var(--ps-ink); white-space: nowrap; font-variant-numeric: tabular-nums; -webkit-user-select: text; user-select: text; }
+.ps-code-val.ps-none { font-family: var(--ps-body); font-weight: 400; font-size: 15px; letter-spacing: 0; color: var(--ps-muted); }
+.ps-code-st { margin: 0; }
+.ps-codebox .ps-btn { height: 38px; padding: 0 14px; font-size: 16px; }
+.ps-code-save { align-self: flex-start; }
+.ps-sep { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; font-family: var(--ps-label); font-weight: 700; font-size: 11px;
+  letter-spacing: 0.16em; text-transform: uppercase; color: var(--ps-muted); }
+.ps-sep::after { content: ""; flex: 1; height: 1px; background: var(--ps-line); }
+.ps-code-row { gap: 10px; }
+.ps-code-in { letter-spacing: 0.12em; }
+.ps-code-res { margin: 0; }
+.ps-code-ok { gap: 10px; }
+
+/* eigene Ebene (CMPass.ui.open) für Spiele ohne eigene Ebenen; schmale Bildschirme: Figur über den Reitern */
+.ps-screen { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 10px;
+  background: rgba(17, 25, 36, 0.55); }
+.ps-screen[hidden] { display: none; }
+@media (max-width: 640px) {
+  .ps-screen .ps-dialog { width: 100%; max-width: 100%; max-height: 100%; padding: 12px 14px 14px; }
+  .ps-screen .ps-title { font-size: 24px; line-height: 27px; }
+  .ps-screen .ps-head .ps-btn { height: 40px; padding: 0 14px; font-size: 17px; }
+  .ps-screen .ps-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .ps-screen .ps-stage { height: 190px; }
+  .ps-screen .ps-row { gap: 8px; }
+  .ps-screen .ps-lbl { width: 60px; }
+  .ps-screen .ps-seg button { padding: 0 7px; }
+  .ps-screen .ps-random { width: 36px; }
+  .ps-screen .ps-swatches { gap: 5px; max-width: calc(var(--ps-per, 8) * 33px - 5px); }
+  .ps-screen .ps-swatch { width: 28px; height: 28px; border-radius: 14px; }
+  .ps-screen .ps-name, .ps-screen .ps-select, .ps-screen .ps-input { padding: 0 8px; font-size: 17px; }
+  .ps-screen .ps-id .ps-nation { width: 150px; }
+  .ps-screen .ps-code-val { flex: none; font-size: 21px; letter-spacing: 0.04em; }
+}
+@media (prefers-reduced-motion: reduce) { .ps-btn:active, .ps-stage:active { transform: none; } }
+
+/* 14.11.2026 (Mat: „das Figurenmenü muss vereinheitlicht und schöner gestaltet werden“, iPhone-Schriften laufen breiter):
+   Kopf mit Zeile „Athletenpass“, Bühne mit Rahmen wie ein Passbild, Reiter und Auswahlknöpfe schrumpfen statt überzulaufen,
+   Bildunterschrift einzeilig. Nur Aussehen und Platz; Aufbau, Klassen und Verhalten bleiben gleich. */
+.ps-head { padding-bottom: 6px; border-bottom: 2px solid var(--ps-ink-deep); }
+.ps-title::before { content: "Athletenpass · Cold Medal Games"; display: block; margin-bottom: 2px; font-family: var(--ps-label); font-weight: 700;
+  font-size: 11px; line-height: 13px; letter-spacing: 0.24em; color: var(--ps-red); }
+.ps-stage { border-width: 3px; box-shadow: inset 0 0 0 3px #FBF8F1, inset 0 0 0 4px rgba(30, 39, 52, 0.25), 0 3px 0 rgba(20, 27, 37, 0.35); }
+.ps-cap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-tabs button { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-row > .ps-seg { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.ps-row > .ps-seg button { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 8px; font-size: 15px; }
+.ps-opts, .ps-tabbox { min-width: 0; }
+.ps-dialog { gap: 8px; }
+.ps-head { padding-bottom: 4px; }
+.ps-title { font-size: 28px; line-height: 29px; }
+
+/* oberflaeche/steuerung.css – Spielsteuerung (CMSteuer). Farben aus dem Spiel (--ink, --paper, --gold …), sonst Plakatfarben. */
+.cs-knopf, .cs-stick { position: absolute; bottom: 14px; width: 104px; height: 104px; border-radius: 50%; padding: 0;
+  pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.cs-links { left: 16px; } .cs-rechts { right: 16px; }
+.cs-knopf { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  background: var(--paper, #F3EEE2); color: var(--ink, #1E2734); border: 3px solid var(--ink-deep, #141C28);
+  box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 8px 18px rgba(0, 0, 0, 0.25); transition: transform 0.05s; }
+.cs-knopf.cs-klein { width: 84px; height: 84px; }
+.cs-knopf.cs-down, .cs-knopf.cs-aktiv { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink-deep, #141C28), 0 4px 10px rgba(0, 0, 0, 0.25); background: #FFF8E8; }
+.cs-ring { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); transform: rotate(-90deg); pointer-events: none; }
+.cs-ring circle { fill: none; stroke-width: 6; }
+.cs-ring-bg { stroke: rgba(20, 28, 40, 0.18); }
+.cs-ring-v { stroke: var(--gold, #DDA43B); stroke-linecap: round; transition: stroke 0.08s; }
+.cs-knopf.cs-ok .cs-ring-v { stroke: #4E9A4A; }
+.cs-knopf.cs-ok { border-color: #2F6B2C; }
+.cs-sym svg { width: 38px; height: 38px; display: block; }
+.cs-klein .cs-sym svg { width: 30px; height: 30px; }
+.cs-txt { font: 800 12px/1 var(--font-display, Futura, "Avenir Next", sans-serif); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+.cs-stick { background: radial-gradient(circle, rgba(243, 238, 226, 0.22) 0 38%, rgba(243, 238, 226, 0.12) 39% 100%); border: 3px solid rgba(243, 238, 226, 0.75);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); width: 132px; height: 132px; display: flex; align-items: center; justify-content: center; color: var(--paper, #F3EEE2); }
+.cs-stick-knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: var(--paper, #F3EEE2); border: 3px solid var(--ink-deep, #141C28); box-shadow: 0 3px 0 var(--ink-deep, #141C28); }
+.cs-stick .cs-txt { position: absolute; top: -20px; left: 0; right: 0; text-align: center; color: var(--paper, #F3EEE2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.cs-stick.cs-down { border-color: var(--gold, #DDA43B); }
+.cs-takt { position: absolute; left: 0; top: 0; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 2px; will-change: transform; }
+.cs-takt-bar { position: relative; width: 112px; height: 12px; border-radius: 6px; background: rgba(20, 28, 40, 0.55); border: 2px solid var(--paper, #F3EEE2); overflow: hidden; }
+.cs-takt-win { position: absolute; top: 0; bottom: 0; background: rgba(110, 175, 100, 0.85); }
+.cs-takt-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--gold, #DDA43B); mix-blend-mode: screen; }
+.cs-takt-fill::after { content: ""; position: absolute; right: -2px; top: -2px; bottom: -2px; width: 4px; background: #FFFFFF; border-radius: 2px; }
+.cs-takt.cs-ok .cs-takt-bar { border-color: #9BD08F; box-shadow: 0 0 8px rgba(155, 208, 143, 0.9); }
+.cs-takt-txt { font: 800 12px/1 var(--font-display, Futura, sans-serif); color: var(--ink, #1E2734); text-shadow: 0 0 3px #FFFFFF, 0 0 2px #FFFFFF; letter-spacing: 0.05em; }
+.cs-mag { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: rgba(20, 28, 40, 0.78); color: var(--paper, #F3EEE2); border: 2px solid var(--paper, #F3EEE2); border-radius: 6px; padding: 4px 14px 7px; pointer-events: none; }
+.cs-mag-n { display: flex; align-items: center; gap: 4px; }
+.cs-mag-n b { font: 800 30px/1 var(--font-display, Futura, sans-serif); }
+.cs-mag-n svg { width: 10px; height: 24px; color: var(--gold, #DDA43B); }
+.cs-mag-dots { display: flex; gap: 6px; }
+.cs-mag-dots i { width: 18px; height: 18px; border-radius: 50%; background: #10151E; border: 2px solid var(--paper, #F3EEE2); }
+.cs-mag-dots i.cs-hit { background: #FFFFFF; }
+.cs-mag-dots i.cs-miss { background: #B23524; }
+.cs-hint { position: absolute; left: 50%; bottom: 128px; z-index: 3; transform: translateX(-50%); max-width: min(560px, 70%); text-align: center;
+  background: var(--paper, #F3EEE2); color: var(--ink, #1E2734); border: 2px solid var(--ink-deep, #141C28); border-radius: 6px; box-shadow: 0 3px 0 var(--ink-deep, #141C28);
+  padding: 6px 12px; font: 600 15px/1.3 var(--font-label, "Avenir Next", sans-serif); pointer-events: none; }
+.cs-hint-k { display: inline-block; margin-right: 8px; padding: 1px 6px; border-radius: 3px; background: var(--red, #B23524); color: #FBF4E4; font: 800 11px/1.4 var(--font-display, Futura, sans-serif); letter-spacing: 0.1em; vertical-align: 1px; }
+.cs-hint.cs-oben { bottom: auto; top: 12px; }
+
+/* seit 14.11.2026 (Schneeball): Zielkreis, der sich auf den Knopf zusammenzieht (wie bei Rhythmusspielen), und Pulsieren */
+.cs-zu { position: absolute; inset: -4px; border-radius: 50%; border: 5px solid var(--gold, #DDA43B); pointer-events: none; transform-origin: 50% 50%; opacity: 0.95; }
+.cs-knopf.cs-ok .cs-zu { border-color: #4E9A4A; }
+.cs-knopf.cs-puls { animation: cs-puls 0.6s ease-in-out infinite; border-color: var(--red, #C23B2A); background: #FBE3D9; }
+@keyframes cs-puls { 0%, 100% { box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 0 0 0 rgba(194, 59, 42, 0.55); } 50% { box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 0 0 14px rgba(194, 59, 42, 0); } }
+@media (prefers-reduced-motion: reduce) { .cs-knopf.cs-puls { animation: none; } }
+</style>
+</head>
+<body>
+<script>// kulisse/einfach.js – einfache Plakat-Kulisse für Kameras ohne Schanze (Loipe, Eisfläche, Kurs, Rampe), global CMKulisse.einfach.
+// Seit 15.11.2026 (Reihen-Chat, Version 0.1 der neuen Spiele). Braucht keine andere Datei. Drei vorgerenderte Ebenen
+// (Himmel, fern, mittel), die sich nahtlos wiederholen und mit Parallaxe verschieben lassen; je Ort Form der Berge,
+// Farben und zwei, drei Wahrzeichen. Die großen Plakat-Orte (plakat.js, panorama.js) bleiben, wie sie sind; ein Ort
+// kann später dorthin umziehen, ohne dass sich hier der Aufruf ändert.
+//   const k = CMKulisse.einfach.baue("idre", { W: 844, H: 390, hor: 200, dpr: 2, zeit: "tag" | "abend" });
+//   k.zeichne(ctx, cx, t)   cx = Kameraweg in Pixeln (nahe Ebene), t = Sekunden (Sterne, Lichter)
+(function (root) {
+  "use strict";
+  const K = (root.CMKulisse = root.CMKulisse || {});
+  const TAU = Math.PI * 2;
+  function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  const hash = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+  function mix(a, b, t) {
+    const p = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)], A = p(a), B = p(b);
+    return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("");
+  }
+
+  // Orte: form = alpin | rund | flach | stadt; hoch = Höhe der fernen Berge (Anteil des Himmels); wald 0 … 1; teile = Wahrzeichen
+  const ORTE = {
+    sapporo: { land: "JPN", name: "Sapporo", form: "rund", hoch: 0.42, wald: 0.5, haus: "#D9D2C4", dach: "#3E4A5C", teile: ["skyline", "fernsehturm", "flutlicht"] },
+    tokio: { land: "JPN", name: "Tokio", form: "stadt", hoch: 0.2, wald: 0, haus: "#C9CEDA", dach: "#2F3A4E", teile: ["skyline", "skyline", "fernsehturm"] },
+    nozawa: { land: "JPN", name: "Nozawa Onsen", form: "alpin", hoch: 0.6, wald: 0.8, haus: "#E9DFC8", dach: "#5A3B2A", teile: ["dorf", "dampf"] },
+    idre: { land: "SWE", name: "Idre Fjäll", form: "rund", hoch: 0.5, wald: 0.9, haus: "#A8322A", dach: "#2B2B2B", teile: ["dorf", "flutlicht"] },
+    heerenveen: { land: "NED", name: "Heerenveen", form: "flach", hoch: 0.06, wald: 0.25, haus: "#B9573C", dach: "#3B2C26", teile: ["muehle", "kirche", "muehle", "dorf"] },
+    friesland: { land: "NED", name: "Friesland", form: "flach", hoch: 0.05, wald: 0.2, haus: "#B9573C", dach: "#3B2C26", teile: ["muehle", "dorf", "kirche"] },
+    lana: { land: "ITA", name: "Lana", form: "alpin", hoch: 0.72, wald: 0.6, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["kirche", "dorf", "burg"] },
+    schnalstal: { land: "ITA", name: "Schnalstal", form: "alpin", hoch: 0.82, wald: 0.5, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["dorf", "kirche"] },
+    garmisch: { land: "GER", name: "Garmisch-Partenkirchen", form: "alpin", hoch: 0.8, wald: 0.75, haus: "#F1E9D6", dach: "#6A4530", teile: ["kirche", "dorf", "huette"] },
+    lahti: { land: "FIN", name: "Lahti", form: "flach", hoch: 0.12, wald: 1, haus: "#C9A94F", dach: "#3A3A3A", teile: ["schanzen", "funkmast", "funkmast", "dorf"] },
+    ruka: { land: "FIN", name: "Ruka", form: "rund", hoch: 0.38, wald: 1, haus: "#8E3B2E", dach: "#2B2B2B", teile: ["schanzen", "dorf"] },
+    chamonix: { land: "FRA", name: "Chamonix", form: "alpin", hoch: 0.92, wald: 0.6, haus: "#EDE3CF", dach: "#5C4636", teile: ["dom", "kirche", "dorf"] },
+    areches: { land: "FRA", name: "Arêches-Beaufort", form: "alpin", hoch: 0.8, wald: 0.7, haus: "#E8DCC4", dach: "#5C4636", teile: ["dorf", "huette"] },
+    trysil: { land: "NOR", name: "Trysil", form: "rund", hoch: 0.4, wald: 1, haus: "#A8322A", dach: "#2B2B2B", teile: ["dorf", "kirche", "fahne"] },
+    holmenkollen: { land: "NOR", name: "Holmenkollen", form: "rund", hoch: 0.3, wald: 0.9, haus: "#A8322A", dach: "#2B2B2B", teile: ["schanzen", "dorf", "fjord"] },
+    toronto: { land: "CAN", name: "Toronto", form: "stadt", hoch: 0.14, wald: 0.1, haus: "#C4B8A6", dach: "#3A3F4C", teile: ["skyline", "fernsehturm", "skyline"] },
+    ottawa: { land: "CAN", name: "Ottawa", form: "stadt", hoch: 0.12, wald: 0.4, haus: "#CFC3AE", dach: "#3D6B5B", teile: ["schloss", "skyline", "kirche"] },
+    copper: { land: "USA", name: "Copper Mountain", form: "alpin", hoch: 0.85, wald: 0.9, haus: "#8A6A4A", dach: "#3B2F28", teile: ["huette", "dorf", "flutlicht"] },
+    utah: { land: "USA", name: "Utah", form: "alpin", hoch: 0.7, wald: 0.5, haus: "#9A7658", dach: "#3B2F28", teile: ["dorf", "flutlicht"] },
+    hochfilzen: { land: "AUT", name: "Hochfilzen", form: "alpin", hoch: 0.78, wald: 0.8, haus: "#EFE6D2", dach: "#6A4530", teile: ["kirche", "dorf"] },
+    wien: { land: "AUT", name: "Wien", form: "stadt", hoch: 0.1, wald: 0.2, haus: "#E2D6BC", dach: "#4E6B5E", teile: ["kirche", "skyline", "schloss"] },
+    stmoritz: { land: "SUI", name: "St. Moritz", form: "alpin", hoch: 0.85, wald: 0.6, haus: "#EDE3CF", dach: "#5C4636", teile: ["kirche", "dorf", "schloss"] },
+  };
+  const LICHT = {
+    tag: { oben: "#8FBBD8", unten: "#DCE9EE", fern: "#9FB6C8", mittel: "#6E8DA5", schnee: "#F4F7F8", schatten: "#C9D8E2", wald: "#2E4A45", licht: 0 },
+    abend: { oben: "#1B2B4E", unten: "#C98F7A", fern: "#4A5578", mittel: "#2E3A5C", schnee: "#B9C3DA", schatten: "#7E8BB0", wald: "#18263A", licht: 1 },
+    nacht: { oben: "#0B1226", unten: "#27375E", fern: "#1F2A4A", mittel: "#172038", schnee: "#8C9AC0", schatten: "#5A688F", wald: "#0E1728", licht: 1 },
+  };
+
+  // nahtlose Kammlinie: Summe ganzzahliger Wellen über die Ebenenbreite
+  function kamm(r, n, rau) {
+    const w = []; for (let i = 1; i <= n; i++) w.push([i, (r() * 2 - 1) / Math.pow(i, rau), r() * TAU]);
+    const norm = w.reduce((s, a) => s + Math.abs(a[1]), 0) || 1;
+    return (u) => { let v = 0; for (const [f, a, p] of w) v += a * Math.sin(u * TAU * f + p); return v / norm; };
+  }
+  function ebene(Wl, H, dpr) { const c = document.createElement("canvas"); c.width = Math.round(Wl * dpr); c.height = Math.round(H * dpr); const x = c.getContext("2d"); x.scale(dpr, dpr); return [c, x]; }
+
+  function berge(x, Wl, base, amp, f, form, col, schnee, schatten) {
+    const zack = (u) => { const v = f(u); return form === "alpin" ? Math.sign(v) * Math.pow(Math.abs(v), 0.7) + 0.35 * Math.abs(Math.sin(u * TAU * 9 + 1)) * (v > -0.2 ? 1 : 0.3) : v; };
+    const y = (px) => base - amp * (0.45 + 0.55 * zack(px / Wl));
+    x.fillStyle = col; x.beginPath(); x.moveTo(0, base + 2);
+    for (let px = 0; px <= Wl; px += 2) x.lineTo(px, y(px));
+    x.lineTo(Wl, base + 2); x.closePath(); x.fill();
+    if (schnee && form === "alpin") {   // Schneekappen: helle Flanke links vom Grat
+      x.fillStyle = schnee;
+      for (let px = 6; px < Wl - 6; px += 2) {
+        const a = y(px - 4), b = y(px), c = y(px + 4);
+        if (b < a && b < c && base - b > amp * 0.55) { x.beginPath(); x.moveTo(px, b); x.lineTo(px - amp * 0.16, b + amp * 0.2); x.lineTo(px - amp * 0.04, b + amp * 0.13); x.lineTo(px + amp * 0.03, b + amp * 0.2); x.lineTo(px + amp * 0.1, b + amp * 0.12); x.closePath(); x.fill();
+          x.fillStyle = schatten; x.beginPath(); x.moveTo(px, b); x.lineTo(px + amp * 0.1, b + amp * 0.12); x.lineTo(px + amp * 0.2, b + amp * 0.26); x.lineTo(px + amp * 0.03, b + amp * 0.2); x.closePath(); x.fill(); x.fillStyle = schnee; }
+      }
+    }
+    return y;
+  }
+  function wald(x, Wl, r, yAt, dichte, col, h) {
+    x.fillStyle = col;
+    for (let px = 0; px < Wl; px += 5 + r() * 9) { if (r() > dichte) continue; const y = yAt(px) + 2, hh = h * (0.6 + r() * 0.7), w = hh * 0.34;
+      x.beginPath(); x.moveTo(px, y - hh); x.lineTo(px + w, y); x.lineTo(px - w, y); x.closePath(); x.fill(); }
+  }
+  const TEILE = {
+    dorf(x, px, y, s, O, L, r) { for (let i = 0; i < 5; i++) { const w = (9 + r() * 7) * s, h = (6 + r() * 4) * s, hx = px + (i - 2) * 15 * s + r() * 4;
+      x.fillStyle = mix(O.haus, L.mittel, L.licht * 0.55); x.fillRect(hx, y - h, w, h); x.fillStyle = L.licht ? mix(L.schnee, "#FFFFFF", 0.1) : "#FFFFFF"; x.beginPath(); x.moveTo(hx - 1.5 * s, y - h); x.lineTo(hx + w / 2, y - h - 5 * s); x.lineTo(hx + w + 1.5 * s, y - h); x.closePath(); x.fill();
+      x.fillStyle = L.licht ? "#F6C766" : mix(O.dach, "#000000", 0.2); x.fillRect(hx + w * 0.3, y - h * 0.62, 2.2 * s, 2.4 * s); } },
+    huette(x, px, y, s, O, L) { x.fillStyle = mix("#6B4A30", L.mittel, L.licht * 0.5); x.fillRect(px, y - 9 * s, 18 * s, 9 * s); x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 3 * s, y - 9 * s); x.lineTo(px + 9 * s, y - 16 * s); x.lineTo(px + 21 * s, y - 9 * s); x.closePath(); x.fill(); x.fillStyle = L.licht ? "#F6C766" : "#2A1E16"; x.fillRect(px + 7 * s, y - 6 * s, 3.5 * s, 3.5 * s); },
+    kirche(x, px, y, s, O, L) { const c = mix(O.haus, L.mittel, L.licht * 0.55); x.fillStyle = c; x.fillRect(px, y - 12 * s, 16 * s, 12 * s); x.fillRect(px + 16 * s, y - 22 * s, 6 * s, 22 * s);
+      x.fillStyle = mix(O.dach, L.mittel, L.licht * 0.4); x.beginPath(); x.moveTo(px + 15 * s, y - 22 * s); x.lineTo(px + 19 * s, y - 36 * s); x.lineTo(px + 23 * s, y - 22 * s); x.closePath(); x.fill(); x.beginPath(); x.moveTo(px - 1 * s, y - 12 * s); x.lineTo(px + 8 * s, y - 18 * s); x.lineTo(px + 17 * s, y - 12 * s); x.closePath(); x.fill(); },
+    burg(x, px, y, s, O, L) { x.fillStyle = mix("#B9AD96", L.mittel, L.licht * 0.6); x.fillRect(px, y - 14 * s, 22 * s, 14 * s); x.fillRect(px + 16 * s, y - 24 * s, 7 * s, 24 * s); for (let i = 0; i < 4; i++) x.fillRect(px + i * 6 * s, y - 16.5 * s, 3 * s, 3 * s); },
+    schloss(x, px, y, s, O, L) { x.fillStyle = mix(O.haus, L.mittel, L.licht * 0.55); x.fillRect(px, y - 15 * s, 40 * s, 15 * s); x.fillStyle = mix(O.dach, L.mittel, L.licht * 0.4); for (const dx of [2, 18, 34]) { x.beginPath(); x.moveTo(px + (dx - 3) * s, y - 15 * s); x.lineTo(px + (dx + 2) * s, y - (dx === 18 ? 34 : 26) * s); x.lineTo(px + (dx + 7) * s, y - 15 * s); x.closePath(); x.fill(); } },
+    muehle(x, px, y, s, O, L) { x.fillStyle = mix("#5A4334", L.mittel, L.licht * 0.5); x.beginPath(); x.moveTo(px - 5 * s, y); x.lineTo(px - 3 * s, y - 20 * s); x.lineTo(px + 3 * s, y - 20 * s); x.lineTo(px + 5 * s, y); x.closePath(); x.fill(); x.beginPath(); x.arc(px, y - 20 * s, 4 * s, Math.PI, 0); x.fill();
+      x.strokeStyle = mix("#3A2A20", L.mittel, L.licht * 0.4); x.lineWidth = 1.4 * s; for (let i = 0; i < 4; i++) { const a = 0.5 + i * Math.PI / 2; x.beginPath(); x.moveTo(px, y - 21 * s); x.lineTo(px + Math.cos(a) * 15 * s, y - 21 * s + Math.sin(a) * 15 * s); x.stroke(); x.fillStyle = "rgba(240,232,214,0.75)"; x.save(); x.translate(px, y - 21 * s); x.rotate(a); x.fillRect(4 * s, 0.6 * s, 11 * s, 2.6 * s); x.restore(); } },
+    skyline(x, px, y, s, O, L, r) { for (let i = 0; i < 9; i++) { const w = (6 + r() * 7) * s, h = (12 + r() * 34) * s, hx = px + (i - 4) * 11 * s; x.fillStyle = mix(O.haus, L.mittel, 0.35 + L.licht * 0.45); x.fillRect(hx, y - h, w, h);
+      if (L.licht) { x.fillStyle = "rgba(246,199,102,0.8)"; for (let k = 0; k < h / (5 * s) - 1; k++) if (r() < 0.55) x.fillRect(hx + (1.2 + (k % 2) * 2.6) * s, y - h + (2 + k * 5) * s, 1.4 * s, 1.8 * s); } } },
+    fernsehturm(x, px, y, s, O, L) { x.fillStyle = mix("#B4BAC6", L.mittel, L.licht * 0.5); x.beginPath(); x.moveTo(px - 3 * s, y); x.lineTo(px - 0.8 * s, y - 62 * s); x.lineTo(px + 0.8 * s, y - 62 * s); x.lineTo(px + 3 * s, y); x.closePath(); x.fill(); x.fillRect(px - 5 * s, y - 46 * s, 10 * s, 5 * s); x.fillRect(px - 0.5 * s, y - 78 * s, 1 * s, 17 * s); if (L.licht) { x.fillStyle = "#E4573D"; x.fillRect(px - 1 * s, y - 80 * s, 2 * s, 2 * s); } },
+    funkmast(x, px, y, s, O, L) { x.strokeStyle = mix("#C4423A", L.mittel, L.licht * 0.4); x.lineWidth = 1.2 * s; x.beginPath(); x.moveTo(px - 4 * s, y); x.lineTo(px, y - 70 * s); x.lineTo(px + 4 * s, y); x.stroke(); for (let k = 1; k < 7; k++) { x.beginPath(); x.moveTo(px - 4 * s * (1 - k / 7), y - k * 10 * s); x.lineTo(px + 4 * s * (1 - k / 7), y - k * 10 * s); x.stroke(); } },
+    schanzen(x, px, y, s, O, L) { x.strokeStyle = mix("#E9EEF2", L.mittel, L.licht * 0.35); x.lineCap = "round"; for (const [dx, h] of [[0, 46], [26, 34], [46, 24]]) { x.lineWidth = 3 * s; x.beginPath(); x.moveTo(px + dx * s, y - h * s); x.quadraticCurveTo(px + (dx + 16) * s, y - h * 0.45 * s, px + (dx + 30) * s, y - h * 0.3 * s); x.stroke(); x.lineWidth = 1.5 * s; x.beginPath(); x.moveTo(px + (dx + 2) * s, y - h * s); x.lineTo(px + (dx + 2) * s, y); x.stroke(); } },
+    flutlicht(x, px, y, s, O, L) { x.strokeStyle = mix("#59616E", L.mittel, L.licht * 0.3); x.lineWidth = 1.4 * s; for (const dx of [-40, 40]) { x.beginPath(); x.moveTo(px + dx * s, y); x.lineTo(px + dx * s, y - 40 * s); x.stroke(); x.fillStyle = L.licht ? "#FFF3C4" : "#C8CCD2"; x.fillRect(px + (dx - 5) * s, y - 44 * s, 10 * s, 4 * s);
+      if (L.licht) { const g = x.createRadialGradient(px + dx * s, y - 42 * s, 1, px + dx * s, y - 42 * s, 46 * s); g.addColorStop(0, "rgba(255,243,196,0.5)"); g.addColorStop(1, "rgba(255,243,196,0)"); x.fillStyle = g; x.fillRect(px + (dx - 46) * s, y - 88 * s, 92 * s, 92 * s); } } },
+    dom(x, px, y, s, O, L) { x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 90 * s, y); x.quadraticCurveTo(px - 30 * s, y - 120 * s, px + 10 * s, y - 118 * s); x.quadraticCurveTo(px + 60 * s, y - 100 * s, px + 110 * s, y); x.closePath(); x.fill(); x.fillStyle = L.schatten; x.beginPath(); x.moveTo(px + 10 * s, y - 118 * s); x.quadraticCurveTo(px + 60 * s, y - 100 * s, px + 110 * s, y); x.lineTo(px + 40 * s, y); x.closePath(); x.fill(); },
+    dampf(x, px, y, s) { x.fillStyle = "rgba(255,255,255,0.35)"; for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(px + i * 3 * s, y - (10 + i * 7) * s, (4 + i * 1.6) * s, 0, TAU); x.fill(); } },
+    fahne(x, px, y, s, O, L) { x.strokeStyle = "#E8E2D2"; x.lineWidth = 1.2 * s; x.beginPath(); x.moveTo(px, y); x.lineTo(px, y - 30 * s); x.stroke(); x.fillStyle = mix("#BA2B32", L.mittel, L.licht * 0.3); x.fillRect(px, y - 30 * s, 14 * s, 9 * s); x.fillStyle = "#FFFFFF"; x.fillRect(px + 3.4 * s, y - 30 * s, 3 * s, 9 * s); x.fillRect(px, y - 27 * s, 14 * s, 3 * s); x.fillStyle = "#1F3A7A"; x.fillRect(px + 4.2 * s, y - 30 * s, 1.4 * s, 9 * s); x.fillRect(px, y - 26.2 * s, 14 * s, 1.4 * s); },
+    fjord(x, px, y, s, O, L) { x.fillStyle = mix("#4F7C9A", L.mittel, L.licht * 0.6); x.beginPath(); x.ellipse(px, y + 5 * s, 70 * s, 5 * s, 0, 0, TAU); x.fill(); },
+  };
+
+  function baue(ort, o) {
+    const O = ORTE[ort] || ORTE.garmisch, L = LICHT[o.zeit] || LICHT.tag, W = o.W, H = o.H, hor = o.hor, dpr = o.dpr || 1, Wl = W * 2;
+    const r = rng(hash(ort) ^ (o.seed || 0));
+    const [cH, xH] = ebene(W, H, dpr), [cF, xF] = ebene(Wl, H, dpr), [cM, xM] = ebene(Wl, H, dpr);
+    const g = xH.createLinearGradient(0, 0, 0, hor); g.addColorStop(0, L.oben); g.addColorStop(1, L.unten); xH.fillStyle = g; xH.fillRect(0, 0, W, hor + 2);
+    xH.fillStyle = L.schnee; xH.fillRect(0, hor, W, H - hor);
+    const sterne = []; if (L.licht) for (let i = 0; i < 46; i++) sterne.push([r() * W, r() * hor * 0.7, 0.5 + r(), r() * TAU]);
+    if (!L.licht) { xH.fillStyle = "rgba(255,255,255,0.75)"; for (let i = 0; i < 5; i++) { const cx = r() * W, cy = 18 + r() * hor * 0.4, w = 50 + r() * 70; xH.beginPath(); xH.ellipse(cx, cy, w, 7 + r() * 5, 0, 0, TAU); xH.ellipse(cx + w * 0.3, cy - 6, w * 0.5, 8, 0, 0, TAU); xH.fill(); } }
+    else { xH.fillStyle = "#F3EBD3"; xH.beginPath(); xH.arc(W * 0.8, hor * 0.24, 13, 0, TAU); xH.fill(); xH.fillStyle = L.oben; xH.beginPath(); xH.arc(W * 0.8 + 6, hor * 0.24 - 3, 12, 0, TAU); xH.fill(); }
+    // fern
+    const amp = hor * O.hoch;
+    const yF = berge(xF, Wl, hor + 1, amp, kamm(r, O.form === "alpin" ? 14 : 6, O.form === "alpin" ? 0.9 : 1.5), O.form === "stadt" ? "rund" : O.form, L.fern, O.form === "alpin" ? L.schnee : null, L.schatten);
+    if (O.form !== "alpin" && O.form !== "stadt" && O.hoch > 0.2) { xF.fillStyle = mix(L.schnee, L.fern, 0.35); for (let px = 0; px < Wl; px += 2) { const y = yF(px); if (hor - y > amp * 0.6) xF.fillRect(px, y, 2, Math.min(7, (hor - y - amp * 0.6) * 0.6)); } }
+    if (O.teile.includes("dom")) TEILE.dom(xF, Wl * 0.3, hor + 1, hor / 200, O, L, r);
+    // mittel: Vorberge mit Wald, Wahrzeichen im Talgrund
+    const mAmp = Math.max(10, amp * 0.34), yM = berge(xM, Wl, hor + 14, mAmp, kamm(r, 7, 1.3), "rund", L.mittel, null, null);
+    wald(xM, Wl, r, yM, O.wald * 0.8, L.wald, 13 + hor * 0.03);
+    xM.fillStyle = L.schnee; xM.fillRect(0, hor + 8, Wl, 14);
+    const sc = Math.max(0.6, hor / 210);
+    O.teile.forEach((tl, i) => { if (tl === "dom" || !TEILE[tl]) return; const px = Wl * ((i + 0.5) / O.teile.length) + (r() - 0.5) * 60; TEILE[tl](xM, px, hor + 9, sc * (tl === "skyline" ? 1 : 0.9), O, L, r); });
+    wald(xM, Wl, r, () => hor + 16, O.wald * 0.35, mix(L.wald, "#000000", 0.15), 20 + hor * 0.04);
+    function kachel(ctx, cv, off) { const x0 = -(((off % Wl) + Wl) % Wl); ctx.drawImage(cv, x0, 0, Wl, H); if (x0 + Wl < W) ctx.drawImage(cv, x0 + Wl, 0, Wl, H); }
+    return { ort: O, licht: L, W, H, hor, nacht: !!L.licht,
+      zeichne(ctx, cx, t) {
+        ctx.drawImage(cH, 0, 0, W, H);
+        if (sterne.length) { ctx.fillStyle = "#FFFFFF"; for (const [x, y, s, p] of sterne) { ctx.globalAlpha = 0.45 + 0.4 * Math.sin((t || 0) * 1.3 + p); ctx.fillRect(x, y, s, s); } ctx.globalAlpha = 1; }
+        kachel(ctx, cF, (cx || 0) * 0.06); kachel(ctx, cM, (cx || 0) * 0.18);
+      } };
+  }
+  K.einfach = { v: 1, ORTE, LICHT, baue, rng, hash, mix };
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Cold Medal Games · gemeinsame Figur (figur/figur.js, global CMFigur)
+ *
+ * Ein Körper für alle Spiele der Reihe, im Plakatstil: gleicher Körperbau und gleiche Posen für alle, erkennbar nur an Frisur,
+ * Hautton und Farben aus dem Pass (Gesamtkonzept; kein Rock als Zeichen für „Frau“). Grundlage ist die Figur des Eiskunstlaufs
+ * (eiskunstlauf/src/figure.js, Stand 0.2.3), von Mat am 11.11.2026 als gemeinsame Figur gewählt; die Arme hat Mat danach
+ * überarbeiten lassen (länger nach menschlichen Maßen, kräftiger, runde Schulter unter dem Hals, größere Hände). Jede Sportart bringt nur ihre
+ * Kleidung und Ausrüstung (KITS) und ihre eigenen Posen und Abläufe mit.
+ *
+ * Pose: Winkel in Grad ab senkrecht nach unten, + = nach vorn (Blickrichtung). sL Standbein, fL Spielbein [Hüfte, Knie],
+ * aF/aB Arm vorn/hinten [Schulter, Ellbogen], lean Rumpfneigung, hd Kopf gegen den Rumpf (− = Kopf hoch), crouch frei fürs Spiel.
+ * Der Knöchel des Standbeins liegt im Ursprung; die Figur ist aufrecht rund 80 Einheiten hoch (Knöchel bis Scheitel).
+ * Braucht nichts außer Canvas 2D.
+ */
+(function (root) {
+  "use strict";
+  const INK = "#141B25", PAPER = "#F1E7D2";
+  const SKIN = ["#F2D3B8", "#E2B48F", "#C98E66", "#9C6644", "#6B4430"];
+  const HAIRC = ["#3A2A1E", "#7A4A22", "#C9A060", "#1A1A1A", "#B0A79A"];
+  const SUIT = ["#C23B2A", "#23466B", "#3F6B55", "#DDA43B", "#6B3F7A", "#1E2734"];
+  // Frisuren und Bart: ohne Körperunterschied lässt sich damit alles zwischen männlich und weiblich darstellen (Mat, 11.11.2026)
+  const HAIRS = ["Dutt", "Kurz", "Zopf", "Locken", "Bubikopf", "Lang", "Scheitel", "Stoppeln", "Afro"];
+  const BEARDS = ["ohne", "Schnurrbart", "Vollbart", "Dreitagebart"];
+  const PATTERNS = ["uni", "stripe", "split"];   // einfarbig, Längsstreifen, Beine in der Zweitfarbe
+  const DEF_LOOK = { hair: 0, hairC: 0, beard: 0, skin: 1, suit: 0, accent: 3, pattern: "uni" };
+  const GLOVE = "#2B3442", VISOR = "#4FC3F7", BOOT = "#1E2734", WOOD = "#8E5A34";
+  const POLE = 56, GROUND = 4.7;   // Stocklänge; Boden unter dem Knöchel des Standbeins (Unterkante Langlaufski)
+
+  // Kleidung und Ausrüstung je Sportart. head: hair | helmet | cap; feet: skates | jumpSki | xcSki | woodSki | xcWood | shoes | skiBoots
+  // (Skischuhe ohne Ski, z. B. Ski in der Hand); torso: sash (Schrägstreifen) | bib (Startnummer) | sweater (Pullover mit Bordüre) | plain;
+  // legs: knickers (Kniebundhose und Wollstrümpfe); back: rifle; hands: poles; glove: Handschuhe statt Haut ("suit" = Fäustlinge in der Anzugfarbe);
+  // bootC Farbe der Schuhe; pants Hose [nah, fern]
+  const KITS = {
+    eiskunstlauf: { head: "hair", feet: "skates", torso: "sash" },
+    skispringen: { head: "helmet", feet: "jumpSki", torso: "plain", glove: true },
+    biathlon: { head: "cap", feet: "xcSki", torso: "bib", back: "rifle", hands: "poles", glove: true },
+    plain: { head: "hair", feet: "shoes", torso: "plain" },   // Siegerehrung, Pass, Menü
+    // wie 1928 (Nostalgie): Strickmütze, Pullover mit Bordüre, Kniebundhose, Wollstrümpfe, Lederschuhe, Holzski
+    skispringen1928: { head: "cap", feet: "woodSki", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] },
+    // Biathlon wie um 1960 (Jagd 1960): Strickmütze, Pullover mit Bordüre, Kniebundhose, Wollstrümpfe, Holzski, Gewehr, Stöcke (Biathlon-Chat, 12.11.2026)
+    biathlon1960: { head: "cap", feet: "xcWood", torso: "sweater", legs: "knickers", back: "rifle", hands: "poles", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] },
+  };
+  // Ski in Einheiten der Figur: hinter und vor dem Knöchel, Breite, Spitze (Länge, Höhe), Farbe nah und fern, Kante
+  const SKI = {
+    jumpSki: { back: 46, front: 60, w: 2.6, tipL: 8, tipH: 4.5, col: "#E4EAF2", colF: "#A9B5C6" },
+    xcSki: { back: 36, front: 44, w: 1.5, tipL: 5, tipH: 2.6, col: "#2B3442", colF: "#4A5568" },
+    woodSki: { back: 44, front: 56, w: 3.0, tipL: 10, tipH: 6.5, col: "#A8763F", colF: "#7C5430", edge: "#3A2A1C" },
+    // Langlaufski aus Holz (wie um 1960): schmaler und kürzer als der Sprungski von 1928 (Biathlon-Chat, 12.11.2026)
+    xcWood: { back: 38, front: 46, w: 2.0, tipL: 7, tipH: 4.2, col: "#A8763F", colF: "#7C5430", edge: "#3A2A1C" },
+  };
+  const SOCK = ["#E7DECB", "#C9BEA6"];
+
+  // Farben im Aussehen: Nummer in der Liste des Passes oder eigene Farbe #rrggbb (Spiele mit eigener Farbauswahl)
+  const isHex = (v) => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+  const pal = (v, list, d) => (isHex(v) ? v : list[v] || list[d]);
+  const HEXKEYS = ["suitD", "accentD", "helmet", "visor", "ski", "skiFar", "cap", "pom", "bib"];
+  function shade(hex, f) {
+    const n = parseInt(hex.slice(1), 16), c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => Math.round(Math.max(0, Math.min(255, v * f))));
+    return "#" + c.map((v) => v.toString(16).padStart(2, "0")).join("");
+  }
+  function cleanLook(o) {
+    const L = Object.assign({}, DEF_LOOK);
+    if (o && typeof o === "object") {
+      const pick = (k, n) => { if (Number.isInteger(o[k]) && o[k] >= 0 && o[k] < n) L[k] = o[k]; };
+      pick("hair", HAIRS.length); pick("hairC", HAIRC.length); pick("beard", BEARDS.length); pick("skin", SKIN.length); pick("suit", SUIT.length); pick("accent", SUIT.length);
+      for (const k of ["skin", "hairC", "suit", "accent"]) if (isHex(o[k])) L[k] = o[k];
+      for (const k of HEXKEYS) if (isHex(o[k])) L[k] = o[k];
+      if (PATTERNS.includes(o.pattern)) L.pattern = o.pattern;
+    }
+    return L;
+  }
+
+  // ------------------------------------------------------------------ Posen und Abläufe
+  // Gemeinsame Posen aller Spiele; die Posen der Sportarten liegen im Spiel.
+  const POSES = {
+    stand: { lean: 2, crouch: 0, sL: [2, 3], fL: [-3, 3], aF: [8, -10], aB: [-6, -8], hd: 0 },
+    cheer: { lean: -4, crouch: 0, sL: [2, 3], fL: [-4, 3], aF: [164, 10], aB: [-164, -10], hd: -10, mood: "froh" },   // Jubel: Arme hoch
+    bow: { lean: 48, crouch: 0, sL: [0, 2], fL: [-6, 2], aF: [6, -6], aB: [-2, -6], hd: 12 },          // Verbeugung
+    wave: { lean: 2, crouch: 0, sL: [2, 3], fL: [-3, 3], aF: [120, 48], aB: [-6, -8], hd: -4 },        // Winken
+  };
+  // Abläufe als Schlüsselbilder [Zeitpunkt 0 … 1, Pose]; seq() mischt weich dazwischen
+  const ABLAEUFE = {
+    jubel: [[0, POSES.stand], [0.35, POSES.cheer], [0.6, { lean: -2, crouch: 0, sL: [6, 14], fL: [0, 14], aF: [150, 26], aB: [-150, -26], hd: -14 }], [1, POSES.cheer]],
+    winken: [[0, POSES.wave], [0.5, Object.assign({}, POSES.wave, { aF: [112, 66] })], [1, POSES.wave]],
+  };
+  // fA/sA Spiel-/Standbein seitlich abgespreizt, aFA/aBA Arm vorn/hinten seitlich gehoben (Grad, frei, Standard 0):
+  // Drehung um die Achse nach vorn durch Hüfte bzw. Schulter – sichtbar, sobald sich die Figur dreht (Eiskunstlauf 0.43)
+  // ao3: Arme seitlich für die 3D-Figur (figur3d.js), unabhängig von der Blickrichtung; 2D nutzt es nicht
+  const KEYS = ["lean", "crouch", "hd", "ao", "fA", "sA", "aFA", "aBA", "ao3"], PAIRS = ["sL", "fL", "aF", "aB"];
+  const val = (o, k) => (o[k] == null ? 0 : o[k]);
+  function mix(a, b, t) {
+    const o = {};
+    for (const k of KEYS) o[k] = val(a, k) + (val(b, k) - val(a, k)) * t;
+    for (const k of PAIRS) o[k] = [a[k][0] + (b[k][0] - a[k][0]) * t, a[k][1] + (b[k][1] - a[k][1]) * t];
+    return o;
+  }
+  // Posen als Zahlenreihe (für weiche Kurven durch Schlüsselbilder); lift = Höhe über dem Boden (Sprung)
+  const CH = 12;
+  const toVec = (p, lift) => [val(p, "lean"), val(p, "crouch"), val(p, "hd"), p.sL[0], p.sL[1], p.fL[0], p.fL[1], p.aF[0], p.aF[1], p.aB[0], p.aB[1], lift || 0, val(p, "ao"), val(p, "fA"), val(p, "sA"), val(p, "aFA"), val(p, "aBA"), val(p, "ao3")];
+  const toPose = (v) => {
+    const o = { lean: v[0], crouch: v[1], hd: v[2], sL: [v[3], v[4]], fL: [v[5], v[6]], aF: [v[7], v[8]], aB: [v[9], v[10]], ao: v[12] || 0 };
+    ["fA", "sA", "aFA", "aBA", "ao3"].forEach((k, i) => { if (v[13 + i]) o[k] = v[13 + i]; });
+    return o;
+  };
+  // Weiche Kurve durch Schlüsselbilder K = [[t, Zahlenreihe], …]: Geschwindigkeit ohne Sprung (Hermite-Kurve), aber kein
+  // Überschwingen: an Umkehrpunkten und Haltepunkten steht die Bewegung kurz (Steigung 0). loop: zyklisch, letztes = erstes Bild.
+  function spline(K, t, loop) {
+    const n = K.length, D = K[n - 1][0] - K[0][0];
+    t = loop ? K[0][0] + ((((t - K[0][0]) % D) + D) % D) : Math.max(K[0][0], Math.min(K[n - 1][0], t));
+    let i = 0; while (i < n - 2 && t > K[i + 1][0]) i++;
+    const nb = (j, d) => {
+      let k = j + d, off = 0;
+      if (k < 0 || k > n - 1) { if (!loop) return null; if (k < 0) { k = n - 2; off = -D; } else { k = 1; off = D; } }
+      return [K[k][0] + off, K[k][1]];
+    };
+    const tan = (j) => {
+      const a = nb(j, -1), b = nb(j, 1), c = K[j][1];
+      return c.map((v, ch) => {
+        if (!a || !b) return 0;
+        const d1 = v - a[1][ch], d2 = b[1][ch] - v;
+        return d1 * d2 <= 0 ? 0 : (b[1][ch] - a[1][ch]) / (b[0] - a[0]);
+      });
+    };
+    const [ta, A] = K[i], [tb, B] = K[i + 1], h = tb - ta || 1e-9, u = Math.max(0, Math.min(1, (t - ta) / h));
+    const mA = tan(i), mB = tan(i + 1), u2 = u * u, u3 = u2 * u;
+    const h00 = 2 * u3 - 3 * u2 + 1, h10 = u3 - 2 * u2 + u, h01 = -2 * u3 + 3 * u2, h11 = u3 - u2;
+    return A.map((x, ch) => h00 * x + h10 * h * mA[ch] + h01 * B[ch] + h11 * h * mB[ch]);
+  }
+  // Schlüsselbild-Ablauf abtasten: keys [[t, pose], …] aufsteigend, u in 0 … 1 (loop: zyklisch, Ende = Anfang); weich wie spline()
+  function seq(keys, u, loop) {
+    const K = keys._v || (keys._v = keys.map(([t, q]) => [t, toVec(q)]));
+    return toPose(spline(K, u, loop));
+  }
+
+  // Gesten für Sieg, knappe Ergebnisse, Niederlage und Warten: gleich in allen Spielen, eine davon wählt man im Pass als Jubel.
+  // keys: [Sekunde, Pose, { lift, mood }]; mood steuert das Gesicht (froh, traurig, ruhig, staunen), lift die Höhe beim Sprung.
+  const S0 = POSES.stand, g = (o) => Object.assign({}, S0, o);
+  const UP = g({ lean: -2, sL: [8, 18], fL: [2, 18], aF: [150, 26], aB: [-150, -26], hd: -14 });
+  const HIGH = g({ lean: -5, sL: [2, 3], fL: [-4, 3], aF: [168, 6], aB: [-168, -6], hd: -12 });
+  const PULL = g({ lean: 12, sL: [14, 30], fL: [6, 30], aF: [-22, 128], aB: [-14, -24], hd: -2 });
+  const FIST = g({ lean: 1, sL: [4, 8], fL: [-4, 8], aF: [80, 100], aB: [-10, -20], hd: -6 });
+  const HEAD = g({ lean: -5, sL: [2, 4], fL: [-4, 4], aF: [150, 120], aB: [-150, -120], hd: -10 });
+  const SAD = g({ lean: 16, sL: [8, 14], fL: [0, 14], aF: [2, -4], aB: [-4, -4], hd: 24 });
+  const FACE = g({ lean: 24, sL: [12, 24], fL: [6, 24], aF: [90, 103], aB: [86, 106], hd: 22 });
+  const HIPS = g({ lean: 4, sL: [2, 4], fL: [-8, 4], aF: [-26, 96], aB: [-30, 100], hd: 14 });
+  const KNEES = g({ lean: 58, sL: [28, 46], fL: [22, 44], aF: [10, 8], aB: [6, 8], hd: 8 });
+  const CLAP_A = g({ aF: [40, 62], aB: [54, 56] }), CLAP_B = g({ aF: [46, 66], aB: [44, 66] });
+  const F = (m) => ({ mood: m });
+  const GESTEN = {
+    jubel: { name: "Arme hoch", art: "sieg", dauer: 2.4, keys: [[0, S0, F("ruhig")], [0.35, POSES.cheer, F("froh")], [0.7, UP, F("froh")], [1.05, HIGH, F("froh")], [1.4, UP, F("froh")], [1.8, POSES.cheer, F("froh")], [2.4, POSES.cheer, F("froh")]] },
+    faust: { name: "Faust", art: "sieg", dauer: 1.8, keys: [[0, S0, F("ruhig")], [0.3, FIST, F("froh")], [0.55, PULL, F("froh")], [0.85, FIST, F("froh")], [1.1, PULL, F("froh")], [1.8, g({ lean: 4, sL: [3, 5], fL: [-3, 5], aF: [24, 80], aB: [-6, -10], hd: -6 }), F("froh")]] },
+    sprung: { name: "Freudensprung", art: "sieg", dauer: 1.6, keys: [[0, S0, { lift: 0, mood: "froh" }],
+      [0.3, g({ lean: 20, sL: [44, 88], fL: [40, 88], aF: [-34, 24], aB: [-40, 24], hd: -10 }), { lift: 0, mood: "froh" }],
+      [0.55, g({ lean: -6, sL: [-2, 8], fL: [-14, 36], aF: [170, 6], aB: [-170, -6], hd: -14 }), { lift: 16, mood: "froh" }],
+      [0.8, g({ lean: -2, sL: [4, 18], fL: [-20, 50], aF: [160, 12], aB: [-160, -12], hd: -12 }), { lift: 9, mood: "froh" }],
+      [1.0, g({ lean: 12, sL: [34, 66], fL: [28, 64], aF: [120, 30], aB: [-120, -30], hd: -6 }), { lift: 0, mood: "froh" }],
+      [1.6, POSES.cheer, { lift: 0, mood: "froh" }]] },
+    siegerpose: { name: "Siegerpose", art: "sieg", dauer: 1.8, keys: [[0, S0, F("ruhig")], [0.5, g({ lean: -8, fL: [-10, 4], aF: [132, -12], aB: [-132, 12], hd: -18 }), F("froh")], [1.8, g({ lean: -9, fL: [-10, 4], aF: [136, -10], aB: [-136, 10], hd: -20 }), F("froh")]] },
+    zeigen: { name: "Nach oben zeigen", art: "sieg", dauer: 1.6, keys: [[0, S0, F("ruhig")], [0.45, g({ lean: -4, aF: [172, -2], aB: [-24, 60], hd: -16 }), F("froh")], [1.6, g({ lean: -5, aF: [176, -2], aB: [-24, 60], hd: -18 }), F("froh")]] },
+    winken: { name: "Winken", art: "sieg", dauer: 1.6, loop: true, keys: [[0, POSES.wave, F("froh")], [0.4, g({ lean: 2, aF: [112, 66], hd: -4 }), F("froh")], [0.8, POSES.wave, F("froh")], [1.2, g({ lean: 2, aF: [112, 66], hd: -4 }), F("froh")], [1.6, POSES.wave, F("froh")]] },
+    verbeugung: { name: "Verbeugung", art: "sieg", dauer: 2.2, keys: [[0, S0, F("froh")], [0.6, POSES.bow, F("froh")], [1.3, POSES.bow, F("froh")], [2.2, S0, F("froh")]] },
+    erleichtert: { name: "Hände an den Kopf", art: "knapp", dauer: 2.6, keys: [[0, S0, F("staunen")], [0.45, HEAD, F("staunen")], [1.4, g({ lean: -4, sL: [2, 4], fL: [-4, 4], aF: [152, 118], aB: [-152, -118], hd: -12 }), F("staunen")],
+      [1.9, g({ lean: 12, sL: [6, 12], fL: [0, 12], aF: [8, -6], aB: [-2, -6], hd: 8 }), F("froh")], [2.6, S0, F("froh")]] },
+    nicken: { name: "Nicken", art: "knapp", dauer: 1.4, keys: [[0, S0, F("froh")], [0.25, g({ hd: 14 }), F("froh")], [0.5, g({ hd: -4 }), F("froh")], [0.75, g({ hd: 12 }), F("froh")], [1.0, g({ hd: -2 }), F("froh")], [1.4, S0, F("froh")]] },
+    enttaeuscht: { name: "Kopf hängen", art: "niederlage", dauer: 2.4, keys: [[0, S0, F("ruhig")], [0.7, SAD, F("traurig")], [1.5, g({ lean: 18, sL: [8, 16], fL: [0, 16], aF: [0, -4], aB: [-6, -4], hd: 26 }), F("traurig")], [2.4, g({ lean: 14, sL: [8, 14], fL: [0, 14], aF: [2, -4], aB: [-4, -4], hd: 22 }), F("traurig")]] },
+    gesicht: { name: "Hände vors Gesicht", art: "niederlage", dauer: 2.6, keys: [[0, S0, F("ruhig")], [0.5, FACE, F("traurig")], [1.8, g({ lean: 28, sL: [14, 28], fL: [8, 28], aF: [92, 102], aB: [88, 104], hd: 26 }), F("traurig")], [2.6, g({ lean: 20, sL: [10, 20], fL: [4, 20], aF: [30, 70], aB: [34, 60], hd: 18 }), F("traurig")]] },
+    abwinken: { name: "Abwinken", art: "niederlage", dauer: 1.6, keys: [[0, S0, F("ruhig")], [0.35, g({ lean: 4, aF: [56, 84], hd: 6 }), F("traurig")], [0.6, g({ lean: 8, aF: [20, -14], hd: 16 }), F("traurig")], [1.6, g({ lean: 10, sL: [6, 10], fL: [0, 10], aF: [6, -8], aB: [-4, -6], hd: 18 }), F("traurig")]] },
+    hueften: { name: "Hände in die Hüften", art: "niederlage", dauer: 2.2, keys: [[0, S0, F("ruhig")], [0.6, HIPS, F("traurig")], [1.4, g({ lean: 2, sL: [2, 4], fL: [-8, 4], aF: [-24, 94], aB: [-28, 98], hd: 8 }), F("traurig")], [2.2, HIPS, F("traurig")]] },
+    knie: { name: "Hände auf die Knie", art: "niederlage", dauer: 2.4, keys: [[0, S0, F("ruhig")], [0.8, KNEES, F("traurig")], [1.6, g({ lean: 62, sL: [30, 50], fL: [24, 48], aF: [8, 8], aB: [4, 8], hd: 14 }), F("traurig")], [2.4, KNEES, F("traurig")]] },
+    warten: { name: "Warten", art: "neutral", dauer: 4, loop: true, keys: [[0, S0, F("ruhig")], [1, g({ lean: 3, sL: [4, 6], fL: [-6, 10], aF: [10, -12], aB: [-8, -10] }), F("ruhig")], [2, g({ lean: 1, sL: [1, 2], fL: [-2, 4], aF: [6, -8], aB: [-4, -6] }), F("ruhig")], [3, g({ lean: 2, sL: [3, 5], fL: [-5, 8], aF: [9, -10], aB: [-7, -9] }), F("ruhig")], [4, S0, F("ruhig")]] },
+    applaus: { name: "Applaus", art: "neutral", dauer: 0.8, loop: true, keys: [[0, CLAP_A, F("froh")], [0.2, CLAP_B, F("froh")], [0.4, CLAP_A, F("froh")], [0.6, CLAP_B, F("froh")], [0.8, CLAP_A, F("froh")]] },
+    daumen: { name: "Daumen hoch", art: "neutral", dauer: 1.4, keys: [[0, S0, F("ruhig")], [0.45, g({ lean: 0, aF: [96, 76], hd: -6 }), F("froh")], [1.4, g({ lean: 0, aF: [98, 74], hd: -6 }), F("froh")]] },
+  };
+  // Tänze im Stil der 1920er und 30er Jahre, passend zu den Plakaten der Reihe: eigene kurze Choreografien nach den alten
+  // Grundschritten, keine Kopien heutiger Trend-Tänze. takt = Sekunden je Schlag (für Musik oder Klatschen im Spiel).
+  const CH_DOWN = g({ lean: 5, sL: [8, 18], fL: [-2, 18], aF: [16, -8], aB: [-18, -8], hd: -4 });
+  const CH_FWD = g({ lean: -4, sL: [3, 6], fL: [58, 10], aF: [54, -10], aB: [-46, -10], hd: -8 });
+  const CH_BACK = g({ lean: 12, sL: [5, 10], fL: [-44, 74], aF: [-42, -10], aB: [50, -10], hd: 0 });
+  const CH_FWD2 = g({ lean: -6, sL: [3, 6], fL: [62, 8], aF: [96, -16], aB: [-70, -14], hd: -12 });
+  const CH_BACK2 = g({ lean: 14, sL: [5, 10], fL: [-48, 80], aF: [-66, -14], aB: [92, -16], hd: 2 });
+  const shimmy = [];
+  for (let i = 0; i <= 16; i++) {
+    const sh = i % 2 ? 1 : -1, b = Math.cos((i / 16) * Math.PI * 4);
+    shimmy.push([i * 0.06, g({ lean: -7 + 4 * sh, sL: [5, 12 + 5 * b], fL: [-8, 12 + 5 * b], aF: [62 + 9 * sh, 78 - 8 * sh], aB: [48 - 9 * sh, 84 + 8 * sh], hd: -10 - 4 * sh }), F("froh")]);
+  }
+  const TR_A = g({ lean: 10, sL: [10, 22], fL: [-6, 22], aF: [150, 32], aB: [-30, -20], hd: -2 });
+  const TR_B = g({ lean: 6, sL: [4, 10], fL: [-14, 30], aF: [146, 4], aB: [-20, -14], hd: -6 });
+  const PE_A = g({ lean: 4, sL: [6, 14], fL: [-4, 14], aF: [-28, 100], aB: [-32, 104], hd: -6 });
+  const PE_B = g({ lean: 16, sL: [10, 22], fL: [0, 22], aF: [-18, 90], aB: [-22, 94], hd: 26 });
+  Object.assign(GESTEN, {
+    charleston: { name: "Charleston", art: "tanz", dauer: 1.68, loop: true, takt: 0.42, keys: [[0, CH_DOWN, F("froh")], [0.21, CH_FWD, F("froh")], [0.42, CH_DOWN, F("froh")], [0.63, CH_BACK, F("froh")],
+      [0.84, CH_DOWN, F("froh")], [1.05, CH_FWD2, F("froh")], [1.26, CH_DOWN, F("froh")], [1.47, CH_BACK2, F("froh")], [1.68, CH_DOWN, F("froh")]] },
+    shimmy: { name: "Shimmy", art: "tanz", dauer: 0.96, loop: true, takt: 0.48, keys: shimmy },
+    truckin: { name: "Truckin\u2019", art: "tanz", dauer: 1.2, loop: true, takt: 0.3, keys: [[0, TR_A, F("froh")], [0.3, TR_B, F("froh")], [0.6, g({ lean: 10, sL: [12, 26], fL: [-2, 26], aF: [152, 36], aB: [-34, -22], hd: 0 }), F("froh")], [0.9, TR_B, F("froh")], [1.2, TR_A, F("froh")]] },
+    peckin: { name: "Peckin\u2019", art: "tanz", dauer: 1.2, loop: true, takt: 0.3, keys: [[0, PE_A, F("froh")], [0.15, PE_B, F("staunen")], [0.3, PE_A, F("froh")], [0.45, PE_B, F("staunen")], [0.6, PE_A, F("froh")], [0.9, g({ lean: 2, sL: [4, 10], fL: [-8, 12], aF: [-34, 108], aB: [-38, 110], hd: -10 }), F("froh")], [1.2, PE_A, F("froh")]] },
+  });
+  const ARTEN = { sieg: "Sieg", knapp: "Knapp", niederlage: "Niederlage", neutral: "Neutral", tanz: "Tanz" };
+  // Geste zur Zeit t (Sekunden seit dem Start): { pose, lift, mood, done }; Schleifen laufen weiter, sonst bleibt das letzte Bild
+  function gesture(id, t) {
+    const G = GESTEN[id];
+    if (!G) return null;
+    const K = G._v || (G._v = G.keys.map(([tk, q, e]) => [tk, toVec(q, e && e.lift)]));
+    const v = spline(K, t, !!G.loop), tt = G.loop ? ((t % G.dauer) + G.dauer) % G.dauer : t;
+    let mood = "ruhig";
+    for (const [tk, , e] of G.keys) if (tk <= tt + 1e-9 && e && e.mood) mood = e.mood;
+    return { pose: toPose(v), lift: Math.max(0, v[11]), mood, done: !G.loop && t >= G.dauer };
+  }
+  // Atmen und leichtes Verlagern beim Stehen, damit die Figur nie starr wirkt (k = Stärke, 1 = normal)
+  function idle(p, t, k) {
+    k = k == null ? 1 : k;
+    const b = Math.sin(t * 1.75), w = Math.sin(t * 0.86 + 1.3), o = mix(p, p, 0);
+    o.lean += 0.9 * b * k; o.hd -= 0.7 * b * k;
+    o.aF = [o.aF[0] + 1.6 * b * k, o.aF[1] + 1.2 * b * k]; o.aB = [o.aB[0] - 1.3 * b * k, o.aB[1] - b * k];
+    o.sL = [o.sL[0] + 0.7 * w * k, o.sL[1] + 1.2 * Math.max(0, w) * k];
+    return o;
+  }
+  // weich nachführen: Rumpf und Beine zügig, Arme etwas später (fließender Armzug); fast = Sprung, Sturz
+  const RATE = { lean: 9, crouch: 9, hd: 8, ao: 6.5, sL: 13, fL: 11, aF: 6.5, aB: 6, fA: 11, sA: 13, aFA: 6.5, aBA: 6, ao3: 7 };
+  function ease(cur, tgt, dt, fast) {
+    if (!cur) return tgt;
+    const o = {}, m = fast ? 2.4 : 1, a = (k) => 1 - Math.exp(-RATE[k] * m * dt);
+    for (const k of KEYS) o[k] = val(cur, k) + (val(tgt, k) - val(cur, k)) * a(k);
+    for (const k of PAIRS) { const f = a(k); o[k] = [cur[k][0] + (tgt[k][0] - cur[k][0]) * f, cur[k][1] + (tgt[k][1] - cur[k][1]) * f]; }
+    return o;
+  }
+
+  const rad = (d) => d * Math.PI / 180, deg = (r) => r * 180 / Math.PI;
+  const vec = (d, L) => [Math.sin(rad(d)) * L, Math.cos(rad(d)) * L];
+  // Gliedlängen: Arme nach den Maßen des Menschen (Oberarm knapp 19 %, Unterarm 15 % der Größe), Schultergelenk 4,5 unter dem Hals
+  const LEN = { thigh: 19, shin: 18, torso: 26, ua: 14, fa: 12.5, shDrop: 4.5 };
+
+  // Gelenke einer Pose im Profil (x vorn, y unten), Knöchel des Standbeins im Ursprung
+  function joints(p) {
+    const sHip = p.sL[0], sKn = p.sL[0] - p.sL[1];
+    const t1 = vec(sHip, LEN.thigh), t2 = vec(sKn, LEN.shin);
+    const hip = [-(t1[0] + t2[0]), -(t1[1] + t2[1])];
+    const knee = [hip[0] + t1[0], hip[1] + t1[1]], ank = [0, 0];
+    const fSh = p.fL[0] - p.fL[1], fK = vec(p.fL[0], LEN.thigh), fKn = [hip[0] + fK[0], hip[1] + fK[1]], fS = vec(fSh, LEN.shin), fAn = [fKn[0] + fS[0], fKn[1] + fS[1]];
+    const nk = [hip[0] + Math.sin(rad(p.lean)) * LEN.torso, hip[1] - Math.cos(rad(p.lean)) * LEN.torso];
+    const sh = [hip[0] + Math.sin(rad(p.lean)) * (LEN.torso - LEN.shDrop), hip[1] - Math.cos(rad(p.lean)) * (LEN.torso - LEN.shDrop)];
+    const arm = (a) => { const u = vec(a[0], LEN.ua), e = [sh[0] + u[0], sh[1] + u[1]], f = vec(a[0] + a[1], LEN.fa); return [sh, e, [e[0] + f[0], e[1] + f[1]]]; };
+    return { hip, knee, ank, fKn, fAn, nk, sh, aF: arm(p.aF), aB: arm(p.aB), sKn, fSh };
+  }
+
+  // Umrechnung aus Gelenkpunkten (beliebige Einheit, y unten) in eine Pose. Damit lassen sich bestehende Posen der Spiele übernehmen.
+  // J: hip, sh, kneeN/ankN (nahes Bein = Standbein), kneeF/ankF, handN/handF, elbN/elbF, face (Blickrichtung). Fehlt der Ellbogen,
+  // landet die Hand trotzdem an derselben Stelle (Maßstab aus dem Standbein): der Arm beugt sich so weit wie nötig, Ellbogen unten.
+  const dirOf = (a, b) => deg(Math.atan2(b[0] - a[0], b[1] - a[1]));
+  const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180;
+  function fromPoints(J) {
+    // Knie beugen nur nach vorn: eine Beugung unter 0 (überstreckt) wird gerade
+    const leg = (kn, an) => { const t = dirOf(J.hip, kn); return [t, Math.max(0, wrap(t - dirOf(kn, an)))]; };
+    const legIn = Math.hypot(J.kneeN[0] - J.hip[0], J.kneeN[1] - J.hip[1]) + Math.hypot(J.ankN[0] - J.kneeN[0], J.ankN[1] - J.kneeN[1]);
+    const k = (LEN.thigh + LEN.shin) / (legIn || 1);
+    const arm = (el, ha) => {
+      if (el) { const u = dirOf(J.sh, el); return [u, wrap(dirOf(el, ha) - u)]; }
+      const phi = dirOf(J.sh, ha), d = Math.min(LEN.ua + LEN.fa - 1e-6, Math.max(Math.abs(LEN.ua - LEN.fa) + 1e-6, Math.hypot(ha[0] - J.sh[0], ha[1] - J.sh[1]) * k));
+      const al = deg(Math.acos((LEN.ua ** 2 + d ** 2 - LEN.fa ** 2) / (2 * LEN.ua * d))), el2 = deg(Math.acos((LEN.ua ** 2 + LEN.fa ** 2 - d ** 2) / (2 * LEN.ua * LEN.fa)));
+      return [phi - al, 180 - el2];
+    };
+    // Rumpf von der Hüfte zur Schulter (die Schulter liegt wie in joints() auf der Rumpfachse)
+    const lean = deg(Math.atan2(J.sh[0] - J.hip[0], -(J.sh[1] - J.hip[1])));
+    const p = { lean, crouch: 0, sL: leg(J.kneeN, J.ankN), fL: leg(J.kneeF, J.ankF), aF: arm(J.elbN, J.handN), aB: arm(J.elbF, J.handF), hd: 0 };
+    if (J.face) p.hd = Math.max(-80, Math.min(60, wrap(deg(Math.atan2(J.face[1], J.face[0])) - lean)));
+    const r1 = (v) => Math.round(v * 10) / 10;
+    for (const k of KEYS) p[k] = r1(p[k]);
+    for (const k of PAIRS) p[k] = p[k].map(r1);
+    return p;
+  }
+
+  // Frisuren als SVG-Pfade, Ursprung = Kopfmitte, Hinterkopf bei +x (wird beim Zeichnen gespiegelt)
+  const HAIRP = [
+    { back: ["C 5.5 -4.5 3.4"], top: ["M-6.1 -0.5 C-6 -7 6 -8 6.3 0 C3 -3 -2 -3.5 -6.1 -0.5 Z"] },
+    { back: [], top: ["M-6.3 -1.3 C-7 -8 6.5 -8.5 6.6 1 L5.2 2.5 C4 -1.5 -2 -3.6 -6.3 -1.3 Z"] },
+    { back: ["M4.5 -3 C10 -3 13 1 15 6 C12 3.5 9 2 5 1.5 Z"], top: ["M-6.1 -0.5 C-6 -7 6 -8 6.3 0 C3 -3 -2 -3.5 -6.1 -0.5 Z"], under: true, hang: [4.8, -2.4] },
+    { back: ["C 6.4 0.5 2.9", "C 5 -4.8 3.1"], top: ["M-6.3 -1.3 C-7 -8 6.5 -8.5 6.6 1 L5.2 2.5 C4 -1.5 -2 -3.6 -6.3 -1.3 Z", "C -4.6 -4.6 2.4", "C 0.5 -7.2 2.5"] },
+    // Bubikopf: kinnlang, Pony über der Stirn
+    { back: [], top: ["M-6.6 -0.6 C-7.3 -8.4 7.3 -9.6 7.7 0.2 L7.9 5.4 C6.7 6.5 4.7 6.7 3.2 6.1 C3.9 3.2 2.9 0.1 0.6 -1.5 C-1.7 -2.9 -4.7 -2.4 -6.6 -0.6 Z"] },
+    // Lang: offen bis auf den Rücken
+    { back: ["M2.8 -4.6 C8.4 -4.8 9.4 2 9.2 9 C9 13.4 7.4 15.6 4.4 15.8 C5.8 11.2 5.2 6.2 2.4 2.2 Z"], top: ["M-6.1 -0.5 C-6 -7 6 -8 6.3 0 C3 -3 -2 -3.5 -6.1 -0.5 Z"], under: true, hang: [3.2, -3.6] },
+    // Scheitel: kurz, vorn etwas Fülle
+    { back: [], top: ["M-6.5 -0.4 C-7.4 -7.2 -2.2 -9.2 1.8 -8.5 C5.9 -7.9 7.2 -4.4 6.8 1.0 L5.8 2.0 C5.4 -1.8 3.4 -4.6 0.2 -5.1 C-2.6 -5.6 -5 -3.4 -6.5 -0.4 Z"] },
+    // Stoppeln: ganz kurz, liegt eng am Kopf
+    { back: [], top: ["M-5.9 -1.6 C-5.6 -6.9 5.7 -8.1 6.4 0.4 L5.7 1.6 C5.2 -4.6 -4.2 -5.6 -5.9 -1.6 Z"] },
+    // Afro: rund und voll
+    { back: [], behind: ["C 2.0 -3.6 8.2"], top: [] },
+  ];
+  // Bart auf der Gesichtsseite (+x), Farbe wie das Haar; Dreitagebart = Vollbart blass und innerhalb des Kopfes
+  const BEARDP = [null,
+    "M6.6 0.9 C6.7 2.0 6.3 2.9 5.6 3.2 C5.0 2.7 4.2 2.6 3.6 2.8 C3.8 1.7 4.9 0.9 6.6 0.9 Z",
+    "M-0.8 -1.2 C-1.2 2.6 0 6.2 3.2 7.2 C5.2 7.8 6.9 6.2 6.9 4.0 L6.4 2.0 C5.4 2.6 4.2 2.4 3.8 1.6 C2.6 1.4 1.2 0.6 -0.8 -1.2 Z",
+    "M-0.8 -1.2 C-1.2 2.6 0 6.2 3.2 7.2 C5.2 7.8 6.9 6.2 6.9 4.0 L6.4 2.0 C5.4 2.6 4.2 2.4 3.8 1.6 C2.6 1.4 1.2 0.6 -0.8 -1.2 Z"];
+  const pathCache = {};
+  function shape(ctx, s, fill) {
+    ctx.beginPath();
+    if (s[0] === "C") { const [, x, y, r] = s.split(" "); ctx.arc(+x, +y, +r, 0, Math.PI * 2); }
+    else { const p = pathCache[s] || (pathCache[s] = new Path2D(s)); ctx.fillStyle = fill; ctx.fill(p); ctx.stroke(p); return; }
+    ctx.fillStyle = fill; ctx.fill(); ctx.stroke();
+  }
+
+  // Vieleck mit abgerundeten Ecken (Kleidung): r je Ecke oder für alle, höchstens die halbe Kantenlänge
+  function roundPoly(ctx, pts, r) {
+    const n = pts.length, rr = (i) => (Array.isArray(r) ? r[i] : r);
+    const cut = (p, q, d) => { const dx = q[0] - p[0], dy = q[1] - p[1], l = Math.hypot(dx, dy) || 1, t = Math.min(d / l, 0.5); return [p[0] + dx * t, p[1] + dy * t]; };
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n], a = cut(p1, p0, rr(i)), b = cut(p1, p2, rr(i));
+      if (i === 0) ctx.moveTo(a[0], a[1]); else ctx.lineTo(a[0], a[1]);
+      ctx.quadraticCurveTo(p1[0], p1[1], b[0], b[1]);
+    }
+    ctx.closePath();
+  }
+
+  // Glied als weich gebogene, sich verjüngende Form (Oberschenkel kräftig, Knöchel und Handgelenk schmal); lw 0 = ohne Kontur;
+  // taper: wie stark es zum Ende schmaler wird; cap: runder Anfang (Schulter), damit der Arm nicht abgeschnitten am Rumpf klebt
+  function limb(ctx, pts, w, col, lw, taper, cap) {
+    const tp = taper == null ? 0.42 : taper;
+    const [A, B, C] = pts, smp = [];
+    const P0 = [2 * A[0] - B[0], 2 * A[1] - B[1]], P3 = [2 * C[0] - B[0], 2 * C[1] - B[1]];
+    const cr = (p0, p1, p2, p3, t) => [0, 1].map((k) => 0.5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t * t * t));
+    for (let i = 0; i <= 6; i++) smp.push(cr(P0, A, B, C, i / 6));
+    for (let i = 1; i <= 6; i++) smp.push(cr(A, B, C, P3, i / 6));
+    const n = smp.length, L = [], R = [];
+    for (let i = 0; i < n; i++) {
+      const p = smp[i], q = smp[Math.min(n - 1, i + 1)], o = smp[Math.max(0, i - 1)];
+      let dx = q[0] - o[0], dy = q[1] - o[1]; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      const u = i / (n - 1), hw = (w * (1.08 - tp * u)) / 2;
+      L.push([p[0] - dy * hw, p[1] + dx * hw]); R.push([p[0] + dy * hw, p[1] - dx * hw]);
+    }
+    ctx.beginPath(); ctx.moveTo(L[0][0], L[0][1]);
+    for (const p of L.slice(1)) ctx.lineTo(p[0], p[1]);
+    for (const p of R.reverse()) ctx.lineTo(p[0], p[1]);
+    if (cap) {
+      // Halbkreis um den Anfang, auf der dem Glied abgewandten Seite
+      const r = w * 1.08 / 2, aR = Math.atan2(R[R.length - 1][1] - A[1], R[R.length - 1][0] - A[0]);
+      const back = Math.atan2(A[1] - smp[1][1], A[0] - smp[1][0]), d = (x) => Math.abs(Math.atan2(Math.sin(x), Math.cos(x)));
+      const cw = d(aR + Math.PI / 2 - back) < d(aR - Math.PI / 2 - back);
+      ctx.arc(A[0], A[1], r, aR, aR + (cw ? Math.PI : -Math.PI), !cw);
+    }
+    ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+    if (lw) { ctx.strokeStyle = INK; ctx.lineWidth = lw; ctx.stroke(); }
+  }
+
+  // ------------------------------------------------------------------ Zeichnen
+  // o: x, y = Knöchel des Standbeins im Bild; s Maßstab; dir 1 = nach rechts; lift Höhe; tilt Kippen (Bogenmaß, z. B. Hang, Sturz);
+  // turn Drehung um die eigene Achse (Sprung, Pirouette); swap Standbein auf der fernen Seite; pose; look (cleanLook);
+  // kit (Name aus KITS oder Objekt); ski { n, f } Winkel der Ski in Grad (+ = Spitze nach unten), sonst waagrecht;
+  // poles { n, f } Spitzen der Stöcke in Figur-Einheiten, sonst schräg nach hinten; lw Konturbreite in Bildpunkten
+  // (fest bei jedem Maßstab, für kleine Figuren), sonst wächst sie mit dem Maßstab.
+  // Die Pose ist ein Seitenprofil; jedes Gelenk bekommt eine Tiefe z (Schultern und Hüfte haben Breite), dann wird um die
+  // senkrechte Achse gedreht und von hinten nach vorn gezeichnet. So bleiben Rumpf und Kopf beim Drehen rund.
+  const Z = { sh: 6.2, hip: 3.2 };
+  function draw(ctx, o) {
+    const L = o.look || DEF_LOOK, p = o.pose, s = o.s || 1, K = typeof o.kit === "string" ? KITS[o.kit] : o.kit || KITS.eiskunstlauf;
+    const skin = pal(L.skin, SKIN, 1), suit = pal(L.suit, SUIT, 0), suitD = isHex(L.suitD) ? L.suitD : shade(suit, 0.8);
+    const acc = typeof L.suit === "number" && L.accent === L.suit ? SUIT[(L.suit + 3) % SUIT.length] : pal(L.accent, SUIT, 3);
+    const accD = isHex(L.accentD) ? L.accentD : shade(acc, 0.8);
+    const skiC = { n: isHex(L.ski) ? L.ski : null, f: isHex(L.skiFar) ? L.skiFar : isHex(L.ski) ? shade(L.ski, 0.78) : null };
+    const lwk = o.lw ? o.lw / (1.4 * s) : 1, W = (w) => w * lwk;
+    // Gesichtszüge nur, wenn der Kopf groß genug ist (Radius ab 10 Bildpunkten: Pass, Gestalten, Siegerehrung); face erzwingt oder verbietet
+    const mood = (o.face != null ? o.face : 6.2 * s >= 10) ? o.mood || p.mood || "ruhig" : null;
+    const th = o.turn || 0, c = Math.cos(th), sn = Math.sin(th);
+    ctx.save();
+    ctx.translate(o.x, o.y - (o.lift || 0) * s);
+    if (o.tilt) ctx.rotate(o.tilt);
+    ctx.scale(s * (o.dir || 1), s);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const J = joints(p), { hip, knee, ank, fKn, fAn } = J;
+    // Drehachse: senkrecht durch die Hüfte
+    const ax = hip[0];
+    // Punkt (Profil x, y, Tiefe z) → Bild [x, y, Tiefe zum Betrachter]
+    const P = (q, z) => { const x = q[0] - ax; return [ax + x * c - z * sn, q[1], x * sn + z * c]; };
+    const depth = (pts) => pts.reduce((m, q) => m + q[2], 0) / pts.length;
+    const parts = [];
+    const zs = o.swap ? -1 : 1;
+    const split = L.pattern === "split", stripe = L.pattern === "stripe";
+    const legN = split ? acc : suit, legF = split ? accD : suitD;
+    // Beine: Fuß je nach Ausrüstung; Ski und Stiefel zeichnet derselbe Teil, damit die Reihenfolge stimmt
+    // seitlich abspreizen: Drehung um die Achse nach vorn durch den ersten Punkt (Hüfte, Schulter), nach außen (Seite von z0)
+    const abd = (pt, i, root, z, A, side) => {
+      if (!A || !i) return [pt[1], z];
+      const dy = pt[1] - root[1], a = rad(A);
+      return [root[1] + dy * Math.cos(a), z + side * dy * Math.sin(a)];
+    };
+    const leg = (pts, z0, z1, w, col, shinDeg, skiDeg, near, A) => {
+      const q = pts.map((pt, i) => { const [y, z] = abd(pt, i, pts[0], z0 + (z1 - z0) * i / (pts.length - 1), A, Math.sign(z0) || 1); return P([pt[0], y], z); });
+      parts.push({ d: depth(q), f: () => {
+        const an = q[q.length - 1];
+        if (SKI[K.feet]) ski(ctx, an, skiDeg || 0, c, SKI[K.feet], near, W, skiC);
+        if (K.legs === "knickers") {
+          // Kniebundhose bauschig bis unters Knie, darunter der Wollstrumpf mit Bund in der Zweitfarbe
+          const kn = q[1], at = (u) => [kn[0] + (an[0] - kn[0]) * u, kn[1] + (an[1] - kn[1]) * u];
+          limb(ctx, [at(0.3), at(0.65), an], w * 0.66, SOCK[near ? 0 : 1], W(1.1), 0.12);
+          limb(ctx, [q[0], kn, at(0.34)], w * 1.04, (K.pants || [col, col])[near ? 0 : 1], W(1.2), -0.06, true);
+          if (near) limb(ctx, [at(0.33), at(0.37), at(0.41)], w * 0.7, acc, W(0.9), 0);
+        } else {
+          limb(ctx, q, w, col, W(1.2), null, true);
+          if (stripe && near) limb(ctx, q, w * 0.28, acc, 0);
+        }
+        if (K.feet === "skates") skate(ctx, an, shinDeg, c, W);
+        else if (K.feet === "shoes") shoe(ctx, an, c, W);
+        else skiBoot(ctx, an, skiDeg || 0, c, W, K.bootC);
+      } });
+    };
+    const sk = o.ski || {};
+    // Standbein auf der nahen Seite (zs = 1), die nahe Seite ist heller
+    leg([hip, fKn, fAn], -Z.hip * zs, -Z.hip * zs, 6, zs > 0 ? legF : legN, J.fSh, zs > 0 ? sk.f : sk.n, zs < 0, p.fA);
+    leg([hip, knee, ank], Z.hip * zs, Z.hip * 0.6 * zs, 6.2, zs > 0 ? legN : legF, J.sKn, zs > 0 ? sk.n : sk.f, zs > 0, p.sA);
+    // Arme mit Hand (Haut oder Handschuh) und Stock
+    const hand = K.glove === "suit" ? suit : K.glove ? GLOVE : skin;
+    // ao (Grad, frei, Standard 0): Arme seitlich vom Körper weg, um die senkrechte Achse durch die Schulter gedreht
+    const ao = rad(p.ao || 0), aoC = Math.cos(ao), aoS = Math.sin(ao);
+    const arm = (pts, z0, z1, col, near, A) => {
+      const q = pts.map((pt, i) => {
+        const [y, z] = abd(pt, i, pts[0], z0 + (z1 - z0) * i / (pts.length - 1), A, Math.sign(z0) || 1);
+        if (!ao || !i) return P([pt[0], y], z);
+        const dx = pt[0] - pts[0][0];
+        return P([pts[0][0] + dx * aoC, y], z + Math.sign(z0) * Math.abs(dx) * aoS);
+      });
+      parts.push({ d: depth(q), f: () => {
+        const h = q[q.length - 1], e = q[q.length - 2], an = Math.atan2(h[1] - e[1], h[0] - e[0]);
+        if (K.hands === "poles") {
+          const tip = o.poles && (near ? o.poles.n : o.poles.f);
+          pole(ctx, h, tip ? P(tip, z1) : poleTip(h, e), W);
+        }
+        limb(ctx, q, 4.8, col, W(1.2), 0.32, true);
+        if (stripe && near) limb(ctx, q, 1.4, acc, 0, 0.3);
+        ctx.beginPath(); ctx.ellipse(h[0] + Math.cos(an) * 2.3, h[1] + Math.sin(an) * 2.3, 3.3, 1.95, an, 0, 7);
+        ctx.fillStyle = hand; ctx.strokeStyle = INK; ctx.lineWidth = W(1); ctx.fill(); ctx.stroke();
+      } });
+    };
+    // Stock ohne vorgegebene Spitze: verlängert den Unterarm (hängend zum Boden, beim Jubel nach oben), endet am Boden
+    const poleTip = (h, e) => {
+      let dx = h[0] - e[0], dy = h[1] - e[1]; const d = Math.hypot(dx, dy) || 1; dx /= d; dy /= d;
+      let l = POLE; if (dy > 0.05) l = Math.min(l, (GROUND - h[1]) / dy);
+      return [h[0] + dx * l, h[1] + dy * l];
+    };
+    arm(J.aB, -Z.sh, -Z.sh - 2, suitD, false, p.aBA);
+    arm(J.aF, Z.sh, Z.sh + 2, shade(suit, 1.08), true, p.aFA);
+    // Rumpf: Querschnitt als Ellipse (Tiefe im Profil, Breite von vorn); sichtbare halbe Breite je Höhe
+    const hw = (dep, wid) => Math.sqrt((dep * c) ** 2 + (wid * sn) ** 2);
+    const lvl = [[2.5, 6.2, 6.8], [-6, 4.6, 5.4], [-18, 7.2, 7.4], [-25.5, 7, 8.6]]; // [y im Rumpf, Tiefe, Breite]
+    parts.push({ d: 0, f: () => {
+      ctx.save(); ctx.translate(P(hip, 0)[0], hip[1]);
+      // Rumpf im Raum: Neigung nach vorn, dann um die Achse gedreht → Winkel und Verkürzung im Bild (Waage von vorn wird kurz)
+      const ls = Math.sin(rad(p.lean)) * c, lc = Math.cos(rad(p.lean)), f = Math.max(0.12, Math.hypot(ls, lc));
+      ctx.rotate(Math.atan2(ls, lc));
+      const L2 = lvl.map(([y, dp, wd]) => [y * f, hw(dp, wd)]);
+      const rifleBehind = sn > -0.25;
+      if (K.back === "rifle" && rifleBehind) rifle(ctx, f, c, W);
+      // Umriss mit runden Schultern, runden Hüftkanten und weichen Seiten
+      const torso = () => roundPoly(ctx, L2.map(([y, w]) => [-w, y]).concat(L2.slice().reverse().map(([y, w]) => [w, y])), [2.6, 3.2, 3.2, 3.6, 3.6, 3.2, 3.2, 2.6]);
+      torso(); ctx.fillStyle = suit; ctx.strokeStyle = INK; ctx.lineWidth = W(1.5); ctx.fill(); ctx.stroke();
+      if (stripe) { ctx.save(); torso(); ctx.clip(); ctx.fillStyle = acc; ctx.fillRect(-1.2, -26 * f, 2.4, 28.5 * f); ctx.restore(); }
+      if (K.torso === "sash") {
+        // Schrägstreifen vorn (von hinten unsichtbar)
+        const vis = clamp01((Math.abs(c) * 0.9 + sn * 1.2 + 0.2));
+        if (vis > 0.05) {
+          ctx.save(); torso(); ctx.clip();
+          ctx.globalAlpha = vis; const w1 = hw(5.8, 6.2) * 1.05, w2 = hw(7.1, 7.6) * 1.05, dirS = c >= 0 ? 1 : -1;
+          ctx.beginPath(); ctx.moveTo(-w1 * dirS, -12.5 * f); ctx.lineTo(w2 * dirS, -20.5 * f); ctx.lineTo(w2 * dirS, -17 * f); ctx.lineTo(-w1 * dirS, -9 * f); ctx.closePath();
+          ctx.fillStyle = acc; ctx.fill(); ctx.globalAlpha = 1; ctx.restore();
+          torso(); ctx.lineWidth = W(1.5); ctx.stroke();
+        }
+      } else if (K.torso === "bib") {
+        // Startnummer: helles Leibchen über Brust und Rücken, Schultern bleiben in der Anzugfarbe
+        const b = [[-4.5, hw(4.9, 5.6)], [-12, hw(6.2, 6.6)], [-21, hw(6.6, 7.2)]].map(([y, w]) => [y * f, w * 0.86]);
+        roundPoly(ctx, b.map(([y, w]) => [-w, y]).concat(b.slice().reverse().map(([y, w]) => [w, y])), 1.6); ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = W(1); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = acc; ctx.fillRect(-b[0][1], -6 * f, 2 * b[0][1], 1.6 * f);
+      } else if (K.torso === "sweater") {
+        // Pullover: helle Bordüre über der Brust, dunkler Bund an der Hüfte
+        ctx.save(); torso(); ctx.clip();
+        ctx.fillStyle = acc; ctx.fillRect(-12, -19.6 * f, 24, 4.6 * f);
+        ctx.fillStyle = suitD; ctx.fillRect(-12, -0.8 * f, 24, 4 * f);
+        ctx.restore(); torso(); ctx.strokeStyle = INK; ctx.lineWidth = W(1.5); ctx.stroke();
+      }
+      if (isHex(L.bib)) {
+        // Leibchen (z. B. des Führenden) über dem Anzug, Schultern frei
+        const b = [[-3.5, hw(5.2, 5.9)], [-12, hw(6.4, 6.8)], [-21.5, hw(6.8, 7.4)]].map(([y, w]) => [y * f, w * 0.9]);
+        roundPoly(ctx, b.map(([y, w]) => [-w, y]).concat(b.slice().reverse().map(([y, w]) => [w, y])), 1.6); ctx.fillStyle = L.bib; ctx.strokeStyle = INK; ctx.lineWidth = W(1); ctx.fill(); ctx.stroke();
+      }
+      if (K.back === "rifle" && !rifleBehind) rifle(ctx, f, c, W);
+      ctx.fillStyle = skin; ctx.fillRect(-1.8, -26 * f - 4.5, 3.6, 4.5);
+      // Kopf: Kreis bleibt rund; Frisur, Helm und Mütze drehen mit (Hinterkopf liegt hinten = −x im Profil)
+      const hr = -Math.atan2(ls, lc) * (1 - f) * 0.6 + rad(p.hd || 0);
+      ctx.translate(0, -26 * f - 9.5); ctx.rotate(hr);
+      head(ctx, L, K, c, sn, skin, acc, suit, W, mood, Math.atan2(ls, lc) + hr + (o.tilt || 0));
+      ctx.restore();
+    } });
+    parts.sort((a, b2) => a.d - b2.d).forEach((x) => x.f());
+    ctx.restore();
+  }
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+  // Kopf mit Frisur, Helm oder Mütze; Ursprung = Kopfmitte, Gesicht bei +x (c skaliert die Breite beim Drehen)
+  function head(ctx, L, K, c, sn, skin, acc, suit, W, mood, tilt) {
+    const H = HAIRP[L.hair] || HAIRP[0], hc = pal(L.hairC, HAIRC, 0);
+    // Zopf und lange Haare hängen: Neigt sich der Kopf, drehen sie zum Teil zurück nach unten (um den Ansatz)
+    const hangTo = (h) => { if (!H.hang || !H.back.includes(h)) return; const a = Math.max(-1.2, Math.min(1.2, tilt || 0)) * 0.75 * Math.sign(c || 1); ctx.translate(H.hang[0], H.hang[1]); ctx.rotate(a); ctx.translate(-H.hang[0], -H.hang[1]); };
+    const hair = (list, behind) => {
+      for (const h of list) {
+        // Tiefe des Haarteils: Hinterkopf (Profil −x) kommt nach vorn, wenn der Rücken zum Betrachter zeigt
+        const hx = h[0] === "C" ? -(+h.split(" ")[1]) : -4, dz = hx * sn;
+        if ((dz > 0.5) === behind) continue;
+        ctx.save(); ctx.scale(-c || -0.01, 1); hangTo(h);
+        ctx.strokeStyle = INK; ctx.lineWidth = W(1.3) / Math.max(0.3, Math.abs(c)); shape(ctx, h, hc); ctx.restore();
+      }
+    };
+    const cs = Math.abs(c) < 0.35 ? 0.35 * Math.sign(c || 1) : c;
+    // Fülle, die immer hinter dem Kopf liegt (Afro); Teile ohne Rücksicht auf die Drehung (unter Helm und Mütze)
+    const hairAll = (list) => { for (const h of list) { ctx.save(); ctx.scale(-c || -0.01, 1); hangTo(h); ctx.strokeStyle = INK; ctx.lineWidth = W(1.3) / Math.max(0.3, Math.abs(c)); shape(ctx, h, hc); ctx.restore(); } };
+    if (H.behind && K.head !== "helmet") hairAll(H.behind);
+    if (K.head !== "helmet") hair(H.back, false);
+    ctx.beginPath(); ctx.arc(0, 0, 6.2, 0, 7); ctx.fillStyle = skin; ctx.strokeStyle = INK; ctx.lineWidth = W(1.5); ctx.fill(); ctx.stroke();
+    // Gesichtszüge (mood: ruhig, froh, traurig; null = keine): Nase, Auge, Braue, Mund; nichts, was Mann oder Frau kennzeichnet
+    const front = Math.abs(c) < 0.5 && sn > 0.3, flw = (w) => W(w) / Math.max(0.35, Math.abs(front ? 1 : cs));
+    const mouth = () => {
+      ctx.save(); if (!front) ctx.scale(cs, 1); ctx.strokeStyle = INK; ctx.fillStyle = INK; ctx.lineCap = "round";
+      const mx = front ? -1.1 : 4.3, mw = front ? 2.2 : 1.5;
+      ctx.beginPath();
+      if (mood === "froh") { ctx.moveTo(mx, 2.5); ctx.quadraticCurveTo(mx + mw * 0.55, 4.6, mx + mw * 1.05, 2.3); ctx.closePath(); ctx.fill(); }
+      else if (mood === "traurig") { ctx.moveTo(mx, 3.4); ctx.quadraticCurveTo(mx + mw * 0.5, 2.5, mx + mw, 3.2); ctx.lineWidth = flw(0.6); ctx.stroke(); }
+      else if (mood === "staunen") { ctx.ellipse(mx + mw * 0.6, 3.0, 0.55, 0.85, 0, 0, 7); ctx.fill(); }
+      else { ctx.moveTo(mx, 3.0); ctx.lineTo(mx + mw, 2.8); ctx.lineWidth = flw(0.6); ctx.stroke(); }
+      ctx.restore();
+    };
+    const feats = () => {
+      if (!mood || sn < -0.35) return;
+      ctx.save(); ctx.lineCap = "round"; const brow = shade(hc, 0.85);
+      // Brauen: froh gewölbt, traurig innen hoch, Staunen höher
+      const by = mood === "staunen" ? -0.6 : 0, bIn = mood === "traurig" ? -0.7 : mood === "froh" ? 0.1 : 0, bOut = mood === "traurig" ? 0.4 : 0, bArc = mood === "froh" ? -0.9 : -0.6;
+      if (front) {
+        for (const ex of [-2.1, 2.1]) {
+          ctx.beginPath(); ctx.ellipse(ex, -0.6, 0.6, 0.8, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+          const sgn = ex < 0 ? 1 : -1;   // innen = zur Mitte
+          ctx.beginPath(); ctx.moveTo(ex - 1.1, -2.1 + by + (sgn > 0 ? bOut : bIn)); ctx.quadraticCurveTo(ex, -2.1 + by + bArc, ex + 1.1, -2.2 + by + (sgn > 0 ? bIn : bOut)); ctx.strokeStyle = brow; ctx.lineWidth = flw(0.6); ctx.stroke();
+        }
+      } else {
+        ctx.scale(cs, 1);
+        // Nase als Teil des Umrisses: Kopflinie dort überdeckt, Bogen nachgezogen
+        ctx.beginPath(); ctx.moveTo(5.0, -1.2); ctx.lineTo(6.05, -1.1); ctx.quadraticCurveTo(9.0, 0.6, 6.1, 1.3); ctx.lineTo(5.0, 1.4); ctx.closePath(); ctx.fillStyle = skin; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(6.05, -1.1); ctx.quadraticCurveTo(9.0, 0.6, 6.1, 1.3); ctx.strokeStyle = INK; ctx.lineWidth = flw(1.5); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(3.9, -0.7, 0.55, 0.8, 0, 0, 7); ctx.fillStyle = INK; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(2.9, -2.1 + by + bOut); ctx.quadraticCurveTo(3.9, -2.1 + by + bArc, 5.0, -2.2 + by + bIn); ctx.strokeStyle = brow; ctx.lineWidth = flw(0.65); ctx.stroke();
+      }
+      ctx.restore();
+    };
+    if (mood && sn > -0.35) mouth();
+    // Bart in der Haarfarbe; von hinten unsichtbar
+    if (L.beard && BEARDP[L.beard] && sn > -0.5) {
+      ctx.save(); ctx.scale(cs, 1);
+      const bp = pathCache[BEARDP[L.beard]] || (pathCache[BEARDP[L.beard]] = new Path2D(BEARDP[L.beard]));
+      if (L.beard === 3) { ctx.beginPath(); ctx.arc(0, 0, 6.2, 0, 7); ctx.clip(); ctx.globalAlpha = 0.42; ctx.fillStyle = hc; ctx.fill(bp); }
+      else { ctx.fillStyle = hc; ctx.strokeStyle = INK; ctx.lineWidth = W(1.1) / Math.max(0.35, Math.abs(cs)); ctx.fill(bp); ctx.stroke(bp); }
+      ctx.restore();
+    }
+    if (K.head === "helmet") {
+      // unter dem Helm schauen nur Zopf und lange Haare hervor; der Helm deckt ihren Ansatz
+      if (H.under) hairAll(H.back);
+      feats();
+      // Sprunghelm in der Zweitfarbe, Brille auf der Gesichtsseite; Kinn und Mund bleiben frei (Hautton, Bart)
+      ctx.save(); ctx.scale(cs, 1);
+      ctx.beginPath(); ctx.arc(-0.3, -0.6, 7.3, 1.95, 0.5 + Math.PI * 2); ctx.quadraticCurveTo(2.6, 2.4, -2.4, 6.0); ctx.closePath();
+      ctx.fillStyle = isHex(L.helmet) ? L.helmet : acc; ctx.strokeStyle = INK; ctx.lineWidth = W(1.5) / Math.max(0.35, Math.abs(cs)); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      if (sn > -0.5) {
+        ctx.save(); ctx.scale(cs, 1);
+        ctx.beginPath(); ctx.arc(-0.3, -0.6, 7.35, -0.78, 0.48); ctx.arc(0.3, -0.5, 4.6, 1.08, -1.3, true); ctx.closePath();
+        ctx.fillStyle = isHex(L.visor) ? L.visor : VISOR; ctx.lineWidth = W(1.2) / Math.max(0.35, Math.abs(cs)); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.beginPath(); ctx.arc(-3.2, -3.6, 1.1, 0, 7); ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fill();
+      return;
+    }
+    if (K.head === "cap") {
+      // Strickmütze in der Zweitfarbe mit Bommel in der Anzugfarbe; sitzt über den Brauen, Haare schauen hinten heraus
+      feats();
+      ctx.save(); ctx.scale(cs, 1); ctx.strokeStyle = INK; ctx.lineWidth = W(1.3) / Math.max(0.35, Math.abs(cs));
+      ctx.beginPath(); ctx.moveTo(-6.9, -0.2); ctx.bezierCurveTo(-7.5, -9.6, 6.4, -10.6, 6.4, -2.9); ctx.lineTo(6.2, -2.0); ctx.lineTo(-6.7, 1.0); ctx.closePath();
+      const capC = isHex(L.cap) ? L.cap : acc;
+      ctx.fillStyle = capC; ctx.fill(); ctx.stroke();
+      roundPoly(ctx, [[-6.8, 0.9], [6.3, -1.9], [5.8, -4.2], [-6.9, -1.5]], 0.9);
+      ctx.fillStyle = shade(capC, 0.82); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-1.0, -9.6, 2.3, 0, 7); ctx.fillStyle = isHex(L.pom) ? L.pom : suit; ctx.fill(); ctx.stroke();
+      ctx.restore();
+      hair(H.back, true);
+      return;
+    }
+    // Oberkopf: von vorn als Haaransatz rundum, im Profil wie gezeichnet
+    ctx.save(); ctx.scale(-cs, 1); ctx.strokeStyle = INK; ctx.lineWidth = W(1.3);
+    for (const t of H.top) shape(ctx, t, hc);
+    ctx.restore();
+    if (sn > 0.35) { ctx.beginPath(); ctx.ellipse(0, -2.6, 6.3, 3.6 * sn, 0, Math.PI, 0); ctx.fillStyle = hc; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = W(1.2); ctx.stroke(); }
+    else if (sn < -0.35) { ctx.beginPath(); ctx.ellipse(0, -0.6, 6.3, 6.4 * -sn, 0, Math.PI - 0.3, 0.3); ctx.closePath(); ctx.fillStyle = hc; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = W(1.2); ctx.stroke(); }
+    feats();
+    hair(H.back, true);
+  }
+
+  // Schlittschuh: Stiefel folgt dem Unterschenkel, Länge folgt der Drehung (Fuß zeigt nach vorn)
+  function skate(ctx, ank, shinDeg, c, W) {
+    ctx.save(); ctx.translate(ank[0], ank[1]); ctx.scale(Math.sign(c || 1) * Math.max(0.35, Math.abs(c)), 1); ctx.rotate(-rad(shinDeg));
+    roundPoly(ctx, [[-2.5, -3.5], [2.5, -3.5], [6, 1], [-2.5, 1.6]], [1, 1.2, 1.4, 0.8]);
+    ctx.fillStyle = PAPER; ctx.strokeStyle = INK; ctx.lineWidth = W(1.3); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-5, 4.2); ctx.lineTo(7.5, 4.2); ctx.lineWidth = W(1.6); ctx.stroke();
+    ctx.restore();
+  }
+  // Schuh (Siegerehrung, Menü)
+  function shoe(ctx, ank, c, W) {
+    ctx.save(); ctx.translate(ank[0], ank[1]); ctx.scale(Math.sign(c || 1) * Math.max(0.35, Math.abs(c)), 1);
+    roundPoly(ctx, [[-2.6, -2.2], [2.2, -2.2], [6.0, -0.2], [6.6, 2.4], [-2.8, 2.4]], [0.8, 1.4, 1.4, 0.6, 0.6]);
+    ctx.fillStyle = BOOT; ctx.strokeStyle = INK; ctx.lineWidth = W(1.2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // Skischuh: steht flach auf dem Ski
+  function skiBoot(ctx, ank, skiDeg, c, W, col) {
+    ctx.save(); ctx.translate(ank[0], ank[1]); ctx.scale(Math.sign(c || 1) * Math.max(0.35, Math.abs(c)), 1); ctx.rotate(rad(skiDeg));
+    roundPoly(ctx, [[-3.2, -3.6], [2.6, -3.6], [6.2, 1.4], [6.2, 3.2], [-3.6, 3.2]], [1, 1.4, 1, 0.6, 0.8]);
+    ctx.fillStyle = col || BOOT; ctx.strokeStyle = INK; ctx.lineWidth = W(1.2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  // Ski unter dem Knöchel: gerade Lauffläche, Spitze aufgebogen; Winkel in Grad (+ = Spitze nach unten)
+  function ski(ctx, ank, skiDeg, c, S, near, W, cols) {
+    ctx.save(); ctx.translate(ank[0], ank[1]); ctx.scale(Math.sign(c || 1) * Math.max(0.2, Math.abs(c)), 1); ctx.rotate(rad(skiDeg));
+    const y = 3.2 + S.w / 2;
+    ctx.beginPath(); ctx.moveTo(-S.back, y); ctx.lineTo(S.front, y); ctx.quadraticCurveTo(S.front + S.tipL * 0.75, y, S.front + S.tipL, y - S.tipH);
+    ctx.strokeStyle = S.edge || INK; ctx.lineWidth = S.w + W(2.2); ctx.stroke();
+    ctx.strokeStyle = (near ? cols && cols.n : cols && cols.f) || (near ? S.col : S.colF); ctx.lineWidth = S.w; ctx.stroke();
+    ctx.restore();
+  }
+  // Stock von der Hand zur Spitze, mit Teller kurz vor der Spitze
+  function pole(ctx, h, t, W) {
+    const dx = t[0] - h[0], dy = t[1] - h[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
+    ctx.beginPath(); ctx.moveTo(h[0] - ux * 3, h[1] - uy * 3); ctx.lineTo(t[0], t[1]); ctx.strokeStyle = INK; ctx.lineWidth = W(1.5); ctx.stroke();
+    const bx = t[0] - ux * 4, by = t[1] - uy * 4;
+    ctx.beginPath(); ctx.moveTo(bx - uy * 2.4, by + ux * 2.4); ctx.lineTo(bx + uy * 2.4, by - ux * 2.4); ctx.lineWidth = W(1.3); ctx.stroke();
+  }
+  // Gewehr auf dem Rücken: Schaft aus Holz längs des Rückens, Lauf über die Schulter (im Rumpf-Koordinatensystem)
+  function rifle(ctx, f, c, W) {
+    const x = (v) => v * c;
+    ctx.beginPath(); ctx.moveTo(x(-6.4), -0.5 * f); ctx.lineTo(x(-8.6), -20 * f);
+    ctx.strokeStyle = INK; ctx.lineWidth = 4.2 + W(2); ctx.stroke(); ctx.strokeStyle = WOOD; ctx.lineWidth = 4.2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x(-8.4), -18 * f); ctx.lineTo(x(-7.9), -31 * f);
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+
+  root.CMFigur = { draw, joints, fromPoints, mix, seq, ease, gesture, idle, cleanLook, shade, POSES, ABLAEUFE, GESTEN, ARTEN, KITS, SKI, LEN, DEF_LOOK, SKIN, HAIRC, SUIT, HAIRS, BEARDS, PATTERNS, INK };
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Cold Medal Games · Pass (pass/pass.js, global CMPass)
+ *
+ * Eine Figur für alle Spiele der Reihe (Mat, 12.11.2026): Name, Land, Aussehen, Code und Taler liegen im Pass, nicht im
+ * Spielstand eines einzelnen Spiels. Alle Spiele liegen unter matpeins-debug.github.io und teilen den Browser-Speicher
+ * (Schlüssel „cm.pass“); auf einem anderen Gerät holt man den Pass mit dem persönlichen Code (Schema cm, RPCs public.cm_pass_*).
+ * Das Fenster „Deine Figur“ liegt in pass-ui.js. Regeln: nur abwärtskompatibel ändern, unbekannte Felder bleiben erhalten,
+ * der Code geht nie im Klartext in die Daten (der Server speichert nur seinen Prüfwert).
+ *
+ * Format (v 1): { v, code, name, nation, look: { hair, hairC, beard, skin, suit, accent, pattern }, taler, at, edited }
+ *   code    12 Zeichen ohne I, O, 0, 1 oder null (entsteht beim ersten Online-Schritt)
+ *   look    Kopf als Nummern in den Listen von figur.js, Farben als #RRGGBB (Liste COLORS), Muster uni | stripe | split
+ *   taler   gemeinsame Währung der Reihe (vorerst schreibt nur das Skispringen)
+ *   at      letzte Änderung (ms); edited: Name oder Aussehen hat jemand selbst gewählt (nicht nur Standard)
+ */
+(function (root) {
+  "use strict";
+  const KEY = "cm.pass", V = 1;
+  const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";   // ohne I, O, 0, 1 (verwechselbar)
+  const CODE_RE = /^[A-HJ-NP-Z2-9]{12}$/;
+  const HEX = /^#[0-9A-F]{6}$/i;
+  const fig = () => root.CMFigur || null;
+
+  // Eine Farbliste für Anzug und Zweitfarbe in allen Spielen: zuerst die Anzugfarben des Skispringens (Reihenfolge fest, das
+  // Skispringen meldet sie online als Nummer), dann die Plakatfarben der Figur (figur.js SUIT) und Bordeaux; Tinte (SUIT 5)
+  // fehlt in der Auswahl, weil sie wie Schwarz aussieht (bleibt aber gültig).
+  const COLORS = [["#FF8A3D", "Orange"], ["#FFD23F", "Gelb"], ["#E5383B", "Rot"], ["#F25C78", "Pink"], ["#9B6BFF", "Violett"],
+    ["#3A7BFF", "Blau"], ["#4FD1C5", "Türkis"], ["#3FBF6E", "Grün"], ["#EEF2F7", "Weiß"], ["#262E3B", "Schwarz"],
+    ["#C23B2A", "Signalrot"], ["#23466B", "Alpenblau"], ["#3F6B55", "Tannengrün"], ["#DDA43B", "Ocker"], ["#6B3F7A", "Pflaume"], ["#7A2232", "Bordeaux"]];
+  const PATTERNS = [["uni", "Uni"], ["stripe", "Streifen"], ["split", "Zweifarbig"]];
+  const HAIRC_NAMES = ["Dunkelbraun", "Braun", "Blond", "Schwarz", "Grau"];
+  const SKIN_NAMES = ["Sehr hell", "Hell", "Mittel", "Dunkel", "Sehr dunkel"];
+  const NATIONS = [["AUT", "Österreich"], ["GER", "Deutschland"], ["SUI", "Schweiz"], ["NOR", "Norwegen"], ["SLO", "Slowenien"], ["POL", "Polen"],
+    ["JPN", "Japan"], ["FIN", "Finnland"], ["ITA", "Italien"], ["CZE", "Tschechien"], ["FRA", "Frankreich"], ["USA", "USA"]];
+  // Standard wie die Figur: Signalrot mit Ocker (die Plakatfarben der Reihe)
+  const DEF_LOOK = { hair: 0, hairC: 0, beard: 0, skin: 1, suit: "#C23B2A", accent: "#DDA43B", pattern: "uni" };
+  const LOOK_KEYS = ["hair", "hairC", "beard", "skin", "suit", "accent", "pattern"];
+  const HEAD = { hair: 9, hairC: 5, beard: 4, skin: 5 };   // Anzahl, falls figur.js fehlt (Tests ohne Figur)
+  const count = (k) => { const F = fig(); const L = F && { hair: F.HAIRS, hairC: F.HAIRC, beard: F.BEARDS, skin: F.SKIN }[k]; return L ? L.length : HEAD[k]; };
+  const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+
+  // ------------------------------------------------------------------ Prüfen und Reparieren
+  // Name wie am Server (tm.clean_name): ohne Steuerzeichen und <>"&\/;{}, höchstens 12 Zeichen; leer = noch kein Name
+  const cleanName = (s) => String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f<>"&\\/;{}]/g, "").trim().slice(0, 12);
+  function cleanLook(l) {
+    const o = Object.assign({}, DEF_LOOK);
+    if (!isObj(l)) return o;
+    for (const k of Object.keys(l)) {   // unbekannte einfache Felder (spätere Muster, Wappen) bleiben
+      const v = l[k];
+      if (!LOOK_KEYS.includes(k) && (typeof v === "string" || typeof v === "boolean" || (typeof v === "number" && isFinite(v)))) o[k] = v;
+    }
+    for (const k of ["hair", "hairC", "beard", "skin"]) if (Number.isInteger(l[k]) && l[k] >= 0 && l[k] < count(k)) o[k] = l[k];
+    for (const k of ["suit", "accent"]) {
+      const v = l[k], F = fig();
+      if (typeof v === "string" && HEX.test(v)) o[k] = v.toUpperCase();
+      else if (Number.isInteger(v) && F && F.SUIT[v]) o[k] = F.SUIT[v].toUpperCase();   // Nummer in der Plakatliste der Figur (Eiskunstlauf)
+    }
+    if (PATTERNS.some((p) => p[0] === l.pattern)) o.pattern = l.pattern;
+    return o;
+  }
+  function clean(p) {
+    let o = {};
+    if (isObj(p)) { try { o = JSON.parse(JSON.stringify(p)); } catch (e) { o = {}; } }
+    o.v = Number.isInteger(o.v) && o.v > V ? o.v : V;   // ein neueres Format nicht zurückstufen
+    o.code = typeof o.code === "string" && CODE_RE.test(o.code) ? o.code : null;
+    o.name = cleanName(o.name);
+    o.nation = typeof o.nation === "string" && /^[A-Z]{3}$/.test(o.nation) ? o.nation : "AUT";
+    o.look = cleanLook(o.look);
+    o.taler = typeof o.taler === "number" && isFinite(o.taler) && o.taler >= 0 ? Math.min(1e7, Math.round(o.taler)) : 0;
+    o.at = typeof o.at === "number" && isFinite(o.at) && o.at > 0 ? Math.round(o.at) : 0;
+    o.edited = !!o.edited;
+    return o;
+  }
+  const blank = () => clean(null);
+  // gleich bis auf den Zeitstempel?
+  const same = (a, b) => { const x = Object.assign({}, a, { at: 0 }), y = Object.assign({}, b, { at: 0 }); return JSON.stringify(x) === JSON.stringify(y); };
+
+  // ------------------------------------------------------------------ Speicher (geteilt von allen Spielen dieser Adresse)
+  let cur = null;
+  const subs = [];
+  const store = () => { try { return root.localStorage || null; } catch (e) { return null; } };
+  function read() {
+    const s = store();
+    if (!s) return null;
+    try { const raw = s.getItem(KEY); return raw ? clean(JSON.parse(raw)) : null; } catch (e) {
+      try { const raw = s.getItem(KEY); if (raw) s.setItem(KEY + ".backup", raw); } catch (e2) { /* egal */ }
+      return null;
+    }
+  }
+  function write(p) { const s = store(); if (!s) return false; try { s.setItem(KEY, JSON.stringify(p)); return true; } catch (e) { return false; } }
+  function emit(src) { for (const f of subs.slice()) { try { f(cur, src); } catch (e) { /* ein Spiel darf die anderen nicht stören */ } } }
+
+  // Pass laden; fehlt er, entsteht er aus seed (Objekt oder Funktion mit den Angaben des Spiels). created: eben neu angelegt.
+  let created = false;
+  function load(seed) {
+    cur = read();
+    created = false;
+    if (!cur) {
+      cur = clean(typeof seed === "function" ? seed() : seed);
+      cur.at = cur.at || Date.now();
+      write(cur); created = true;
+    }
+    return cur;
+  }
+  const get = () => cur || load();
+  // Felder ändern; look wird zusammengeführt. Schreibt nur, wenn sich etwas ändert. src: wer ändert (an die Zuhörer).
+  function set(patch, src) {
+    const base = get(), nx = Object.assign({}, base, isObj(patch) ? patch : {});
+    if (isObj(patch) && isObj(patch.look)) nx.look = Object.assign({}, base.look, patch.look);
+    const c = clean(nx);
+    if (same(c, base)) return base;
+    c.at = Date.now();
+    cur = c; write(cur); emit(src || "local");
+    return cur;
+  }
+  // ganzen Pass ersetzen (vom Server geholt, aus einer Datei); bleibt sonst wie set
+  function replace(p, src) { cur = clean(p); cur.at = cur.at || Date.now(); write(cur); emit(src || "load"); return cur; }
+  // Pass auf diesem Gerät löschen (Kopie bleibt unter cm.pass.backup)
+  function remove() {
+    const s = store();
+    try { if (s) { const raw = s.getItem(KEY); if (raw) s.setItem(KEY + ".backup", raw); s.removeItem(KEY); } } catch (e) { /* egal */ }
+    cur = null;
+  }
+  // Zuhörer: fn(pass, src); src "local" | "load" | "tab" (anderer Tab, z. B. das Biathlon daneben). Gibt eine Abmeldung zurück.
+  function on(fn) { subs.push(fn); return () => { const i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); }; }
+  if (root.addEventListener) {
+    root.addEventListener("storage", (e) => {
+      if (e.key !== KEY || e.newValue == null) return;   // gelöscht: im Speicher bleibt der Pass, bis das Spiel neu lädt
+      const p = read();
+      if (!p || (cur && same(p, cur))) return;
+      cur = p; emit("tab");
+    });
+  }
+
+  // ------------------------------------------------------------------ Code der Reihe
+  function newCode() {
+    const b = new Uint8Array(12);
+    (root.crypto || globalThis.crypto).getRandomValues(b);
+    let s = "";
+    for (const x of b) s += ALPHA[x & 31];
+    return s;
+  }
+  const codeOk = (c) => typeof c === "string" && CODE_RE.test(c);
+  const fmtCode = (c) => String(c || "").replace(/(.{4})(?=.)/g, "$1-");
+  // Eingabe aufräumen (Leerzeichen, Bindestriche, Kleinbuchstaben); null wenn kein gültiger Code
+  const parseCode = (t) => { const s = String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); return CODE_RE.test(s) ? s : null; };
+  // Code anlegen, falls noch keiner da ist
+  function ensureCode() { const p = get(); return p.code || set({ code: newCode() }, "local").code; }
+
+  // ------------------------------------------------------------------ Online (rpc: Funktion des Spiels, z. B. TMOnline.make(cfg).rpc)
+  // Gesendet wird alles außer dem Code; der Server prüft Felder und Größe und speichert unter dem Prüfwert des Codes.
+  const online = {
+    async put(rpc, p) {
+      p = p || get();
+      if (!p || !codeOk(p.code)) return null;
+      const data = Object.assign({}, p); delete data.code;
+      return rpc("cm_pass_put", { p_code: p.code, p_data: data }, 8000);
+    },
+    // Pass zu einem Code holen: null, wenn es keinen gibt
+    async get(rpc, code) {
+      if (!codeOk(code)) return null;
+      const j = await rpc("cm_pass_get", { p_code: code }, 8000);
+      if (!j || !isObj(j.d)) return null;
+      return clean(Object.assign({}, j.d, { code }));
+    },
+  };
+
+  root.CMPass = { KEY, V, COLORS, PATTERNS, HAIRC_NAMES, SKIN_NAMES, NATIONS, DEF_LOOK, LOOK_KEYS,
+    clean, cleanLook, cleanName, blank, same, load, get, set, replace, remove, on, get created() { return created; },
+    newCode, codeOk, fmtCode, parseCode, ensureCode, online };
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Cold Medal Games · Fenster „Deine Figur“ (pass/pass-ui.js, CMPass.ui)
+ *
+ * Ein Fenster für alle Spiele der Reihe: links die Figur auf hellem Plakatgrund (antippen wechselt die Haltung), rechts Reiter:
+ * Person (Name, Land, Frisur, Bart, Haare, Haut), Farben (Anzug, Muster, Zweitfarbe, Zufall), eigene Reiter der Sportart
+ * (im Skispringen: Ausrüstung) und Code (der persönliche Code der Reihe: zeigen, kopieren, online sichern, auf einem anderen
+ * Gerät holen). Was man hier wählt, liegt im Pass und gilt in jedem Spiel. Aussehen wie das Skispringen (Papier, Druckmarken),
+ * Klassen mit dem Präfix ps- (pass.css). Braucht figur.js und pass.js.
+ *
+ * const ui = CMPass.ui.mount(host, opts)   host: leeres Element, das das Spiel ein- und ausblendet (Ebene, Maßstab)
+ *   opts.title        Überschrift, Standard „Deine Figur“      opts.kit     Kit der Figur in der Vorschau (figur.js KITS)
+ *   opts.nations      [[Kürzel, Name], …] (sonst CMPass.NATIONS) opts.upper  Namen in Versalien (Standard ja)
+ *   opts.labels       { suit: "Anzug", accent: "Zweitfarbe" }  opts.personHint  kurzer Satz unter Person
+ *   opts.preview      eigene Vorschau: { poses: [[id, Name], …], pose, personPose, colorPose, draw(ctx, w, h, t, pose, look) }
+ *                     (Hintergrund wie hier: CMPass.ui.backdrop(ctx, w, h))
+ *   opts.tabs         eigene Reiter: [{ id, label, pose, rows: [Zeile, …] }], Zeile:
+ *                       { type: "swatches", label, list: [[Wert, Name, Farbe?], …], get, set, dim?, hide? }
+ *                       { type: "seg", label, list: [[Wert, Name], …], get, set, hide? }
+ *                       { type: "selects", label, items: [{ list, get, set, aria }] }      { type: "hint", text }
+ *   opts.code         Reiter Code: { status() → { code?, text, save?, load? }, save(), load(code) → { text, apply? } }
+ *                     status: code = der gezeigte Code (sonst der im Pass, null = „noch keiner“), save = Beschriftung des Knopfs
+ *                     zum Sichern (ohne: kein Knopf), load: false blendet „Auf einem anderen Gerät“ aus. Fehler als Error mit Text.
+ *                     Für Spiele nur mit Pass: CMPass.ui.codeVia(rpc). Ohne opts.code kein Reiter Code.
+ *   opts.random()     zusätzlich bei „Zufall“ (Ausrüstung der Sportart)     opts.onDone()  nach „Fertig“
+ *   opts.defaultName  Name, wenn keiner eingegeben ist         opts.dpr()   Pixeldichte der Vorschau
+ * ui.open({ ask, title, tab })   ask: erster Start, ohne Namen geht es nicht weiter (oder „Als Gast spielen“)
+ * ui.refresh() · ui.done() → false, solange ein Name fehlt · ui.close() · ui.setTab(id) · ui.el (das Fenster)
+ * CMPass.ui.open(opts) legt selbst eine Ebene über die Seite (für Spiele ohne eigene Ebenen) und zeigt das Fenster.
+ */
+(function (root) {
+  "use strict";
+  const P = root.CMPass, doc = root.document;
+  let uid = 0;
+  const mk = (tag, cls, text) => { const e = doc.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const at = (e, a) => { for (const k of Object.keys(a)) e.setAttribute(k, a[k]); return e; };
+  const DICE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true">' +
+    '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.4" fill="currentColor" stroke="none"/>' +
+    '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg>';
+  // Vorschau ohne eigene Zeichnung des Spiels: die Figur steht, jubelt, winkt oder tanzt (Gesten aus figur.js)
+  const DEF_POSES = [["stand", "Stehen"], ["jubel", "Jubel"], ["winken", "Winken"], ["charleston", "Tanz"]];
+  const errText = (e) => (e && e.message ? e.message : "Hat nicht geklappt. Bitte später noch einmal.");
+
+  // Hintergrund der Vorschau: heller Plakathimmel mit blassen Bergen über Schnee. Hell, damit jede Farbe gut steht (auch
+  // dunkle Anzüge und Haare); die Figur hat eine dunkle Kontur. Für eigene Vorschauen der Spiele: CMPass.ui.backdrop(…).
+  function backdrop(c, w, h, o) {
+    o = o || {};
+    const g = c.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#C7DAE5"); g.addColorStop(0.6, "#E9E4D3"); g.addColorStop(1, "#F1E7D2");
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    c.fillStyle = "rgba(35,70,107,0.12)";
+    c.beginPath(); c.moveTo(0, h * 0.64);
+    for (const [x, y] of [[0.14, 0.47], [0.27, 0.58], [0.45, 0.39], [0.63, 0.55], [0.8, 0.44], [1, 0.6]]) c.lineTo(w * x, h * y);
+    c.lineTo(w, h); c.lineTo(0, h); c.closePath(); c.fill();
+    if (o.ground !== false) {
+      const y = o.groundY != null ? o.groundY : h - 12;
+      c.fillStyle = "#FBF8F1"; c.fillRect(0, y, w, h - y);
+      c.fillStyle = "rgba(30,39,52,0.28)"; c.fillRect(0, y, w, 1.5);
+    }
+  }
+
+  function defaultDraw(c, w, h, t, pose, look, kit) {
+    backdrop(c, w, h);
+    const F = root.CMFigur;
+    if (!F) return;
+    let p = F.POSES.stand, lift = 0, mood = "ruhig";
+    if (pose === "stand") p = F.idle(F.POSES.stand, t);
+    else {
+      const G = F.GESTEN[pose], r = G && F.gesture(pose, G.loop ? t : t % (G.dauer + 1.4));
+      if (r) { p = r.pose; lift = r.lift; mood = r.mood; }
+    }
+    const s = Math.min(w / 64, (h - 26) / 96);
+    F.draw(c, { x: w / 2, y: h - 13, s, dir: 1, pose: p, lift, look: F.cleanLook(look), kit: kit || "plain", face: true, mood });
+  }
+
+  // Eine Zeile im Fenster; sync() stellt den aktuellen Wert dar (und blendet aus, wenn hide() es will)
+  function row(spec, changed) {
+    if (spec.type === "hint") {
+      const p = mk("p", "ps-hint", typeof spec.text === "function" ? spec.text() : spec.text);
+      return { el: p, sync() { if (typeof spec.text === "function") p.textContent = spec.text(); } };
+    }
+    const r = mk("div", "ps-row");
+    r.appendChild(mk("span", "ps-lbl", spec.label));
+    const hide = () => { r.hidden = !!(spec.hide && spec.hide()); };
+    if (spec.type === "swatches") {
+      const box = at(mk("div", "ps-swatches"), { role: "radiogroup", "aria-label": spec.aria || spec.label });
+      // mehr als acht Felder: gleich lange Reihen (10 → 5 + 5, 16 → 8 + 8)
+      if (spec.list.length > 8) { r.classList.add("ps-row-wrap"); box.style.setProperty("--ps-per", Math.ceil(spec.list.length / Math.ceil(spec.list.length / 8))); }
+      const bs = spec.list.map(([v, name, col]) => {
+        const b = at(mk("button", "ps-swatch"), { type: "button", role: "radio", "aria-label": name, "aria-checked": "false" });
+        b.style.background = col || v; b._v = v; box.appendChild(b); return b;
+      });
+      box.addEventListener("click", (e) => { const b = e.target.closest(".ps-swatch"); if (b && box.contains(b)) { spec.set(b._v); changed(spec); } });
+      r.appendChild(box);
+      return { el: r, sync() { hide(); const v = spec.get(); for (const b of bs) b.setAttribute("aria-checked", String(b._v === v)); r.classList.toggle("ps-dim", !!(spec.dim && spec.dim())); } };
+    }
+    if (spec.type === "seg") {
+      const box = at(mk("div", "ps-seg"), { role: "radiogroup", "aria-label": spec.aria || spec.label });
+      const bs = spec.list.map(([v, name]) => { const b = at(mk("button", null, name), { type: "button", role: "radio", "aria-checked": "false" }); b._v = v; box.appendChild(b); return b; });
+      box.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b && box.contains(b)) { spec.set(b._v); changed(spec); } });
+      r.appendChild(box);
+      return { el: r, sync() { hide(); const v = spec.get(); for (const b of bs) b.setAttribute("aria-checked", String(b._v === v)); } };
+    }
+    // mehrere Auswahllisten in einer Zeile (Frisur und Bart)
+    r.classList.add("ps-row-sel");
+    const sels = (spec.items || []).map((it) => {
+      const s = at(mk("select", "ps-select"), { "aria-label": it.aria || spec.label });
+      for (const [v, name] of it.list) { const o = mk("option", null, name); o.value = String(v); s.appendChild(o); }
+      s.addEventListener("change", () => { const hit = it.list.find(([v]) => String(v) === s.value); if (hit) { it.set(hit[0]); changed(spec); } });
+      r.appendChild(s);
+      return [s, it];
+    });
+    return { el: r, sync() { hide(); for (const [s, it] of sels) s.value = String(it.get()); } };
+  }
+
+  // Reiter Code: der persönliche Code der Reihe (zeigen, kopieren), online sichern, auf einem anderen Gerät holen
+  function codeTab(code, stop) {
+    const box = mk("div", "ps-tabbox ps-codebox");
+    const top = mk("div", "ps-code-top"), val = mk("b", "ps-code-val");
+    const bCopy = at(mk("button", "ps-plain", "Kopieren"), { type: "button" });
+    top.append(mk("span", "ps-lbl", "Dein Code"), val, bCopy);
+    const st = mk("p", "ps-hint ps-code-st");
+    const bSave = at(mk("button", "ps-btn ps-btn-2 ps-code-save"), { type: "button" });
+    const sep = mk("p", "ps-sep", "Auf einem anderen Gerät");
+    const inRow = mk("div", "ps-row ps-code-row");
+    const inCode = at(mk("input", "ps-input ps-code-in"), { type: "text", maxlength: "16", autocomplete: "off", spellcheck: "false", "aria-label": "Code eingeben", placeholder: "Code eingeben" });
+    const bGet = at(mk("button", "ps-btn ps-btn-2 ps-code-get", "Holen"), { type: "button" });
+    inRow.append(inCode, bGet);
+    const res = mk("p", "ps-hint ps-code-res"); res.hidden = true;
+    const okRow = mk("div", "ps-row ps-code-ok"); okRow.hidden = true;
+    const bYes = at(mk("button", "ps-btn ps-btn-1 ps-code-yes", "Laden"), { type: "button" }), bNo = at(mk("button", "ps-plain", "Abbrechen"), { type: "button" });
+    okRow.append(bYes, bNo);
+    box.append(top, st, bSave, sep, inRow, res, okRow);
+    let pending = null, busy = false, shownCode = "";
+    // Rückfrage zum Laden: dann nur noch sie (der obere Teil hat Pause), damit alles ins Fenster passt
+    const ask = (on) => { okRow.hidden = !on; top.hidden = st.hidden = on; if (on) bSave.hidden = true; else sync(); };
+    function sync() {
+      const s = (code.status && code.status()) || {}, c = "code" in s ? s.code : P.get().code;
+      shownCode = P.codeOk(c) ? c : "";
+      val.textContent = shownCode ? P.fmtCode(shownCode) : "noch keiner";
+      val.classList.toggle("ps-none", !shownCode);
+      bCopy.hidden = !shownCode;
+      st.textContent = s.text || "";
+      bSave.textContent = s.save || ""; bSave.hidden = !s.save;
+      // Holen geht nur, wenn das Spiel online ist (s.load === false: aus oder keine Verbindung möglich)
+      const canLoad = s.load !== false;
+      sep.hidden = inRow.hidden = !canLoad;
+      if (!canLoad) { pending = null; okRow.hidden = true; res.hidden = true; }
+      if (pending) { top.hidden = st.hidden = bSave.hidden = true; } else { top.hidden = st.hidden = false; }
+    }
+    bCopy.addEventListener("click", async () => {
+      const t = P.fmtCode(shownCode);
+      try { await root.navigator.clipboard.writeText(t); bCopy.textContent = "Kopiert"; }
+      catch (e) { const rg = doc.createRange(); rg.selectNodeContents(val); const sel = root.getSelection(); sel.removeAllRanges(); sel.addRange(rg); bCopy.textContent = "Markiert"; }
+      setTimeout(() => { bCopy.textContent = "Kopieren"; }, 1800);
+    });
+    bSave.addEventListener("click", async () => {
+      if (busy) return;
+      busy = true; bSave.disabled = true;
+      try { await code.save(); sync(); } catch (e) { sync(); st.textContent = errText(e); }
+      busy = false; bSave.disabled = false;
+    });
+    bGet.addEventListener("click", async () => {
+      const c = P.parseCode(inCode.value);
+      if (pending) { pending = null; ask(false); }
+      res.hidden = false; res.classList.remove("ps-warn");
+      if (!c) { res.textContent = "Kein gültiger Code: 12 Zeichen, zum Beispiel K7PM-3QXD-9TRA."; res.classList.add("ps-warn"); return; }
+      res.textContent = "Suche …"; bGet.disabled = true;
+      try { const r = await code.load(c); res.textContent = r.text; if (r.apply) { pending = r.apply; ask(true); } }
+      catch (e) { res.textContent = errText(e); res.classList.add("ps-warn"); }
+      bGet.disabled = false;
+    });
+    bYes.addEventListener("click", () => { const f = pending; if (!f) return; pending = null; ask(false); res.hidden = true; inCode.value = ""; f(); });
+    bNo.addEventListener("click", () => { pending = null; ask(false); res.hidden = true; inCode.value = ""; });
+    inCode.addEventListener("keydown", (e) => { if (e.key === "Enter") bGet.click(); stop(e); });
+    return { box, sync };
+  }
+
+  function mount(host, opts) {
+    opts = opts || {};
+    const F = root.CMFigur, id = ++uid, upper = opts.upper !== false;
+    const pv = opts.preview || { poses: DEF_POSES, pose: "stand" };
+    const lbl = Object.assign({ suit: "Anzug", accent: "Zweitfarbe" }, opts.labels || {});
+    const look = () => P.get().look;
+    const setLook = (patch) => P.set({ look: patch, edited: true }, "ui");
+    const personPose = pv.personPose || pv.pose || pv.poses[0][0];
+    let tab = "person", pose = personPose, ask = false, shown = false, raf = 0, openedAt = 0;
+    // Tasten beim Tippen nicht ans Spiel weitergeben, außer Escape (schließt das Fenster)
+    const stop = (e) => { if (e.key !== "Escape") e.stopPropagation(); };
+
+    // ---------------------------------------------------------------- Aufbau: Kopf nur Titel und Fertig
+    const dlg = at(mk("div", "ps-dialog"), { role: "dialog", "aria-labelledby": "psTitle" + id });
+    const head = mk("div", "ps-head"), title = at(mk("h2", "ps-title", opts.title || "Deine Figur"), { id: "psTitle" + id });
+    const bDone = at(mk("button", "ps-btn ps-btn-1 ps-done", "Fertig"), { type: "button" });
+    head.append(title, bDone);
+
+    // links: die Figur; antippen wechselt die Haltung
+    const grid = mk("div", "ps-grid"), left = mk("div", "ps-left"), opt = mk("div", "ps-opts");
+    const stage = at(mk("div", "ps-stage"), { role: "button", tabindex: "0", "aria-label": "Haltung der Figur wechseln" });
+    const cv = at(mk("canvas", "ps-canvas"), { role: "img", "aria-label": "Vorschau deiner Figur" });
+    const cap = mk("p", "ps-cap");
+    stage.appendChild(cv); left.append(stage, cap);
+    const poseName = () => (pv.poses.find((x) => x[0] === pose) || pv.poses[0])[1];
+    const nextPose = () => { const i = pv.poses.findIndex((x) => x[0] === pose); pose = pv.poses[(i + 1) % pv.poses.length][0]; refresh(); };
+    stage.addEventListener("click", nextPose);
+    stage.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nextPose(); } });
+
+    // Person: Name und Land, dann der Kopf
+    const idRow = mk("div", "ps-row ps-id");
+    const inName = at(mk("input", "ps-name"), { type: "text", maxlength: "12", autocomplete: "off", spellcheck: "false", "aria-label": "Name", placeholder: "Dein Name" });
+    if (!upper) inName.classList.add("ps-mixed");
+    const selNat = at(mk("select", "ps-select ps-nation"), { "aria-label": "Land" });
+    for (const [c, n] of opts.nations || P.NATIONS) { const o = mk("option", null, n); o.value = c; selNat.appendChild(o); }
+    idRow.append(inName, selNat);
+    const askRow = mk("div", "ps-ask"), askTxt = mk("span", "ps-ask-txt"), bGuest = at(mk("button", "ps-plain", "Als Gast spielen"), { type: "button" });
+    askRow.append(askTxt, bGuest); askRow.hidden = true;
+    const ASK = "Dein Name steht auf den Tafeln und in den Gruppen, in allen Spielen.";
+    const person = [
+      { type: "selects", label: "Frisur", head: true, items: [
+        { aria: "Frisur", list: F.HAIRS.map((n, i) => [i, n]), get: () => look().hair, set: (v) => setLook({ hair: v }) },
+        { aria: "Bart", list: F.BEARDS.map((n, i) => [i, i ? n : "ohne Bart"]), get: () => look().beard, set: (v) => setLook({ beard: v }) }] },
+      { type: "swatches", label: "Haare", aria: "Haarfarbe", head: true, list: F.HAIRC.map((c, i) => [i, P.HAIRC_NAMES[i] || "Haarfarbe " + (i + 1), c]), get: () => look().hairC, set: (v) => setLook({ hairC: v }) },
+      { type: "swatches", label: "Haut", aria: "Hautton", head: true, list: F.SKIN.map((c, i) => [i, P.SKIN_NAMES[i] || "Hautton " + (i + 1), c]), get: () => look().skin, set: (v) => setLook({ skin: v }) },
+      { type: "hint", text: opts.personHint || "Deine Figur gilt in allen Spielen von Cold Medal." },
+    ];
+    // Farben: die Zweitfarbe erscheint erst, wenn ein Muster sie braucht
+    const colors = [
+      { type: "swatches", label: lbl.suit, aria: "Farbe: " + lbl.suit, list: P.COLORS, get: () => look().suit, set: (v) => setLook({ suit: v }) },
+      { type: "seg", label: "Muster", list: P.PATTERNS, get: () => look().pattern, set: (v) => {
+        const L = look(), patch = { pattern: v };
+        if (v !== "uni" && L.accent === L.suit) patch.accent = L.suit === "#EEF2F7" ? "#262E3B" : "#EEF2F7";   // Muster soll man sehen
+        setLook(patch);
+      } },
+      { type: "swatches", label: lbl.accent, aria: lbl.accent, list: P.COLORS, get: () => look().accent, set: (v) => setLook({ accent: v }), hide: () => look().pattern === "uni" },
+    ];
+    const tabs = [{ id: "person", label: "Person", pose: pv.personPose, rows: person }, { id: "farben", label: "Farben", pose: pv.colorPose, rows: colors }]
+      .concat((opts.tabs || []).filter((t) => t && t.id && Array.isArray(t.rows)));
+    const changed = (spec) => { if (spec.head) pose = personPose; refresh(); };
+    const boxes = tabs.map((t) => {
+      const box = mk("div", "ps-tabbox"); box._id = t.id;
+      if (t.id === "person") box.append(idRow, askRow);
+      t._rows = t.rows.map((s) => { const r = row(s, changed); box.appendChild(r.el); return r; });
+      return box;
+    });
+    // Zufall gehört zu den Farben (Würfel am Ende der Zeile Muster): Anzug, Muster, Zweitfarbe und die Ausrüstung der Sportart;
+    // die Person bleibt
+    const bRand = at(mk("button", "ps-plain ps-random"), { type: "button", "aria-label": "Zufällige Farben", title: "Zufällige Farben" });
+    bRand.innerHTML = DICE;
+    tabs[1]._rows[1].el.appendChild(bRand);
+    let code = null;
+    if (opts.code) { code = codeTab(opts.code, stop); code.box._id = "code"; boxes.push(code.box); tabs.push({ id: "code", label: "Code", pose: personPose, rows: [], _rows: [] }); }
+    const segTab = at(mk("div", "ps-seg ps-tabs"), { role: "tablist", "aria-label": "Was du gestaltest" });
+    const tabBtns = tabs.map((t) => { const b = at(mk("button", null, t.label), { type: "button", role: "tab", "aria-selected": "false" }); b._v = t.id; segTab.appendChild(b); return b; });
+    opt.append(segTab, ...boxes);
+    grid.append(left, opt); dlg.append(head, grid);
+    host.appendChild(dlg);
+
+    // ---------------------------------------------------------------- Darstellen
+    function refresh() {
+      const p = P.get();
+      if (doc.activeElement !== selNat) selNat.value = p.nation;
+      for (const b of tabBtns) { const on = b._v === tab; b.setAttribute("aria-selected", String(on)); b.setAttribute("aria-checked", String(on)); }
+      for (const box of boxes) box.hidden = box._id !== tab;
+      for (const t of tabs) if (t.id === tab) for (const r of t._rows) r.sync();
+      if (code && tab === "code") code.sync();
+      askRow.hidden = !ask;
+      cap.textContent = pv.poses.length > 1 ? poseName() + " · antippen für eine andere Haltung" : "";
+    }
+    function setTab(t) {
+      tab = tabs.some((x) => x.id === t) ? t : "person";
+      const T = tabs.find((x) => x.id === tab);
+      if (T && T.pose) pose = T.pose;
+      refresh();
+    }
+    function drawPreview(t) {
+      const cw = cv.clientWidth, ch = cv.clientHeight;
+      if (!cw || !ch) return;
+      const dpr = Math.min(3, Math.max(1, opts.dpr ? opts.dpr() : root.devicePixelRatio || 1));
+      const bw = Math.round(cw * dpr), bh = Math.round(ch * dpr);
+      if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+      const c = cv.getContext("2d");
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      try {
+        if (opts.preview && opts.preview.draw) opts.preview.draw(c, cw, ch, t, pose, P.get().look);
+        else defaultDraw(c, cw, ch, t, pose, P.get().look, tab === "person" || tab === "code" ? opts.personKit || "plain" : opts.kit);
+      } catch (e) { /* eine kaputte Vorschau darf das Fenster nicht stören */ }
+    }
+    const hidden = () => !host.isConnected || host.hidden || doc.hidden || !cv.offsetParent;
+    function frame(ts) {
+      raf = 0;
+      if (!shown) return;
+      if (hidden()) { if (Date.now() - openedAt < 1500) raf = root.requestAnimationFrame(frame); return; }   // gleich nach dem Öffnen noch warten
+      drawPreview(ts / 1000);
+      raf = root.requestAnimationFrame(frame);
+    }
+    const run = () => { if (shown && !raf && root.requestAnimationFrame) raf = root.requestAnimationFrame(frame); };
+    doc.addEventListener("visibilitychange", () => { if (!doc.hidden) run(); });
+
+    // ---------------------------------------------------------------- Bedienen
+    function done() {
+      const raw = (inName.value || "").trim().slice(0, 12), typed = P.cleanName(upper ? raw.toUpperCase() : raw);
+      if (ask && !typed) {
+        setTab("person");
+        inName.classList.add("ps-need"); askTxt.textContent = "Bitte gib einen Namen ein, oder spiel als Gast."; askTxt.classList.add("ps-warn");
+        try { inName.focus(); } catch (e) { /* egal */ }
+        return false;
+      }
+      inName.classList.remove("ps-need"); askTxt.classList.remove("ps-warn");
+      const cur = P.get(), name = typed || cur.name || P.cleanName(opts.defaultName || "");
+      if (name !== cur.name) P.set({ name, edited: true }, "ui");
+      ask = false; shown = false;
+      if (opts.onDone) opts.onDone();
+      return true;
+    }
+    function random() {
+      const pick = (a) => a[Math.floor(Math.random() * a.length)][0];
+      const suit = pick(P.COLORS);
+      let accent = pick(P.COLORS);
+      while (accent === suit) accent = pick(P.COLORS);
+      setLook({ suit, accent, pattern: pick(P.PATTERNS) });
+      if (opts.random) opts.random();
+      pose = pv.colorPose || pose;
+      refresh();
+    }
+    bDone.addEventListener("click", () => done());
+    bRand.addEventListener("click", () => random());
+    bGuest.addEventListener("click", () => { inName.value = upper ? "GAST" : "Gast"; done(); });
+    segTab.addEventListener("click", (e) => { const b = e.target.closest("button"); if (b && segTab.contains(b)) setTab(b._v); });
+    selNat.addEventListener("change", () => P.set({ nation: selNat.value, edited: true }, "ui"));
+    inName.addEventListener("keydown", (e) => { if (e.key === "Enter") inName.blur(); stop(e); });
+    inName.addEventListener("input", () => { if (inName.value.trim()) { inName.classList.remove("ps-need"); askTxt.classList.remove("ps-warn"); askTxt.textContent = ASK; } });
+    // Änderungen aus einem anderen Spiel (anderer Tab) oder vom Server gleich zeigen
+    P.on((p, src) => { if (src !== "ui") { if (src !== "local" && doc.activeElement !== inName) inName.value = p.name; refresh(); } });
+
+    return {
+      el: dlg,
+      open(o) {
+        o = o || {};
+        ask = !!o.ask;
+        title.textContent = o.title || opts.title || "Deine Figur";
+        inName.value = P.get().name; inName.classList.remove("ps-need");
+        askTxt.textContent = ASK; askTxt.classList.remove("ps-warn");
+        setTab(ask ? "person" : o.tab || "person");
+        shown = true; openedAt = Date.now(); run();
+        if (ask) setTimeout(() => { try { inName.focus(); } catch (e) { /* egal */ } }, 60);
+      },
+      close() { shown = false; },
+      refresh, done, setTab,
+      get tab() { return tab; }, get pose() { return pose; },
+      get name() { return inName.value; },
+    };
+  }
+
+  // Reiter Code für Spiele, die nur den Pass online sichern (ohne eigenen Spielstand): rpc wie bei CMPass.online
+  function codeVia(rpc) {
+    return {
+      status() {
+        const p = P.get();
+        return p.code ? { code: p.code, text: "Mit diesem Code holst du deine Figur auf jedes Gerät, in jedem Spiel von Cold Medal. Gib ihn nicht weiter.", save: "Jetzt sichern" }
+          : { code: null, text: "Sichere deine Figur online, dann bekommst du deinen Code. Mit ihm holst du sie auf jedes Gerät.", save: "Online sichern" };
+      },
+      async save() { P.ensureCode(); await P.online.put(rpc); },
+      async load(code) {
+        const p = await P.online.get(rpc, code);
+        if (!p) throw new Error("Zu diesem Code gibt es keine Figur.");
+        return { text: `Figur ${p.name || "ohne Namen"} (${p.nation}). Deine Figur auf diesem Gerät wird ersetzt.`, apply() { P.replace(p, "load"); } };
+      },
+    };
+  }
+
+  // Für Spiele ohne eigene Ebenen: eine Ebene über der ganzen Seite, Escape oder „Fertig“ schließt
+  let own = null;
+  function open(opts, o) {
+    if (!own) {
+      const host = at(mk("section", "ps-screen"), { "aria-modal": "true" });
+      host.hidden = true;
+      doc.body.appendChild(host);
+      const onDone = opts && opts.onDone;
+      const ui = mount(host, Object.assign({}, opts, { onDone() { host.hidden = true; if (onDone) onDone(); } }));
+      host.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); ui.done(); } });
+      own = { host, ui };
+    }
+    own.host.hidden = false;
+    own.ui.open(o);
+    return own.ui;
+  }
+
+  P.ui = { mount, open, backdrop, codeVia, DEF_POSES };
+})(typeof window !== "undefined" ? window : globalThis);
+
+// oberflaeche/steuerung.js – Spielsteuerung für alle Spiele der Reihe (global CMSteuer), seit 14.11.2026 (Biathlon 0.18).
+// Mat nach Biathlon Mania: „da ist es einfacher zu wissen, was man machen muss“. Darum sichtbare Bedienelemente statt
+// „irgendwo tippen“: runde Knöpfe mit Takt-Ring, ein Stick zum Zielen, eine Taktleiste über der Figur, ein Magazin und
+// eine Hinweiszeile für das erste Mal. Nur DOM und CSS (steuerung.css), keine Abhängigkeiten, kein Zeichnen auf dem Canvas.
+// Jedes Spiel liefert nur Texte, Symbole und Rückrufe. Abwärtskompatibel erweitern (neue Felder, alte bleiben).
+(function (root) {
+  "use strict";
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  // Symbole (Plakatstil, Strich), in Knöpfen nutzbar: symbol: "lauf" | "hocke" | "feuer" | "links" | "rechts" | "stock" | "wurf"
+  const SYM = {
+    lauf: '<path d="M9 21l3-6 3 2 2 5M12 15l1-5 4 2 2 3M13 10l-4 1-2 3"/><circle cx="15" cy="5" r="2"/><path d="M3 22h18"/>',
+    hocke: '<path d="M5 18c3-1 6-1 9-3l3-4M14 15l-4-3 2-4 4 1"/><circle cx="16" cy="5" r="2"/><path d="M2 21l20-3"/>',
+    feuer: '<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>',
+    links: '<path d="M14 6l-6 6 6 6"/>', rechts: '<path d="M10 6l6 6-6 6"/>',
+    stock: '<path d="M7 3l3 18M17 3l-3 18M5 21h14"/>',
+    // seit 14.11.2026 (Schneeball): Wurf (Arm wirft einen Ball im Bogen)
+    wurf: '<circle cx="18" cy="6" r="2.4"/><path d="M5 21l3-6 3 1 1-5M8 15l-2-4 4-3 4 1M14 9c1-2 2-3 4-3"/><circle cx="10" cy="4" r="1.8"/>',
+  };
+  const svg = (k) => (SYM[k] ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SYM[k]}</svg>` : "");
+
+  // Zeiger an ein Element binden: Rückrufe mit pointerId; das Element fängt den Zeiger, das Spielfeld darunter bekommt nichts
+  function grab(node, on) {
+    const ids = new Set();
+    node.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      try { node.setPointerCapture(e.pointerId); } catch (er) { /* egal */ }
+      ids.add(e.pointerId); node.classList.add("cs-down"); if (on.down) on.down(e.pointerId, e);
+    });
+    node.addEventListener("pointermove", (e) => { if (ids.has(e.pointerId) && on.move) { e.preventDefault(); on.move(e.pointerId, e); } });
+    const up = (e) => { if (!ids.delete(e.pointerId)) return; if (!ids.size) node.classList.remove("cs-down"); if (on.up) on.up(e.pointerId, e, e.type === "pointercancel"); };
+    node.addEventListener("pointerup", up); node.addEventListener("pointercancel", up);
+    node.addEventListener("contextmenu", (e) => e.preventDefault());
+    return { release() { for (const id of [...ids]) { ids.delete(id); if (on.up) on.up(id, null, true); } node.classList.remove("cs-down"); } };
+  }
+
+  // Runder Knopf unten links oder rechts. Ring: Takt (fill 0 … 1, ok = im grünen Bereich); zu: Zielkreis 0 … 1; puls. o: { seite, text, symbol, klein,
+  // onDown(id, e), onUp(id, e, abgebrochen) }. Rückgabe { el, set({ fill, ok, text, symbol, hidden, aktiv, seite }), release() }
+  function knopf(host, o) {
+    const b = el("button", `cs-knopf cs-${o.seite === "rechts" ? "rechts" : "links"}${o.klein ? " cs-klein" : ""}`);
+    b.type = "button";
+    b.innerHTML = `<span class="cs-zu" hidden></span><svg class="cs-ring" viewBox="0 0 100 100" aria-hidden="true"><circle class="cs-ring-bg" cx="50" cy="50" r="46"/><circle class="cs-ring-v" cx="50" cy="50" r="46" pathLength="100" stroke-dasharray="0 100" style="opacity:0"/></svg><span class="cs-sym">${svg(o.symbol)}</span><span class="cs-txt">${esc(o.text || "")}</span>`;
+    b.setAttribute("aria-label", o.text || o.symbol || "Knopf");
+    host.appendChild(b);
+    const g = grab(b, { down: o.onDown && ((id, e) => o.onDown(id, e)), up: o.onUp && ((id, e, c) => o.onUp(id, e, c)) });
+    const ringV = b.querySelector(".cs-ring-v"), txt = b.querySelector(".cs-txt"), sym = b.querySelector(".cs-sym"), zu = b.querySelector(".cs-zu");
+    let last = {};
+    return { el: b, release: g.release, set(s) {
+      if ("hidden" in s && s.hidden !== last.hidden) b.hidden = !!s.hidden;
+      if (s.seite && s.seite !== last.seite) { b.classList.toggle("cs-links", s.seite !== "rechts"); b.classList.toggle("cs-rechts", s.seite === "rechts"); }   // z. B. Links- oder Rechtshänder
+      if ("fill" in s) { const f = s.fill == null ? 0 : clamp(s.fill, 0, 1); const v = Math.round(f * 100); if (v !== last.v) { ringV.setAttribute("stroke-dasharray", `${v} ${100 - v}`); ringV.style.opacity = v ? "" : "0"; last.v = v; } }
+      if ("ok" in s && s.ok !== last.ok) b.classList.toggle("cs-ok", !!s.ok);
+      // seit 14.11.2026 (Schneeball): zu = Zielkreis 0 … 1, zieht sich von außen auf den Knopf zusammen (1 = jetzt tippen), null = aus;
+      // puls = Knopf pulsiert (jetzt ist der Moment, z. B. Abwurfzone)
+      if ("zu" in s) { const on = s.zu != null; if (on !== last.zuOn) { zu.hidden = !on; last.zuOn = on; } if (on) zu.style.transform = `scale(${(1 + 0.85 * (1 - clamp(s.zu, 0, 1))).toFixed(3)})`; }
+      if ("puls" in s && s.puls !== last.puls) b.classList.toggle("cs-puls", !!s.puls);
+      if ("aktiv" in s && s.aktiv !== last.aktiv) b.classList.toggle("cs-aktiv", !!s.aktiv);
+      if ("text" in s && s.text !== last.text) { txt.textContent = s.text; b.setAttribute("aria-label", s.text); }
+      if ("symbol" in s && s.symbol !== last.symbol) sym.innerHTML = svg(s.symbol);
+      last = Object.assign(last, s);
+    } };
+  }
+
+  // Stick zum Zielen wie ein Trackpad: der Finger verschiebt (onMove(dx, dy) in Bildschirm-Pixeln, schon gedreht über o.map),
+  // der Knopf in der Mitte zeigt die Richtung. o: { seite, text, map(dx, dy) → [dx, dy], onDown(id), onUp(id, abgebrochen) }
+  function stick(host, o) {
+    const b = el("div", `cs-stick cs-${o.seite === "links" ? "links" : "rechts"}`, `<span class="cs-stick-knob"></span><span class="cs-txt">${esc(o.text || "")}</span>`);
+    b.setAttribute("role", "slider"); b.setAttribute("aria-label", o.text || "Zielen");
+    host.appendChild(b);
+    const knob = b.querySelector(".cs-stick-knob"); let p = null, off = [0, 0];
+    const place = () => { knob.style.transform = `translate(${off[0]}px, ${off[1]}px)`; };
+    const g = grab(b, {
+      down(id, e) { p = [e.clientX, e.clientY]; off = [0, 0]; place(); if (o.onDown) o.onDown(id, e); },
+      move(id, e) {
+        if (!p) return;
+        let dx = e.clientX - p[0], dy = e.clientY - p[1]; p = [e.clientX, e.clientY];
+        if (o.map) [dx, dy] = o.map(dx, dy);
+        const r = b.clientWidth * 0.3; off = [clamp(off[0] * 0.85 + dx * 1.6, -r, r), clamp(off[1] * 0.85 + dy * 1.6, -r, r)]; place();
+        if (o.onMove) o.onMove(dx, dy);
+      },
+      up(id, e, c) { p = null; off = [0, 0]; place(); if (o.onUp) o.onUp(id, c); },
+    });
+    return { el: b, release: g.release, set(s) { if ("hidden" in s) b.hidden = !!s.hidden; if ("text" in s) b.querySelector(".cs-txt").textContent = s.text; } };
+  }
+
+  // Taktleiste über der Figur: folgt der Figur (x, y in Pixeln der Ebene), fill = Fortschritt bis zum nächsten Abstoß,
+  // win = [von, bis] der grüne Bereich, ok = gerade drin, text = kleine Zeile darunter (z. B. Tempo)
+  function takt(host) {
+    const b = el("div", "cs-takt", `<div class="cs-takt-bar"><i class="cs-takt-win"></i><i class="cs-takt-fill"></i></div><span class="cs-takt-txt"></span>`);
+    host.appendChild(b);
+    const fill = b.querySelector(".cs-takt-fill"), win = b.querySelector(".cs-takt-win"), txt = b.querySelector(".cs-takt-txt");
+    let last = {};
+    return { el: b, set(s) {
+      if ("hidden" in s && s.hidden !== last.hidden) b.hidden = !!s.hidden;
+      if (s.x != null && s.y != null) b.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -100%)`;
+      if ("fill" in s) fill.style.width = `${Math.round(clamp(s.fill || 0, 0, 1) * 100)}%`;
+      if (s.win) { win.style.left = `${s.win[0] * 100}%`; win.style.width = `${Math.max(0, s.win[1] - s.win[0]) * 100}%`; }
+      if ("ok" in s && s.ok !== last.ok) b.classList.toggle("cs-ok", !!s.ok);
+      // seit 14.11.2026 (Schneeball): zu = Zielkreis 0 … 1, zieht sich von außen auf den Knopf zusammen (1 = jetzt tippen), null = aus;
+      // puls = Knopf pulsiert (jetzt ist der Moment, z. B. Abwurfzone)
+      if ("zu" in s) { const on = s.zu != null; if (on !== last.zuOn) { zu.hidden = !on; last.zuOn = on; } if (on) zu.style.transform = `scale(${(1 + 0.85 * (1 - clamp(s.zu, 0, 1))).toFixed(3)})`; }
+      if ("puls" in s && s.puls !== last.puls) b.classList.toggle("cs-puls", !!s.puls);
+      if ("text" in s && s.text !== last.text) txt.textContent = s.text || "";
+      last = Object.assign(last, s);
+    } };
+  }
+
+  // Magazin unten in der Mitte: übrige Patronen groß, darunter je Schuss ein Punkt (true = Treffer, false = Fehler, null = offen)
+  function magazin(host) {
+    const b = el("div", "cs-mag", `<div class="cs-mag-n"><b>5</b><svg viewBox="0 0 12 28" aria-hidden="true"><path d="M3 10h6v16H3zM3 10c0-4 1.5-7 3-8 1.5 1 3 4 3 8" fill="currentColor"/></svg></div><div class="cs-mag-dots"></div>`);
+    host.appendChild(b);
+    const n = b.querySelector(".cs-mag-n b"), dots = b.querySelector(".cs-mag-dots");
+    return { el: b, set(s) {
+      if ("hidden" in s) b.hidden = !!s.hidden;
+      if (s.shots) {
+        n.textContent = String(s.left != null ? s.left : s.shots.filter((x) => x == null).length);
+        dots.innerHTML = s.shots.map((x) => `<i class="${x === true ? "cs-hit" : x === false ? "cs-miss" : ""}"></i>`).join("");
+      }
+    } };
+  }
+
+  // Hinweiszeile für das erste Mal (unten in der Mitte über den Knöpfen, mit { oben: true } oben in der Mitte): say(text, sekunden) zeigt, clear() blendet aus
+  // o.oben: oben in der Mitte (wenn unten das Ziel oder Magazin liegt)
+  function hinweis(host, o) {
+    const b = el("div", "cs-hint" + (o && o.oben ? " cs-oben" : "")); b.hidden = true; b.setAttribute("role", "status");
+    host.appendChild(b);
+    let t = 0, cur = "";
+    return { el: b, get text() { return b.hidden ? "" : cur; },
+      say(text, sek) { clearTimeout(t); if (text !== cur || b.hidden) { cur = text; b.innerHTML = `<span class="cs-hint-k">TIPP</span>${esc(text)}`; } b.hidden = false; if (sek) t = setTimeout(() => { b.hidden = true; cur = ""; }, sek * 1000); },
+      clear() { clearTimeout(t); b.hidden = true; cur = ""; } };
+  }
+
+  root.CMSteuer = { version: 1, knopf, stick, takt, magazin, hinweis, SYM };
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Spiele der Reihe Cold Medal Games: eine Liste für die Startseite (start/, https://matpeins-debug.github.io/) und künftig
+ * für die Leiste „Mehr Spiele“ in jedem Spiel. Ein neues Spiel hier eintragen: Ordner (id), Name, Pfad unter matpeins-debug.github.io,
+ * ein Satz wie auf seinem Startbild, Bild für die Startseite (start/bilder/<id>.jpg, 1200 × 630), ob es Gruppen mit Link gibt.
+ * Ohne Pfad gilt ein Spiel als „bald“. Global: CMSpiele (Version 1), ohne Abhängigkeiten. */
+(function (root) {
+  "use strict";
+  const HOST = "https://matpeins-debug.github.io";
+  const LISTE = [
+    { id: "skispringen", name: "Skispringen", pfad: "/TELEMARK/", satz: "Fliegen auf dem Luftpolster. Spring gegen deine Freunde.", gruppen: true },
+    { id: "biathlon", name: "Biathlon", pfad: "/cold-medal-biathlon/", satz: "Im Takt laufen, am Stand ruhig werden.", gruppen: true },
+    { id: "eiskunstlauf", name: "Eiskunstlauf", pfad: "/cold-medal-eiskunstlauf/", satz: "Deine Kür zum Donauwalzer.", gruppen: true },
+    { id: "schneeball", name: "Schneeball", pfad: "/cold-medal-schneeball/", satz: "Schnee lesen und so weit werfen wie keiner im Dorf.", gruppen: false },
+    { id: "big-air", name: "Big Air", pfad: "/big-air/", satz: "Anlauf, Absprung, Trick und Landung auf der großen Schanze.", gruppen: false },
+    { id: "ski-cross", name: "Ski Cross", pfad: "/ski-cross/", satz: "Vier am Start, zwei kommen weiter: Wellen, Kurven, Zweikämpfe.", gruppen: false },
+    { id: "eisschnelllauf", name: "Eisschnelllauf", pfad: "/eisschnelllauf/", satz: "Im Takt über das Oval: Kurven drücken, Kraft einteilen.", gruppen: false },
+    { id: "eisstock", name: "Eisstock", pfad: "/eisstock/", satz: "Stock um Stock an die Daube: Maß nehmen oder wegschießen.", gruppen: false },
+    { id: "hoernerschlitten", name: "Hörnerschlitten", pfad: "/hoernerschlitten/", satz: "Mit dem Heuschlitten ins Tal: lenken, bremsen, nicht kippen.", gruppen: false },
+    { id: "nordische-kombination", name: "Nordische Kombination", pfad: "/nordische-kombination/", satz: "Erst springen, dann laufen: Wer zuerst im Ziel ist, gewinnt.", gruppen: false },
+    { id: "skibergsteigen", name: "Skibergsteigen", pfad: "/skibergsteigen/", satz: "Aufsteigen, tragen, abfellen, abfahren: der Sprint am Berg.", gruppen: false },
+    { id: "wintermehrkampf", name: "Wintermehrkampf", pfad: "/wintermehrkampf/", satz: "Fünf Spiele, eine Wertung.", gruppen: false },
+    { id: "schuetzenfest", name: "Schützenfest", pfad: "/schuetzenfest/", satz: "Ruhige Hand am Schießstand: Atem, Zug, Treffer.", gruppen: false },
+    { id: "penaltyschiessen", name: "Penaltyschießen", pfad: "/penaltyschiessen/", satz: "Eins gegen eins auf dem Eis: antäuschen, schießen, halten.", gruppen: false },
+    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Fünf Sprünge über der Lippe: Höhe, Drehung, Griff.", gruppen: false },
+  ];
+  const live = () => LISTE.filter((s) => s.pfad);
+  root.CMSpiele = {
+    v: 1,
+    host: HOST,
+    start: HOST + "/",
+    liste: LISTE,
+    live,
+    bald: () => LISTE.filter((s) => !s.pfad),
+    url: (s) => HOST + s.pfad,
+    // die anderen spielbaren Spiele (für „Mehr Spiele“ im Spiel mit dieser id)
+    andere: (id) => live().filter((s) => s.id !== id),
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+
+/* Cold Medal · Reihe: ein Wettkampf über mehrere Spiele (Wintermehrkampf, später Nordische Kombination).
+ * Der Stand liegt im Gerät (localStorage, alle Spiele unter demselben Host teilen ihn). Global: CMReihe (Version 1), ohne Abhängigkeiten.
+ * Ablauf: Das Programmheft ruft starte(...) und schickt den Spieler mit ?reihe=1 ins Spiel der Station. Der Rahmen (oberflaeche/rahmen.js)
+ * startet dort genau diesen Modus, meldet das Ergebnis mit melde(...) und führt zurück. Spiele ohne Rahmen können dasselbe von Hand tun.
+ * Station: { spiel, modus, key, name, einheit: "zeit"|"punkte", skala: [Wert für 0 Punkte, Wert für 1000 Punkte] } */
+(function (root) {
+  "use strict";
+  const KEY = "cm_reihe_v1", MAX = 1200;
+  let mem = null;
+  const lies = () => { try { const t = root.localStorage.getItem(KEY); return t ? JSON.parse(t) : null; } catch (e) { return mem; } };
+  const schreib = (z) => { mem = z; try { if (z) root.localStorage.setItem(KEY, JSON.stringify(z)); else root.localStorage.removeItem(KEY); } catch (e) { /* privater Modus: nur im Speicher */ } };
+  function punkte(st, wert) { if (wert == null || !isFinite(wert)) return 0; const [a, b] = st.skala; return Math.round(Math.max(0, Math.min(MAX, (1000 * (wert - a)) / (b - a)))); }
+  const api = {
+    v: 1, MAX, punkte,
+    starte(name, programm, zurueck) { schreib({ name, programm, i: 0, erg: [], zurueck }); },
+    stand: lies,
+    ende() { schreib(null); },
+    gefragt: () => { try { return /[?&]reihe=1/.test(root.location.search); } catch (e) { return false; } },
+    // die Station, die jetzt dran ist, wenn sie zu diesem Spiel gehört
+    station(spiel) { const z = lies(); if (!z || z.i >= z.programm.length) return null; const s = z.programm[z.i]; return s.spiel === spiel ? s : null; },
+    melde(spiel, wert) { const z = lies(), s = api.station(spiel); if (!s) return null; const p = punkte(s, wert); z.erg.push({ wert: wert == null ? null : wert, punkte: p }); z.i++; schreib(z); return { punkte: p, zurueck: z.zurueck, rest: z.programm.length - z.i }; },
+    summe() { const z = lies(); return z ? z.erg.reduce((a, e) => a + e.punkte, 0) : 0; },
+  };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.CMReihe = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+// oberflaeche/rahmen.js – Rahmen für neue Spiele der Reihe (global CMRahmen), seit 15.11.2026 (Reihen-Chat).
+// Alles, was in jedem Spiel gleich ist, damit ein neues Spiel nur seine Sportart baut: Bühne 844 × 390 (skaliert, im Hochformat
+// gedreht, sichere Ränder), Hauptmenü als Plakat, Kopfzeile im Spiel, Hinweis „TIPP“, Zettel, Endstand, Info, Fenster
+// „Deine Figur“ (pass/), Spielstand im Browser, Töne, erfundenes Feld, Punktrichter, Kulisse (kulisse/einfach.js),
+// Steuerung (steuerung.js) und Prüfhaken für die Browser-Tests. Aussehen und Regeln wie Schneeball und Skispringen
+// (docs/GESAMTKONZEPT.md: „Startbildschirm und Fenster“, „Steuerung für alle Spiele“, „Fair spielen“).
+// Braucht: kulisse/einfach.js, figur/figur.js, pass/pass.js, pass/pass-ui.js, oberflaeche/steuerung.js, oberflaeche/spiele.js.
+//
+//   const R = CMRahmen.spiel({ id, name, titel: ["Ski", "Cross"], band: "Idre Fjäll · Schweden", satz, version, kit,
+//     modi: [{ id, name, sub() , start(R) }], info: [[Überschrift, Text], …], plakat(ctx, t, R) });
+//   R.szene({ update(dt), draw(ctx, t), bot(dt), ende(), onDown(x, y), onMove(x, y), onUp(x, y) })   ein Durchgang
+//   R.knopf(o) · R.stick(o) · R.takt() · R.chips([[text, klasse]]) · R.sag(text, sek, schlecht) · R.tipp(id, text, sek)
+//   R.stand({ kicker, titel, zeilen: [{ name, nat, wert, extra, ich }], note, knoepfe: [{ text, rot, fn }] }) · R.menu()
+//   R.feld(n, seed) · R.richter(basis, rnd, n) · R.medaille(platz) · R.rekord(key, wert, kleiner) · R.S (Spielstand) · R.ton.*
+(function (root) {
+  "use strict";
+  const W = 844, H = 390, TAU = Math.PI * 2;
+  const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+
+  // erfundene Namen (kein echter Sportler), Länder mit viel Wintersport
+  const VOR = ["Mika", "Jonas", "Lena", "Aino", "Sven", "Ida", "Luca", "Emil", "Nora", "Timo", "Kaja", "Felix", "Yuki", "Ren", "Maja", "Ole", "Anouk", "Pim", "Greta", "Matti", "Elin", "Noah", "Sora", "Finn", "Lotte", "Aksel", "Mila", "Jari", "Tess", "Hugo"];
+  const NACH = ["Lindqvist", "Hofer", "Tanaka", "Berg", "Moser", "Virtanen", "De Vries", "Larsen", "Kowal", "Dubois", "Rossi", "Miller", "Sato", "Nyberg", "Aigner", "Bakker", "Hansen", "Favre", "Novak", "Koskinen", "Gruber", "Sund", "Leroy", "Brandt", "Okada", "Jansen", "Egger", "Halvorsen", "Bianchi", "Clark"];
+  const LAND = ["NOR", "SWE", "FIN", "GER", "AUT", "SUI", "ITA", "FRA", "JPN", "CAN", "USA", "NED", "POL", "SLO", "CZE"];
+
+  function spiel(cfg) {
+    const F = root.CMFigur, PS = root.CMPass, ST = root.CMSteuer, EK = root.CMKulisse.einfach;
+    const KEY = "coldmedal-" + cfg.id;
+    let S = { medals: [0, 0, 0], best: {}, plays: 0, ton: true, tipps: {} };
+    try { const j = JSON.parse(localStorage.getItem(KEY) || "null"); if (j && typeof j === "object") S = Object.assign(S, j); } catch (e) { /* neu */ }
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* voll */ } };
+    PS.load(() => ({ name: "", nation: "AUT" }));
+
+    // ---------------------------------------------------------------- Aufbau
+    document.title = "Cold Medal · " + cfg.name;
+    const wrap = el("div"); wrap.id = "wrap"; const stage = el("div"); stage.id = "stage"; wrap.appendChild(stage); document.body.appendChild(wrap);
+    stage.innerHTML = `<canvas id="cv"></canvas><div class="grain"></div>
+      <div id="hud" hidden><div id="chips"></div><button class="ibtn" id="abort" aria-label="Zurück zum Menü">×</button><div id="say" hidden></div></div>
+      <section class="scr" id="scrMenu">
+        <div class="hero"><div class="heroK">Cold Medal Games</div><div class="heroT">${esc(cfg.titel[0])}<span>${esc(cfg.titel[1] || "")}</span></div>
+          <div class="ribbon">${esc(cfg.band)}</div><p class="heroP">${esc(cfg.satz)}</p></div>
+        <div class="card menu"><div class="kicker">Wettkampf-Programm</div><div class="col" id="mModi"></div>
+          <div class="row2"><button class="mid" id="bFig">Deine Figur</button><button class="mid" id="bSound"></button><a class="mid" id="bMehr" target="_blank" rel="noopener">Mehr Spiele</a></div>
+          <div class="foot"><span id="mFoot"></span> · <button class="lnk" id="bInfo">Info &amp; Datenschutz</button></div></div>
+      </section>
+      <section class="scr" id="scrStand" hidden><div class="card stand"><div class="kicker" id="stKick"></div><h2 id="stTitle"></h2>
+        <div class="stScroll"><table class="board" id="stTab"></table></div><p class="note" id="stNote"></p><div class="rpBtns" id="stBtns"></div></div></section>
+      <section class="scr" id="scrWahl" hidden><div class="card wahl"><div class="kicker" id="waKick"></div><h2 id="waTitle"></h2><div class="waBody" id="waBody"></div>
+        <p class="note" id="waNote"></p><div class="rpBtns"><button class="mid" id="waBack">Menü</button><button class="mid red" id="waGo">Los</button></div></div></section>
+      <section class="scr" id="scrPass" hidden></section>
+      <section class="scr" id="scrInfo" hidden><div class="card info"><div class="kicker">${esc(cfg.name)} · Version ${esc(cfg.version)}</div><div class="ifBody" id="ifBody"></div>
+        <button class="mid red done" id="ifDone">Zurück</button></div></section>`;
+    const $ = (id) => document.getElementById(id);
+    const cv = $("cv"), ctx = cv.getContext("2d"), hud = $("hud");
+    let uiS = 1, rotated = false, dpr = 1;
+    const probe = el("div"); probe.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"; document.body.appendChild(probe);
+    function layout() {
+      const vw = window.innerWidth, vh = window.innerHeight, cs = getComputedStyle(probe), n = (v) => parseFloat(v) || 0, I = { t: n(cs.paddingTop), r: n(cs.paddingRight), b: n(cs.paddingBottom), l: n(cs.paddingLeft) };
+      rotated = vh > vw * 1.05;
+      const aw = rotated ? vh - I.t - I.b : vw - I.l - I.r, ah = rotated ? vw - I.l - I.r : vh - I.t - I.b;
+      uiS = Math.min(aw / W, ah / H);
+      const ox = (rotated ? I.t : I.l) + (aw - W * uiS) / 2, oy = (rotated ? I.r : I.t) + (ah - H * uiS) / 2;
+      stage.style.transform = rotated ? `translate(${vw - oy}px, ${ox}px) rotate(90deg) scale(${uiS})` : `translate(${ox}px, ${oy}px) scale(${uiS})`;
+      const d = Math.min(2, (window.devicePixelRatio || 1) * uiS);
+      if (Math.abs(d - dpr) > 0.01 || cv.width !== Math.round(W * d)) { dpr = d; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); kul.clear(); }
+    }
+    function stagePoint(cx, cy) { const r = stage.getBoundingClientRect(); return rotated ? [(cy - r.top) / uiS, (r.right - cx) / uiS] : [(cx - r.left) / uiS, (cy - r.top) / uiS]; }
+    const kul = new Map();
+    function fitText(node) {
+      for (const e of node.querySelectorAll(".card.menu .mid, .card.menu .big > span, .card.menu .big small, .rpBtns .mid, h2, .waSeg .pill")) {
+        e.style.fontSize = ""; let fs = parseFloat(getComputedStyle(e).fontSize), n = 0;
+        while (e.scrollWidth > e.clientWidth + 1 && fs > 8 && n++ < 24) { fs -= 0.5; e.style.fontSize = fs + "px"; }
+      }
+    }
+    window.addEventListener("resize", layout);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { try { fitText(document); } catch (e) { /* früh */ } });
+
+    // ---------------------------------------------------------------- Ton (WebAudio, klein gehalten)
+    let ac = null;
+    const ton = {
+      unlock() { if (!S.ton) return; try { if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (A) ac = new A(); try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) { /* alt */ } } if (ac && ac.state === "suspended") ac.resume(); } catch (e) { ac = null; } },
+      t(f, d, typ, vol, zu) { if (!ac || !S.ton || R.schnell) return; try { const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime; o.type = typ || "sine"; o.frequency.setValueAtTime(f, t0); if (zu) o.frequency.exponentialRampToValueAtTime(zu, t0 + d);
+        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d); o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d + 0.02); } catch (e) { /* stumm */ } },
+      r(d, vol, freq, q) { if (!ac || !S.ton || R.schnell) return; try { const n = Math.floor(ac.sampleRate * d), b = ac.createBuffer(1, n, ac.sampleRate), a = b.getChannelData(0); for (let i = 0; i < n; i++) a[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.6);
+        const s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = b; fl.type = "bandpass"; fl.frequency.value = freq || 1200; fl.Q.value = q || 0.8; g.gain.value = vol || 0.2; s.connect(fl).connect(g).connect(ac.destination); s.start(); } catch (e) { /* stumm */ } },
+      tick() { ton.t(880, 0.05, "square", 0.04); }, gut() { ton.t(660, 0.09, "triangle", 0.12); ton.t(990, 0.14, "triangle", 0.09); }, knapp() { ton.t(520, 0.09, "triangle", 0.1); },
+      schlecht() { ton.t(180, 0.2, "sawtooth", 0.08, 110); }, schuss() { ton.r(0.22, 0.5, 900, 0.5); ton.t(140, 0.12, "square", 0.12, 50); }, klack() { ton.r(0.06, 0.4, 2400, 2); ton.t(320, 0.05, "square", 0.08); },
+      glocke() { ton.t(1320, 0.5, "sine", 0.1); ton.t(1980, 0.4, "sine", 0.05); }, wusch() { ton.r(0.3, 0.14, 700, 0.6); }, schnee() { ton.r(0.12, 0.18, 3200, 0.7); },
+      jubel() { ton.r(1.1, 0.16, 1500, 0.4); [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => ton.t(f, 0.22, "triangle", 0.1), i * 110)); }, raunen() { ton.r(0.7, 0.09, 500, 0.5); },
+      klick() { ton.t(440, 0.04, "square", 0.05); },
+    };
+
+    // ---------------------------------------------------------------- Bildschirme
+    const SCREENS = ["scrMenu", "scrStand", "scrWahl", "scrPass", "scrInfo"];
+    let scene = null, steuer = [], sayT = 0, pending = null, bot = false, tNow = 0, menuSeit = 0;
+    function show(id) { for (const s of SCREENS) $(s).hidden = s !== id; hud.hidden = !!id; if (id) fitText($(id)); }
+    function raeume() { for (const c of steuer) { try { c.release && c.release(); } catch (e) { /* weg */ } if (c.el && c.el.parentNode) c.el.parentNode.removeChild(c.el); } steuer = []; $("say").hidden = true; }
+    function endeSzene() { if (scene && scene.ende) { try { scene.ende(); } catch (e) { /* egal */ } } scene = null; raeume(); }
+    const myName = () => PS.get().name || "Du", myNat = () => PS.get().nation || "AUT", myLook = () => F.cleanLook(PS.get().look);
+    function needName(then) { if (PS.get().name || bot) return then(); pending = then; passUi.open({ ask: true, title: "Wie heißt du?" }); show("scrPass"); }
+    const RH = root.CMReihe; let station = RH && RH.gefragt() ? RH.station(cfg.id) : null, stWert = null;
+    function menu() {
+      endeSzene(); menuSeit = tNow;
+      $("mModi").innerHTML = "";
+      cfg.modi.forEach((m, i) => { const b = el("button", "big" + (i === 0 ? " red" : ""), `<span>${esc(m.name)}</span><small>${esc(m.sub ? m.sub(R) : "")}</small>`); b.id = "bM_" + m.id;
+        b.onclick = () => { ton.unlock(); ton.klick(); (m.ohneName ? (f) => f() : needName)(() => starte(m)); }; $("mModi").appendChild(b); });
+      $("bSound").textContent = S.ton ? "Ton an" : "Ton aus";
+      const md = [["Gold", 0], ["Silber", 1], ["Bronze", 2]].filter(([, i]) => S.medals[i]).map(([n, i]) => `${S.medals[i]}× ${n}`).join(", ");
+      $("mFoot").textContent = `${myName()} · ${myNat()}${md ? " · " + md : ""} · v${cfg.version}`;
+      show("scrMenu");
+    }
+    function starte(m) { endeSzene(); S.plays++; save(); show(null); R.chips([]); m.start(R); }
+    $("bFig").onclick = () => { ton.unlock(); pending = null; passUi.open({ title: "Deine Figur" }); show("scrPass"); };
+    $("bSound").onclick = () => { S.ton = !S.ton; save(); ton.unlock(); ton.klick(); $("bSound").textContent = S.ton ? "Ton an" : "Ton aus"; };
+    $("bMehr").href = root.CMSpiele ? root.CMSpiele.start : "https://matpeins-debug.github.io/";
+    $("bInfo").onclick = () => show("scrInfo");
+    $("ifDone").onclick = () => menu();
+    $("abort").onclick = () => { ton.klick(); menu(); };
+    $("ifBody").innerHTML = `<h3>Spiel</h3><p>Inoffizielles Fanspiel der Reihe Cold Medal Games. Alle Sportlerinnen und Sportler sind erfunden, Orte frei nachempfunden. Version ${esc(cfg.version)} ist ein erster spielbarer Stand.</p>` +
+      (cfg.info || []).map(([h, p]) => `<h3>${esc(h)}</h3><p>${esc(p)}</p>`).join("") +
+      `<h3>Fair</h3><p>Keine Werbung, keine Käufe, keine Energie. Ausrüstung ist eine Wahl, nie ein versteckter Vorteil.</p>
+       <h3>Datenschutz</h3><p>Dieses Spiel speichert Name, Figur, Bestwerte und Medaillen nur in deinem Browser. Es sendet nichts an einen Server.</p>
+       <h3>Impressum</h3><p>Privates Spieleprojekt ohne Geschäftsbetrieb.</p>`;
+    const passUi = PS.ui.mount($("scrPass"), { title: "Deine Figur", kit: cfg.kit || "plain", defaultName: "GAST", tabs: cfg.passTabs ? cfg.passTabs(S, save) : undefined,
+      onDone: () => { const p = pending; pending = null; if (p) p(); else menu(); } });
+
+    // ---------------------------------------------------------------- Zeiger auf der Bühne (für Wischen), Tasten für den Schreibtisch
+    const zeiger = (fn) => (e) => { if (scene && scene[fn]) { const [x, y] = stagePoint(e.clientX, e.clientY); scene[fn](x, y, e.pointerId); e.preventDefault(); } };
+    cv.addEventListener("pointerdown", (e) => { ton.unlock(); try { cv.setPointerCapture(e.pointerId); } catch (er) { /* egal */ } zeiger("onDown")(e); });
+    cv.addEventListener("pointermove", zeiger("onMove")); cv.addEventListener("pointerup", zeiger("onUp")); cv.addEventListener("pointercancel", zeiger("onUp"));
+    const tasten = {};
+    window.addEventListener("keydown", (e) => { if (e.repeat || !scene || !$("scrPass").hidden) return; const k = e.key === " " ? "rechts" : e.key === "ArrowRight" || e.key === "l" ? "rechts" : e.key === "ArrowLeft" || e.key === "a" ? "links" : null;
+      if (e.key === "Escape") return menu(); if (k && scene.taste) { e.preventDefault(); tasten[k] = true; scene.taste(k, true); } });
+    window.addEventListener("keyup", (e) => { const k = e.key === " " || e.key === "ArrowRight" || e.key === "l" ? "rechts" : e.key === "ArrowLeft" || e.key === "a" ? "links" : null; if (k && tasten[k] && scene && scene.taste) { tasten[k] = false; scene.taste(k, false); } });
+
+    // ---------------------------------------------------------------- Laufzeit für das Spiel
+    let chipKey = "";
+    const R = {
+      W, H, TAU, ctx, cfg, S, save, clamp, rng, esc, ton, myName, myNat, myLook, schnell: false,
+      get t() { return tNow; }, get dpr() { return dpr; }, get bot() { return bot; }, get uiS() { return uiS; },
+      szene(sc) { if (scene) endeSzene(); scene = sc; show(null); return sc; },   // Knöpfe vor dem Aufruf anlegen: sie gehören zur neuen Szene
+      menu,
+      knopf(o) { const k = ST.knopf(hud, o); steuer.push(k); return k; },
+      stick(o) { const k = ST.stick(hud, Object.assign({ map: (dx, dy) => (rotated ? [dy / uiS, -dx / uiS] : [dx / uiS, dy / uiS]) }, o)); steuer.push(k); return k; },
+      takt() { const k = ST.takt(hud); steuer.push(k); return k; },
+      magazin() { const k = ST.magazin(hud); steuer.push(k); return k; },
+      chips(list) { const key = JSON.stringify(list); if (key === chipKey) return; chipKey = key; $("chips").innerHTML = list.map(([t, c]) => `<span class="chip ${c || ""}">${esc(t)}</span>`).join(""); },
+      sag(text, sek, bad) { const s = $("say"); s.textContent = text; s.className = bad ? "bad" : ""; s.hidden = false; sayT = tNow + (sek || 1.6); },
+      // Hinweis „TIPP“: nur die ersten beiden Male je Schlüssel
+      tipp(id, text, sek) { if ((S.tipps[id] || 0) >= 2 || bot) return; if (!R._hint) { R._hint = ST.hinweis(hud, { oben: true }); } if (R._hintId !== id) { S.tipps[id] = (S.tipps[id] || 0) + 1; save(); R._hintId = id; } R._hint.say(text, sek || 5); },
+      tippWeg() { if (R._hint) R._hint.clear(); R._hintId = null; },
+      figur(c, o) { F.draw(c, Object.assign({ s: 0.8, dir: 1, pose: F.POSES.stand, look: myLook(), kit: cfg.kit || "plain" }, o)); },
+      aussehen(seed) { const r = rng(seed * 2654435761 >>> 0); const cols = PS.COLORS || ["#C23B2A", "#23466B", "#DDA43B", "#3F6B55"]; const pick = (a) => a[Math.floor(r() * a.length)];
+        return F.cleanLook({ hair: Math.floor(r() * 9), hairC: Math.floor(r() * 5), beard: r() < 0.2 ? 1 + Math.floor(r() * 3) : 0, skin: Math.floor(r() * 4), suit: pick(cols), accent: pick(cols), pattern: pick(["uni", "stripe", "split"]) }); },
+      feld(n, seed, staerke) { const r = rng(seed ^ 0x5bd1e995), used = new Set(), out = [];
+        for (let i = 0; i < n; i++) { let nm; do { nm = VOR[Math.floor(r() * VOR.length)] + " " + NACH[Math.floor(r() * NACH.length)]; } while (used.has(nm)); used.add(nm);
+          out.push({ name: nm, nat: LAND[Math.floor(r() * LAND.length)], st: clamp((staerke != null ? staerke : 0.62) + (r() - 0.5) * 0.5, 0.2, 0.98), look: R.aussehen(seed + i * 77 + 5), id: i }); }
+        return out; },
+      // Punktrichter: n Noten um die Basis, höchste und niedrigste gestrichen, Schnitt der übrigen
+      richter(basis, r, n) { n = n || 6; const noten = []; for (let i = 0; i < n; i++) noten.push(clamp(Math.round((basis + (r() - 0.5) * 6) * 10) / 10, 0, 100));
+        let hi = 0, lo = 0; noten.forEach((v, i) => { if (v > noten[hi]) hi = i; if (v < noten[lo]) lo = i; }); if (hi === lo) lo = (hi + 1) % n;
+        const rest = noten.filter((v, i) => i !== hi && i !== lo); return { noten, hi, lo, wert: Math.round(rest.reduce((s, v) => s + v, 0) / rest.length * 10) / 10 }; },
+      kulisse(ort, hor, zeit) { const k = [ort, hor, zeit || "tag", dpr].join("|"); if (!kul.has(k)) kul.set(k, EK.baue(ort, { W, H, hor, dpr, zeit: zeit || "tag" })); return kul.get(k); },
+      medaille(platz) { if (platz >= 1 && platz <= 3 && !bot) { S.medals[platz - 1]++; save(); } },
+      rekord(key, wert, kleiner) { if (station && key === station.key) stWert = wert; const alt = S.best[key]; if (alt == null || (kleiner ? wert < alt : wert > alt)) { if (!bot) { S.best[key] = wert; save(); } return alt != null; } return false; },
+      // Endstand: zeilen sortiert, ich: true markiert die eigene Zeile
+      stand(o) { endeSzene(); if (station && !(o.knoepfe || []).some((k) => k.text === "Weiter")) { const m = RH.melde(cfg.id, stWert); station = null; if (m) o = Object.assign({}, o, { note: `Mehrkampf: ${m.punkte} Punkte für diese Station.`, knoepfe: [{ text: "Zum Mehrkampf", rot: true, fn: () => { root.location.href = m.zurueck; } }] }); } $("stKick").textContent = o.kicker || ""; $("stTitle").textContent = o.titel || "";
+        $("stTab").innerHTML = (o.kopf ? `<tr class="hd">${o.kopf.map((k) => `<td class="${k[1] || ""}">${esc(k[0])}</td>`).join("")}</tr>` : "") + o.zeilen.map((z, i) => `<tr class="${z.ich ? "me" : ""}${z.strich ? " cut" : ""}"><td class="p">${z.platz != null ? esc(z.platz) : i + 1}</td><td class="nm">${esc(z.name)}</td><td class="t">${esc(z.nat || "")}</td>${(z.spalten || []).map((v) => `<td class="n">${esc(v)}</td>`).join("")}<td class="n"><b>${esc(z.wert)}</b></td></tr>`).join("");
+        $("stNote").textContent = o.note || ""; $("stNote").hidden = !o.note;
+        const bt = $("stBtns"); bt.innerHTML = ""; (o.knoepfe || [{ text: "Menü", fn: menu }]).forEach((k) => { const b = el("button", "mid" + (k.rot ? " red" : ""), esc(k.text)); b.onclick = () => { ton.klick(); k.fn(); }; bt.appendChild(b); });
+        show("scrStand"); const me = $("stTab").querySelector("tr.me"); if (me && me.scrollIntoView) me.scrollIntoView({ block: "center" }); },
+      // Auswahl vor einem Durchgang (Trickkarte, Sohle, Strecke …): gruppen: [{ id, label, list: [[wert, name]], wert }], fn(werte) nach „Los“
+      wahl(o) { const w = {}; o.gruppen.forEach((g) => { w[g.id] = g.wert != null ? g.wert : g.list[0][0]; });
+        if (bot) { if (o.botWerte) Object.assign(w, o.botWerte); return o.fn(w); }
+        endeSzene(); $("waKick").textContent = o.kicker || ""; $("waTitle").textContent = o.titel || ""; $("waNote").textContent = o.note || ""; $("waNote").hidden = !o.note; $("waGo").textContent = o.knopf || "Los";
+        const body = $("waBody"); body.innerHTML = "";
+        o.gruppen.forEach((g) => { const row = el("div", "waRow", `<span class="waLbl">${esc(g.label)}</span>`), seg = el("div", "waSeg"); row.appendChild(seg);
+          g.list.forEach(([v, n]) => { const b = el("button", "pill" + (w[g.id] === v ? " on" : ""), esc(n)); b.onclick = () => { ton.klick(); w[g.id] = v; [...seg.children].forEach((x) => x.classList.toggle("on", x === b)); if (o.aendern) $("waNote").textContent = o.aendern(w) || ""; $("waNote").hidden = !$("waNote").textContent; }; seg.appendChild(b); });
+          body.appendChild(row); });
+        if (o.aendern) { $("waNote").textContent = o.aendern(w) || ""; $("waNote").hidden = !$("waNote").textContent; }
+        $("waBack").onclick = () => { ton.klick(); menu(); }; $("waGo").onclick = () => { ton.klick(); show(null); o.fn(w); };
+        show("scrWahl"); },
+      zeit(s, st) { const m = Math.floor(s / 60), r = s - m * 60, d = st == null ? 2 : st; return (m ? m + ":" + (r < 10 ? "0" : "") : "") + r.toFixed(d).replace(".", ","); },
+      zahl(v, st) { return v.toFixed(st == null ? 1 : st).replace(".", ","); },
+      // kleine Zeichenhilfen auf der Bühne
+      text(c, s, x, y, px, col, align, weight) { c.font = `${weight || 700} ${px}px "Futura","Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif`; c.textAlign = align || "center"; c.textBaseline = "middle"; c.fillStyle = col || "#141B25"; c.fillText(s, x, y); },
+      tafel(c, x, y, w, h, zeilen) { c.fillStyle = "#F1E7D2"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.fillRect(x, y, w, h); c.strokeRect(x, y, w, h); zeilen.forEach(([s, px, col], i) => R.text(c, s, x + w / 2, y + h * (i + 0.5) / zeilen.length + 1, px || 12, col)); },
+      schatten(c, x, y, r) { c.fillStyle = "rgba(20,30,50,0.18)"; c.beginPath(); c.ellipse(x, y + 1, r, r * 0.28, 0, 0, TAU); c.fill(); },
+      flocken(c, t, n, wind) { c.fillStyle = "rgba(255,255,255,0.85)"; for (let i = 0; i < n; i++) { const x = ((i * 137.5 + t * (20 + (i % 7) * 6) * (wind || 1)) % (W + 40)) - 20, y = (i * 71.3 + t * (38 + (i % 5) * 9)) % H; c.fillRect(x, y, 1.6 + (i % 3) * 0.6, 1.6 + (i % 3) * 0.6); } },
+    };
+
+    // ---------------------------------------------------------------- Schleife
+    function schritt(dt) {
+      tNow += dt;
+      if (scene) { if (bot && scene.bot) scene.bot(dt); if (scene && scene.update) scene.update(dt); }
+      if (!$("say").hidden && tNow > sayT) $("say").hidden = true;
+    }
+    function zeichne() {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (scene && scene.draw) scene.draw(ctx, tNow); else if (cfg.plakat) cfg.plakat(ctx, tNow, R); else { ctx.fillStyle = "#C7DAE5"; ctx.fillRect(0, 0, W, H); }
+    }
+    let last = 0;
+    function frame(ts) { const dt = clamp((ts - last) / 1000 || 0, 0, 0.05); last = ts; try { schritt(dt); zeichne(); } catch (e) { fehler = String(e && e.stack || e); console.error(e); } requestAnimationFrame(frame); }
+    let fehler = "";
+    // Prüfhaken (Browser-Tests): Spiel im Zeitraffer mit dem eingebauten Mitspieler
+    root.__cm = { R, screen: () => SCREENS.find((s) => !$(s).hidden) || "spiel", start: (id) => { bot = true; starte(cfg.modi.find((m) => m.id === id)); }, bot: (on) => { bot = !!on; },
+      vor(sek) { R.schnell = true; const n = Math.round(sek * 60); for (let i = 0; i < n && root.__cm.screen() === "spiel"; i++) schritt(1 / 60); R.schnell = false; zeichne(); return root.__cm.screen(); },
+      fit: () => fitText(document), fehler: () => fehler, klick: (text) => { const b = [...$("stBtns").children].find((x) => x.textContent === text); if (b) b.click(); return !!b; }, menu };
+    layout(); menu(); requestAnimationFrame(frame);
+    // Kommt der Spieler aus einem Wettkampf über mehrere Spiele (oberflaeche/reihe.js), startet genau die Disziplin der Station
+    if (station) { const m = cfg.modi.find((x) => x.id === station.modus); if (m) setTimeout(() => starte(m), 0); else station = null; }
+    return R;
+  }
+  root.CMRahmen = { v: 1, W, H, spiel, rng, clamp };
+})(typeof window !== "undefined" ? window : globalThis);
+
+// Cold Medal · Penaltyschießen – Physik ohne DOM: Anlauf im Takt, Zielen und Antäuschen, Schuss, Torhüter-KI, die Finten
+// liest und je Ecke Stärken hat, Pfosten; als Torhüter: Ecke und Zeitpunkt der Parade. Global EHPhys.
+(function (root) {
+  "use strict";
+  function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const TOR = { b: 1.83, h: 1.22 }, TAKT = 0.45, START = 20, SCHUSS_AB = 12, ZU_NAH = 2.6, PUCK = 28;
+  // --- als Schütze
+  function anlauf(torwart) { return { d: START, v: 0, t: 0, phi: 0.5, ax: 0, ay: 0.5, ruck: 0, treffer: 0, tw: { x: 0, unten: false, st: torwart != null ? torwart : 0.6 }, schuss: null, aus: null }; }
+  function schritt(a) { const e = Math.abs(a.phi - 1), q = a.phi < 0.5 || e > 0.3 ? 0 : 1 - (e / 0.3) * 0.7; if (q > 0) { a.treffer++; a.v = Math.min(6.5, a.v + 1.5 * q + 0.3); a.phi = 0; } else { a.v *= 0.8; if (a.phi < 0.5) a.phi = 0; } return q; }
+  function ziele(a, dx, dy) { a.ax = clamp(a.ax + dx * 0.012, -1.25, 1.25); a.ay = clamp(a.ay - dy * 0.012, -0.1, 1.5); a.ruck = Math.min(2, a.ruck + Math.hypot(dx, dy) * 0.02); }
+  function lauf(a, dt) {
+    if (a.schuss || a.aus) return; a.t += dt; a.phi += dt / TAKT; if (a.phi > 1.32) a.phi -= 1; a.ruck = Math.max(0, a.ruck - 3 * dt);
+    a.v = Math.max(1.2, a.v - 0.6 * dt); a.d -= a.v * dt;
+    // Torhüter liest das Zielbild: folgt mit Verzögerung, geht bei flachem Ziel in die Knie
+    const tw = a.tw, tau = 0.5 - 0.3 * tw.st; tw.x += (clamp(a.ax, -0.75, 0.75) * 0.34 - tw.x) * Math.min(1, dt / tau); const will = a.d < 9 && a.ay < 0.42; if (will !== tw.unten) { tw.warte = (tw.warte || 0) + dt; if (tw.warte > 0.3 * (1.3 - tw.st)) { tw.unten = will; tw.warte = 0; } } else tw.warte = 0;   // geht mit Verzögerung in die Knie
+    if (a.d <= ZU_NAH) a.aus = "zu nah";
+  }
+  function schiesse(a, r) {
+    if (a.schuss || a.aus || a.d > SCHUSS_AB) return null;
+    const streu = 0.05 + 0.012 * a.v + 0.07 * a.ruck * 0, x = a.ax + (r() - 0.5) * 2 * streu, y = a.ay + (r() - 0.5) * 2 * streu, tw = a.tw, T = a.d / PUCK;
+    const weg = clamp(x - tw.x, -1, 1) * 0, reich = 0.22 + (1.7 + 1.5 * tw.st) * T, dx = Math.abs(x - tw.x);
+    let erg;
+    if (Math.abs(x) > TOR.b / 2 + 0.03 || y > TOR.h + 0.03 || y < 0) erg = "vorbei";
+    else if (Math.abs(x) > TOR.b / 2 - 0.04 || y > TOR.h - 0.04) erg = r() < 0.5 ? "pfosten" : "tor";
+    else if (dx < reich && (tw.unten ? y < 0.62 || dx < 0.22 : (y < 1.02 && (y > 0.3 || dx < 0.42)) || dx < 0.3)) erg = "gehalten";   // stehend: flach ins Eck kommt er schwer hinunter
+    else erg = "tor";
+    void weg; a.schuss = { x, y, erg, T, twX: tw.x + clamp(x - tw.x, -reich, reich) }; return a.schuss;
+  }
+  // --- als Torhüter: der Schütze kommt, täuscht an und schießt in eine Ecke (oder durch die Mitte)
+  const ECKEN = ["lu", "lo", "ru", "ro", "mitte"];
+  function gegner(st, r) { const ecke = r() < 0.14 ? "mitte" : ECKEN[Math.floor(r() * 4)], finte = r() < 0.35 + 0.4 * st ? (ecke[0] === "l" ? "r" : "l") : null; return { ecke, finte, tSchuss: 2.2 + r() * 0.9, T: 0.34, st }; }
+  // parade: { ecke, t } oder null (stehen geblieben); zu früh gesprungen = der Schütze sieht es und nimmt die andere Seite
+  function parade(g, p, r) {
+    let ecke = g.ecke;
+    if (p && p.t < g.tSchuss - 0.15 && ecke !== "mitte" && p.ecke[0] === ecke[0] && r() < 0.5 + 0.5 * g.st) ecke = (ecke[0] === "l" ? "r" : "l") + ecke[1];
+    if (!p || p.t > g.tSchuss + g.T + 0.04) return { ecke, erg: ecke === "mitte" && !p ? "gehalten" : "tor", grund: p ? "zu spät" : null };
+    if (ecke === "mitte") return { ecke, erg: "tor", grund: "durch die Mitte" };
+    if (p.ecke[0] !== ecke[0]) return { ecke, erg: "tor", grund: p.t < g.tSchuss - 0.15 ? "zu früh" : "falsche Seite" };
+    if (p.ecke[1] !== ecke[1]) return { ecke, erg: r() < 0.45 ? "gehalten" : "tor", grund: "falsche Höhe" };
+    return { ecke, erg: "gehalten" };
+  }
+  // Mitspieler für Tests und für die Paraden des Gegners
+  function botSchuetze(a, r) { if (a.phi >= 1 && a.d > 7) schritt(a); if (a.d > 8) { const z = -0.6 - a.ax; ziele(a, clamp(z * 30, -8, 8), 0); } else { const dx = 0.78 - a.ax, dy = 1.06 - a.ay; ziele(a, clamp(dx * 60, -14, 14), clamp(-dy * 60, -14, 14)); if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.08) return schiesse(a, r); } return null; }
+  const api = { rng, TOR, TAKT, START, SCHUSS_AB, ZU_NAH, PUCK, ECKEN, anlauf, schritt, ziele, lauf, schiesse, gegner, parade, botSchuetze };
+  root.EHPhys = api; if (typeof module !== "undefined") module.exports = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
+// Cold Medal · Penaltyschießen – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
+(function () {
+  "use strict";
+  const VERSION = "0.1.0";
+  const P = window.EHPhys, F = window.CMFigur;
+  const KIT = { head: "helmet", feet: "skates", torso: "bib", glove: true };
+  const POSE = { a: { lean: 34, crouch: 0, sL: [40, 60], fL: [-30, 20], aF: [50, 30], aB: [40, 26], hd: -14 }, b: { lean: 34, crouch: 0, sL: [-20, 16], fL: [44, 64], aF: [54, 34], aB: [44, 30], hd: -14 }, schuss: { lean: 46, crouch: 0, sL: [50, 60], fL: [-36, 10], aF: [80, 10], aB: [70, 14], hd: -16 } };
+  const GEGNER = [["CAN", "Kanada"], ["USA", "USA"], ["SWE", "Schweden"], ["FIN", "Finnland"], ["CZE", "Tschechien"], ["SUI", "Schweiz"], ["GER", "Deutschland"]];
+  const TRIKOT = { CAN: "#C8102E", USA: "#1F3A7A", SWE: "#E0B020", FIN: "#2C6FB3", CZE: "#B02A30", SUI: "#C23B2A", GER: "#22272E", AUT: "#C23B2A" };
+  const CX = 422, GY = 236;       // Tormitte, Torlinie auf der Bühne
+  let R;
+
+  function halle(c, t, f) {       // f = Bildpunkte je Meter (Tor wird beim Anlauf größer)
+    c.fillStyle = "#1B2536"; c.fillRect(0, 0, R.W, R.H);
+    // Ränge mit Zuschauern, Flutlicht, Bande
+    for (let reihe = 0; reihe < 7; reihe++) for (let i = 0; i < 64; i++) { const x = i * 13.4 + (reihe % 2) * 6, y = 20 + reihe * 17, bob = Math.max(0, Math.sin(t * 2.4 + i * 1.3 + reihe)) * 1.6; c.fillStyle = ["#C8102E", "#E9EEF5", "#1F3A7A", "#DDA43B", "#3F6B55", "#8A8F9C"][(i * 7 + reihe * 3) % 6]; c.fillRect(x, y - bob, 9, 11); c.fillStyle = "#E8C9A8"; c.fillRect(x + 2, y - 5 - bob, 5, 5); }
+    for (const x of [140, 422, 704]) { const g = c.createRadialGradient(x, 0, 4, x, 0, 170); g.addColorStop(0, "rgba(255,245,210,0.5)"); g.addColorStop(1, "rgba(255,245,210,0)"); c.fillStyle = g; c.fillRect(x - 170, 0, 340, 170); }
+    c.fillStyle = "#F1E7D2"; c.fillRect(0, 136, R.W, 26); c.fillStyle = "#C8102E"; c.fillRect(0, 158, R.W, 4); for (let i = 0; i < 5; i++) R.text(c, i % 2 ? "ONTARIO" : "TORONTO", 90 + i * 166, 148, 12, "#1F3A7A");
+    const g = c.createLinearGradient(0, 162, 0, R.H); g.addColorStop(0, "#DCEAF2"); g.addColorStop(1, "#F5FAFC"); c.fillStyle = g; c.fillRect(0, 162, R.W, R.H - 162);
+    c.strokeStyle = "#C8102E"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, GY); c.lineTo(R.W, GY); c.stroke();
+    c.fillStyle = "rgba(44,111,179,0.22)"; c.strokeStyle = "#C8102E"; c.lineWidth = 2; c.beginPath(); c.ellipse(CX, GY, 1.9 * f, 0.5 * f, 0, 0, Math.PI); c.fill(); c.stroke();
+    // Tor: Rahmen und Netz
+    const w = P.TOR.b * f, h = P.TOR.h * f; c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(CX - w / 2, GY - h, w, h); c.strokeStyle = "rgba(255,255,255,0.7)"; c.lineWidth = 1; for (let i = 1; i < 10; i++) { c.beginPath(); c.moveTo(CX - w / 2 + (w * i) / 10, GY - h); c.lineTo(CX - w / 2 + (w * i) / 10, GY); c.stroke(); } for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(CX - w / 2, GY - (h * i) / 6); c.lineTo(CX + w / 2, GY - (h * i) / 6); c.stroke(); }
+    c.strokeStyle = "#C8102E"; c.lineWidth = Math.max(3, f * 0.06); c.strokeRect(CX - w / 2, GY - h, w, h);
+  }
+  function torwart(c, x, f, unten, farbe, hand) {
+    const px = CX + x * f, k = f / 60, h = unten ? 34 : 56; c.save(); c.translate(px, GY);
+    c.fillStyle = "#F4F1E8"; c.strokeStyle = "#141B25"; c.lineWidth = 1.5;
+    if (unten) { c.fillRect(-34 * k, -12 * k, 30 * k, 12 * k); c.strokeRect(-34 * k, -12 * k, 30 * k, 12 * k); c.fillRect(4 * k, -12 * k, 30 * k, 12 * k); c.strokeRect(4 * k, -12 * k, 30 * k, 12 * k); }
+    else { c.fillRect(-14 * k, -26 * k, 12 * k, 26 * k); c.strokeRect(-14 * k, -26 * k, 12 * k, 26 * k); c.fillRect(2 * k, -26 * k, 12 * k, 26 * k); c.strokeRect(2 * k, -26 * k, 12 * k, 26 * k); }
+    c.fillStyle = farbe; c.fillRect(-15 * k, -h * k, 30 * k, (h - (unten ? 10 : 24)) * k); c.strokeRect(-15 * k, -h * k, 30 * k, (h - (unten ? 10 : 24)) * k);
+    c.fillStyle = "#F4F1E8"; c.fillRect(-27 * k + (hand || 0) * 6 * k, -(h - 8) * k, 12 * k, 16 * k); c.strokeRect(-27 * k + (hand || 0) * 6 * k, -(h - 8) * k, 12 * k, 16 * k); c.beginPath(); c.arc(21 * k + (hand || 0) * 6 * k, -(h - 14) * k, 8 * k, 0, R.TAU); c.fill(); c.stroke();
+    c.fillStyle = "#E9EEF5"; c.beginPath(); c.arc(0, -(h + 8) * k, 9 * k, 0, R.TAU); c.fill(); c.stroke(); c.fillStyle = "#141B25"; c.fillRect(-5 * k, -(h + 10) * k, 10 * k, 4 * k);
+    c.restore();
+  }
+
+  function spiel() {
+    const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, rnd = P.rng(seed), wahl = GEGNER.filter((g) => g[0] !== R.myNat()), geg = wahl[Math.floor(rnd() * wahl.length)], st = 0.45 + rnd() * 0.4;
+    const tore = [0, 0], verlauf = [[], []]; let runde = 1;
+    const fertig = () => { const n = Math.min(verlauf[0].length, verlauf[1].length); if (verlauf[0].length !== verlauf[1].length) return false; if (n >= 5) return tore[0] !== tore[1]; const rest = 5 - n; return tore[0] > tore[1] + rest || tore[1] > tore[0] + rest; };
+    const kopf = () => [[`Runde ${runde}${runde > 5 ? " · Sudden Death" : ""}`, "dark"], [`${R.myNat()} ${tore[0]} : ${tore[1]} ${geg[0]}`, "gold"], [verlauf[0].map((v) => (v ? "●" : "○")).join("") + " | " + verlauf[1].map((v) => (v ? "●" : "○")).join("")]];
+    function weiter() { if (fertig()) return ende(); if (verlauf[0].length > verlauf[1].length) halten(); else { runde = verlauf[0].length + 1; schiessen(); } }
+    function schiessen() {
+      const a = P.anlauf(st); let tEnd = 0, puck = null, fing = false;
+      const kR = R.knopf({ seite: "rechts", text: "Anlauf", symbol: "lauf", onDown: () => { if (!a.schuss && !a.aus) { const q = P.schritt(a); q > 0.75 ? R.ton.gut() : q > 0 ? R.ton.knapp() : R.ton.schlecht(); } } });
+      const stick = R.stick({ seite: "links", text: "Zielen", onDown: () => { fing = true; }, onMove: (dx, dy) => { if (!a.schuss) P.ziele(a, dx, dy); }, onUp: () => { fing = false; schuss(); } });
+      function schuss() { const s = P.schiesse(a, rnd); if (!s) return; R.ton.klack(); R.ton.wusch(); puck = 0; R.tippWeg(); }
+      R.szene({
+        taste(k, an) { if (k === "rechts" && an) P.schritt(a); if (k === "links" && !an) schuss(); },
+        bot() { if (!a.schuss && !a.aus) { if (P.botSchuetze(a, rnd)) { R.ton.klack(); puck = 0; } } },
+        update(dt) {
+          P.lauf(a, dt);
+          if (!a.schuss && !a.aus) { R.tipp("schuss", "Rechts im Takt anlaufen. Links zielen und antäuschen: der Torhüter geht mit. Loslassen = Schuss (ab der Schusslinie).", 7); if (a.d < P.SCHUSS_AB && a.d > 6) R.tipp("finte", "Erst eine Seite zeigen, dann schnell in die andere Ecke ziehen und loslassen.", 4); }
+          kR.set({ zu: !a.schuss && !a.aus ? Math.min(1, a.phi) : null, ok: Math.abs(a.phi - 1) < 0.18, hidden: !!a.schuss });
+          if (a.schuss && puck != null) { puck = Math.min(1, puck + dt / Math.max(0.16, a.schuss.T)); if (puck >= 1 && !tEnd) { tEnd = 0.01; const e = a.schuss.erg, tor = e === "tor"; if (tor) tore[0]++; verlauf[0].push(tor); tor ? (R.ton.jubel(), R.sag("Tor!", 1.8)) : (e === "pfosten" ? R.ton.glocke() : R.ton.raunen(), R.sag(e === "pfosten" ? "Pfosten!" : e === "gehalten" ? "Gehalten!" : "Vorbei", 1.8, true)); } }
+          if (a.aus && !tEnd) { tEnd = 0.01; verlauf[0].push(false); R.sag("Zu nah: der Torhüter stochert den Puck weg", 1.8, true); R.ton.schlecht(); }
+          if (tEnd) { tEnd += dt; if (tEnd > 2.2) weiter(); }
+          R.chips(kopf().concat([["Du schießt", "good"], [`${R.zahl(Math.max(0, a.d))} m`, a.d < P.SCHUSS_AB ? "good" : ""]]));
+        },
+        draw(c, t) {
+          const f = 760 / (Math.max(a.d, P.ZU_NAH) + 5.5); halle(c, t, f);
+          const by = GY + (P.SCHUSS_AB - a.d) * 0 + Math.max(0, a.d - P.SCHUSS_AB) * 0; void by;
+          const twx = a.schuss ? a.tw.x + (a.schuss.twX - a.tw.x) * (puck || 0) : a.tw.x; torwart(c, twx, f, a.tw.unten || (a.schuss && a.schuss.y < 0.5), TRIKOT[geg[0]], a.schuss ? Math.sign(a.schuss.x - a.tw.x) : 0);
+          // Fadenkreuz auf dem Tor (zittert mit dem Tempo), Schütze von hinten
+          if (!a.schuss && !a.aus) { const zx = CX + a.ax * f + Math.sin(t * 9) * a.v * 0.35, zy = GY - a.ay * f + Math.cos(t * 7) * a.v * 0.35, ok = a.d < P.SCHUSS_AB; c.strokeStyle = ok ? "#141B25" : "rgba(20,27,37,0.4)"; c.lineWidth = 2.5; c.beginPath(); c.arc(zx, zy, 11, 0, R.TAU); c.moveTo(zx - 17, zy); c.lineTo(zx - 5, zy); c.moveTo(zx + 5, zy); c.lineTo(zx + 17, zy); c.moveTo(zx, zy - 17); c.lineTo(zx, zy - 5); c.moveTo(zx, zy + 5); c.lineTo(zx, zy + 17); c.stroke(); if (ok) { c.fillStyle = "#C8102E"; c.beginPath(); c.arc(zx, zy, 2.5, 0, R.TAU); c.fill(); } }
+          const sx = CX - 40 + a.ax * 26, w = a.treffer % 2; R.schatten(c, sx, 380, 26);
+          R.figur(c, { x: sx, y: 380, s: 1.35, pose: a.schuss ? POSE.schuss : F.mix(w ? POSE.a : POSE.b, w ? POSE.b : POSE.a, Math.min(1, a.phi)), look: Object.assign({}, R.myLook(), { bib: TRIKOT[R.myNat()] || "#C23B2A" }), kit: KIT });
+          c.strokeStyle = "#3A2A1C"; c.lineWidth = 5; c.lineCap = "round"; c.beginPath(); c.moveTo(sx + 26, 318); c.lineTo(sx + 58 + a.ax * 20, 372); c.lineTo(sx + 76 + a.ax * 20, 370); c.stroke();
+          let px = sx + 70 + a.ax * 20, py = 372, pr = 6; if (a.schuss) { const u = puck || 0; px += (CX + a.schuss.x * f - px) * u; py += (GY - a.schuss.y * f - py) * u; pr = 6 - 3 * u; } c.fillStyle = "#141B25"; c.beginPath(); c.ellipse(px, py, pr, pr * 0.55, 0, 0, R.TAU); c.fill();
+          if (a.d > P.SCHUSS_AB) R.tafel(c, CX - 90, 256, 180, 22, [["NOCH " + R.zahl(a.d - P.SCHUSS_AB) + " m BIS ZUR SCHUSSLINIE", 10, "#2C6FB3"]]);
+        },
+      });
+    }
+    function halten() {
+      const g = P.gegner(st, rnd), look = R.aussehen(seed + runde * 9); let t0 = 0, p = null, erg = null, tEnd = 0, wischen = null, bleib = false;
+      const kL = R.knopf({ seite: "links", text: "Stehen", symbol: "hocke", onDown: () => { bleib = true; }, onUp: () => { bleib = false; } });
+      function springe(ecke) { if (p || erg) return; p = { ecke, t: t0 }; R.ton.wusch(); }
+      R.szene({
+        onDown(x, y) { wischen = [x, y]; }, onUp(x, y) { if (!wischen) return; const dx = x - wischen[0], dy = y - wischen[1]; wischen = null; if (Math.hypot(dx, dy) > 28) springe((dx < 0 ? "l" : "r") + (dy < -18 ? "o" : "u")); },
+        taste(k, an) { if (an) springe(k === "links" ? "lu" : "ru"); },
+        bot() { if (!p && t0 > g.tSchuss + 0.08) springe(rnd() < 0.5 ? g.ecke === "mitte" ? "lu" : g.ecke : P.ECKEN[Math.floor(rnd() * 4)]); },
+        update(dt) {
+          t0 += dt; R.tipp("halten", "Du bist im Tor: Lies die Finte. Im Moment des Schusses in die Ecke wischen (hoch oder flach). Wer zu früh geht, bekommt ihn in die andere.", 7);
+          if (!erg && t0 > g.tSchuss + g.T) { erg = P.parade(g, p, rnd); tEnd = 0.01; const tor = erg.erg === "tor"; if (tor) tore[1]++; verlauf[1].push(tor); tor ? (R.ton.raunen(), R.sag(erg.grund ? `Tor (${erg.grund})` : "Tor für " + geg[1], 1.8, true)) : (R.ton.jubel(), R.sag("Gehalten!", 1.8)); }
+          if (tEnd) { tEnd += dt; if (tEnd > 2.2) weiter(); }
+          R.chips(kopf().concat([["Du hältst", "warn"]]));
+        },
+        draw(c, t) {
+          // Blick aus dem Tor: Pfosten links und rechts, Latte oben; der Schütze kommt näher
+          halle(c, t, 0.01); c.strokeStyle = "#C8102E"; c.lineWidth = 12; c.strokeRect(40, 46, R.W - 80, R.H + 20);
+          const u = Math.min(1, t0 / g.tSchuss), d = 20 - 15 * u, s = 9 / (d + 3) * 1.5, seite = g.finte && u > 0.45 && u < 0.86 ? (g.finte === "l" ? -1 : 1) : u >= 0.86 && g.ecke !== "mitte" ? (g.ecke[0] === "l" ? -1 : 1) : 0, gx = CX + seite * 46 * s + Math.sin(t0 * 2) * 10 * s, gy = 196 + s * 92;
+          R.schatten(c, gx, gy, 20 * s); R.figur(c, { x: gx, y: gy, s: s * 0.95, pose: t0 > g.tSchuss ? POSE.schuss : F.mix(POSE.a, POSE.b, (Math.sin(t0 * 7) + 1) / 2), look: Object.assign({}, look, { bib: TRIKOT[geg[0]] }), kit: KIT, dir: seite < 0 ? -1 : 1, lw: 1.2 });
+          const E = { lu: [150, 320], lo: [150, 110], ru: [694, 320], ro: [694, 110], mitte: [CX, 300] };
+          if (t0 > g.tSchuss) { const ziel = E[(erg || { ecke: g.ecke }).ecke], k = Math.min(1, (t0 - g.tSchuss) / g.T), px = gx + (ziel[0] - gx) * k, py = gy - 10 + (ziel[1] - gy) * k; c.fillStyle = "#141B25"; c.beginPath(); c.ellipse(px, py, 5 + 13 * k, (5 + 13 * k) * 0.6, 0, 0, R.TAU); c.fill(); }
+          // eigener Torhüter von hinten
+          const hx = p ? E[p.ecke][0] * 0.55 + CX * 0.45 : CX, hy = p && p.ecke[1] === "o" ? 290 : 372; c.save(); c.translate(hx, hy); c.rotate(p ? (p.ecke[0] === "l" ? -0.7 : 0.7) : 0);
+          c.fillStyle = TRIKOT[R.myNat()] || "#C23B2A"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.fillRect(-40, -92, 80, 70); c.strokeRect(-40, -92, 80, 70); c.fillStyle = "#F4F1E8"; c.fillRect(-44, -24, 38, 46); c.strokeRect(-44, -24, 38, 46); c.fillRect(6, -24, 38, 46); c.strokeRect(6, -24, 38, 46); c.fillRect(-66, -84, 24, 34); c.strokeRect(-66, -84, 24, 34); c.beginPath(); c.arc(56, -70, 17, 0, R.TAU); c.fill(); c.stroke(); c.fillStyle = "#E9EEF5"; c.beginPath(); c.arc(0, -108, 20, 0, R.TAU); c.fill(); c.stroke(); c.restore();
+          if (!p && !erg) { c.fillStyle = "rgba(20,27,37,0.55)"; for (const k of ["lo", "ro", "lu", "ru"]) { const [x, y] = E[k]; c.beginPath(); c.arc(x, y, 22, 0, R.TAU); c.fill(); } R.text(c, "↖", E.lo[0], E.lo[1], 22, "#F1E7D2"); R.text(c, "↗", E.ro[0], E.ro[1], 22, "#F1E7D2"); R.text(c, "↙", E.lu[0], E.lu[1], 22, "#F1E7D2"); R.text(c, "↘", E.ru[0], E.ru[1], 22, "#F1E7D2"); }
+        },
+      });
+      void kL; void bleib;
+    }
+    function ende() {
+      const sieg = tore[0] > tore[1]; if (sieg) { R.medaille(1); R.ton.jubel(); } R.rekord("tore", tore[0]);
+      const sp = (w) => verlauf[w].map((v) => (v ? "●" : "○"));
+      R.stand({ kicker: `Toronto · Länderspiel gegen ${geg[1]}`, titel: sieg ? "Sieg im Penaltyschießen!" : "Verloren im Penaltyschießen", kopf: [["", "p"], ["", ""], ["", ""], ...verlauf[0].map((_, i) => [String(i + 1), "n"]), ["Tore", "n"]],
+        zeilen: [{ name: R.myName() + " und Team", nat: R.myNat(), spalten: sp(0), wert: tore[0], ich: true, s: tore[0] }, { name: geg[1], nat: geg[0], spalten: sp(1), wert: tore[1], s: tore[1] }].sort((a, b) => b.s - a.s),
+        note: "Fünf Schüsse je Team, danach Sudden Death. ● Tor, ○ kein Tor.", knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Revanche", rot: true, fn: spiel }] });
+    }
+    schiessen();
+  }
+
+  R = window.CMRahmen.spiel({
+    id: "penaltyschiessen", name: "Penaltyschießen", titel: ["Penalty", "schießen"], band: "Toronto · Kanada", version: VERSION, kit: KIT,
+    satz: "Eins gegen eins auf dem Eis: antäuschen, schießen. Dann selbst ins Tor.",
+    modi: [{ id: "spiel", name: "Länderspiel", sub: (R) => (R.S.medals[0] ? `${R.S.medals[0]} Siege` : "Fünf Schüsse, fünf Paraden, dann Sudden Death"), start: spiel }],
+    info: [["Schießen", "Rechts „Anlauf“ im Takt tippen. Links der Stick: Das Fadenkreuz zeigt deine Ecke, und der Torhüter liest mit. Zeig ihm eine Seite, zieh schnell in die andere und lass los: Das ist der Schuss (ab der Schusslinie). Flach zielen lockt ihn in die Knie, dann ist oben frei. Wer zu nah herankommt, verliert den Puck."],
+      ["Halten", "Dann wechselst du die Seite: Der Gegner läuft an und täuscht. Wische im Moment des Schusses in die Ecke, nach oben für hohe Schüsse. Wer zu früh geht, bekommt den Puck in die andere Ecke. Manchmal kommt er durch die Mitte: stehen bleiben."],
+      ["Wertung", "Wie bei Olympia: abwechselnd fünf Schüsse je Team, steht es dann gleich, geht es mit einzelnen Schüssen weiter, bis einer vorn liegt."],
+      ["Noch nicht drin", "Länderturnier, Penalty 1934, Duell per Link, die Bahn in Ottawa."]],
+    plakat(c, t) { const f = 62; halle(c, t, f); torwart(c, Math.sin(t * 0.8) * 0.4, f, false, "#1F3A7A", 0); R && R.figur(c, { x: 360, y: 380, s: 1.35, pose: F.mix(POSE.a, POSE.b, (Math.sin(t * 3) + 1) / 2), look: Object.assign({}, R.myLook(), { bib: "#C8102E" }), kit: KIT }); },
+  });
+})();
+</script>
+</body>
+</html>
