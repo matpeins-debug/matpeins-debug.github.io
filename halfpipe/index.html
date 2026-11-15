@@ -2081,9 +2081,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   "use strict";
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-  const HITS = 5, QUER = 1.5, LIPPE = 0.9, FENSTER = 0.14, DREH = 400, TOL = 40, GRIFF_LOS = 0.16, H_MAX = 5.4;
+  const HITS = 5, QUER = 1.5, LIPPE = 0.9, FENSTER = 0.14, DREH = 400, TOL = 40, GRIFF_LOS = 0.16, H_MAX = 5.4, LANDEN = 0.34, PERFEKT = 0.13;
 
-  function lauf() { return { phase: "fahrt", hit: 0, u: 0.35, seite: 1, v: 0.32, hielt: false, pumpVor: false, los: null, luft: null, hits: [], stuerze: 0, letzter: null }; }
+  function lauf() { return { phase: "fahrt", hit: 0, u: 0.35, seite: 1, v: 0.32, hielt: false, pumpVor: false, los: null, luft: null, hits: [], stuerze: 0, letzter: null, kette: 0 }; }
   const hoehe = (v) => 1.2 + 4.2 * v, flugzeit = (h) => 2 * Math.sqrt((2 * h) / 9.81) * 1.15;
   // ein = { pump, dreh, grab } (gehalten). Liefert Ereignis: "ab" (Absprung), "landung", "sturz", "ende" oder null.
   function schritt(s, dt, ein) {
@@ -2092,29 +2092,35 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       s.u += dt / QUER;
       if (s.u >= 1) {
         const q = s.v; const h = hoehe(s.v);
-        s.luft = { t: 0, T: flugzeit(h), h, rot: 0, grab: 0, grabZuletzt: -9, q }; s.phase = "luft"; return "ab";
+        s.luft = { t: 0, T: flugzeit(h), h, rot: 0, grab: 0, grabZuletzt: -9, q, tap: null }; s.phase = "luft"; return "ab";
       }
       return null;
     }
-    const L = s.luft; L.t += dt;
-    if (ein.dreh) L.rot += DREH * dt;
+    const L = s.luft; if (ein.land) landen(s); L.t += dt;
+    if (ein.dreh && L.tap == null) L.rot += DREH * dt;
     if (ein.grab) { L.grab += dt; L.grabZuletzt = L.t; }
     if (L.t < L.T) return null;
     const stufe = Math.round(L.rot / 180) * 180, fehler = Math.abs(L.rot - stufe), zuSpaet = L.grabZuletzt > L.T - GRIFF_LOS;
     const sturz = fehler > TOL ? "verdreht" : zuSpaet ? "Griff zu spät gelöst" : null;
-    const hit = { h: L.h, rot: stufe, grab: Math.min(1, L.grab / 0.8), sauber: sturz ? 0 : 1 - (fehler / TOL) * 0.6, sturz, q: L.q };
+    const landung = sturz ? "sturz" : L.tap == null ? "wackler" : L.tap <= PERFEKT ? "perfekt" : "gut";
+    s.kette = landung === "perfekt" ? s.kette + 1 : 0;
+    const hit = { h: L.h, rot: stufe, grab: Math.min(1, L.grab / 0.8), sauber: sturz ? 0 : (1 - (fehler / TOL) * 0.6) * LQ[landung], sturz, q: L.q, landung, kette: s.kette };
     s.hits.push(hit); s.letzter = hit; s.hit++; s.luft = null;
-    if (sturz) { s.stuerze++; s.v = 0.2; } else s.v = clamp(s.v + (hit.sauber > 0.8 ? 0.14 : hit.sauber > 0.6 ? 0 : -0.16), 0.12, 1);   // saubere Landung hält und baut Schwung
+    if (sturz) { s.stuerze++; s.v = 0.2; } else s.v = clamp(s.v + (landung === "perfekt" && hit.sauber > 0.75 ? 0.15 : landung === "wackler" || hit.sauber < 0.55 ? -0.15 : 0.03), 0.12, 1);   // saubere Landung hält und baut Schwung
     if (s.hit >= HITS || s.stuerze >= 2) { s.phase = "ende"; return sturz ? "sturz" : "landung"; }
     s.phase = "fahrt"; s.u = 0; s.seite = -s.seite;
     return sturz ? "sturz" : "landung";
   }
   // Wertung 0–100: Höhe, Schwierigkeit, Griffe, Abwechslung, Ausführung. Stürze kosten doppelt.
+  // Landen wie in den Trick-Seitenscrollern: kurz vor dem Aufsetzen noch einmal tippen. Perfekte Landungen geben Schwung und bauen eine Kette.
+  const LQ = { perfekt: 1, gut: 0.85, wackler: 0.55, sturz: 0 };
+  function landen(s) { const L = s.luft; if (s.phase !== "luft" || !L || L.tap != null || L.t < L.T - LANDEN) return false; L.tap = L.T - L.t; return true; }
   function wertung(hits) {
     if (!hits.length) return 0; const n = HITS, sum = (f) => hits.reduce((a, h) => a + f(h), 0) / n;
     const A = sum((h) => (h.sturz ? 0.4 : 1) * h.h / H_MAX), D = sum((h) => (h.sturz ? 0 : Math.min(1, h.rot / 1080))), G = sum((h) => (h.sturz ? 0 : h.grab)), E = sum((h) => h.sauber * Math.min(1, h.h / 3));
     const V = Math.min(1, new Set(hits.filter((h) => !h.sturz && h.rot > 0).map((h) => h.rot)).size / 3), st = hits.filter((h) => h.sturz).length;
-    return clamp(100 * (0.26 * A + 0.32 * D + 0.1 * G + 0.12 * V + 0.2 * E) * Math.pow(0.8, st), 0, 100);
+    const kette = Math.max(0, ...hits.map((h) => h.kette || 0));
+    return clamp(100 * (0.26 * A + 0.32 * D + 0.1 * G + 0.12 * V + 0.2 * E) * Math.pow(0.8, st) * (1 + 0.02 * kette), 0, 100);
   }
   function ki(st, r) { const sturz = r() < 0.24 - 0.12 * st; return { basis: clamp((44 + 44 * st + (r() - 0.5) * 12) * (sturz ? 0.45 : 1), 8, 97), sturz }; }
   // Bot für Tests und Vorführung: pumpt sauber, dreht je nach Flugzeit 360 oder 540, greift in der ersten Hälfte.
@@ -2122,16 +2128,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     if (s.phase === "fahrt") return { pump: false, dreh: false, grab: false };
     if (s.phase !== "luft") return { pump: false, dreh: false, grab: false };
     const L = s.luft, ziel = Math.max(0, Math.floor(((L.T - 0.25) * DREH) / 180) * 180);
-    return { pump: false, dreh: L.rot < ziel - 3, grab: L.t > 0.1 && L.t < L.T * 0.55 };
+    return { pump: false, dreh: L.rot < ziel - 3, grab: L.t > 0.1 && L.t < L.T * 0.55, land: L.T - L.t < 0.08 };
   }
-  const api = { HITS, QUER, LIPPE, FENSTER, DREH, TOL, H_MAX, clamp, rng, lauf, schritt, wertung, ki, bot, hoehe, flugzeit };
+  const api = { HITS, QUER, LIPPE, FENSTER, DREH, TOL, H_MAX, LANDEN, PERFEKT, clamp, rng, lauf, landen, schritt, wertung, ki, bot, hoehe, flugzeit };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.HPPhys = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
 // Cold Medal · Halfpipe – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.3.0";
+  const VERSION = "0.4.0";
   const P = window.HPPhys, F = window.CMFigur;
   const KIT = { head: "helmet", feet: "skiBoots", torso: "plain", glove: true };
   const POSE = { fahrt: { lean: 18, crouch: 0.35, sL: [34, 50], fL: [-6, 40], aF: [40, 30], aB: [-30, 40], hd: -6 }, tief: { lean: 30, crouch: 0.8, sL: [60, 90], fL: [20, 80], aF: [60, 40], aB: [-10, 60], hd: -10 }, luft: { lean: 8, crouch: 0.3, sL: [40, 60], fL: [0, 50], aF: [-70, 20], aB: [-110, 30], hd: 0 }, griff: { lean: 40, crouch: 0.9, sL: [80, 100], fL: [50, 100], aF: [110, 10], aB: [-60, 50], hd: -14 } };
@@ -2177,16 +2183,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     function lauf() {
       const s = P.lauf(), ein = { pump: false, dreh: false, grab: false }; let tEnd = 0, wert = null;
       const kL = { set() {} };
-      const kR = R.knopf({ seite: "rechts", text: "Drehen", symbol: "wurf", onDown: () => { ein.dreh = true; }, onUp: () => { ein.dreh = false; } });
+      const kR = R.knopf({ seite: "rechts", text: "Drehen", symbol: "wurf", onDown: () => { if (P.landen(s)) { R.ton.tick(); return; } ein.dreh = true; }, onUp: () => { ein.dreh = false; } });
       R.szene({
-        taste(k, an) { if (k === "links") ein.grab = an; if (k === "rechts") ein.dreh = an; },
+        taste(k, an) { if (k === "links") ein.grab = an; if (k === "rechts") { if (an && P.landen(s)) return; ein.dreh = an; } },
         bot() { Object.assign(ein, P.bot(s)); },
         update(dt) {
           if (s.phase === "luft") ein.grab = ein.dreh && s.luft.t < s.luft.T - 0.3; const e = P.schritt(s, dt, ein);
-          if (e === "ab") { R.ton.wusch(); R.tipp("luft", "Halten = drehen. Loslassen, wenn das Brett wieder gerade steht: Saubere Landungen geben Schwung für den nächsten Sprung.", 6); }
-          if (e === "landung" || e === "sturz") { ein.dreh = false; const h = s.letzter; h.sturz ? (R.ton.schlecht(), R.ton.raunen(), R.sag("Sturz: " + h.sturz, 1.6, true)) : (R.ton.schnee(), R.sag(`${h.rot ? h.rot + "°" : "Gerader Sprung"} · ${R.zahl(h.h)} m${h.grab > 0.5 ? " · Griff" : ""}`, 1.4)); }
-          if (s.phase === "fahrt") { if (ein.dreh) ein.dreh = false; kR.set({ aktiv: false, hidden: false }); }
-          else if (s.phase === "luft") { kR.set({ aktiv: ein.dreh }); kL.set({ aktiv: ein.grab }); }
+          if (e === "ab") { R.ton.wusch(); R.tipp("luft", "Halten = drehen. Loslassen, dann kurz vor dem Aufsetzen noch einmal tippen: Perfekte Landungen geben Schwung.", 6); }
+          if (e === "landung" || e === "sturz") { ein.dreh = false; const h = s.letzter; h.sturz ? (R.ton.schlecht(), R.ton.raunen(), R.sag("Sturz: " + h.sturz, 1.6, true)) : (R.ton.schnee(), h.landung === "perfekt" && R.ton.gut(), R.sag(`${h.rot ? h.rot + "°" : "Gerader Sprung"} · ${{ perfekt: h.kette > 1 ? "Perfekt ×" + h.kette : "Perfekt", gut: "Gut gelandet", wackler: "Wackler" }[h.landung]}`, 1.4, h.landung === "wackler")); }
+          if (s.phase === "fahrt") { if (ein.dreh) ein.dreh = false; ein.land = false; kR.set({ aktiv: false, hidden: false, text: "Drehen", zu: null }); }
+          else if (s.phase === "luft") { const rest = s.luft.T - s.luft.t, fen = rest < P.LANDEN; kR.set({ aktiv: ein.dreh && !fen, text: fen ? "Landen" : "Drehen", zu: fen && s.luft.tap == null ? 1 - rest / P.LANDEN : null, ok: rest < P.PERFEKT }); }
           if (s.phase === "ende" && wert == null) { wert = R.richter(P.wertung(s.hits), rnd); tEnd = 0.01; R.tippWeg(); wert.wert > 80 ? R.ton.jubel() : R.ton.glocke(); }
           if (tEnd) { tEnd += dt; if (tEnd > 2.6) { meine.push({ wert: wert.wert, hits: s.hits }); tabelle(); } }
           R.chips([[training ? "Training" : `Lauf ${meine.length + 1} von ${LAEUFE}`, "dark"], [`Sprung ${Math.min(P.HITS, s.hit + 1)} von ${P.HITS}`, "gold"], s.luft ? [`${Math.round(s.luft.rot)}°`, Math.abs(s.luft.rot - Math.round(s.luft.rot / 180) * 180) < P.TOL * 0.6 ? "good" : "warn"] : [s.hits.map((h) => (h.sturz ? "✕" : h.rot || "–")).join(" ") || "Los!"]]);
@@ -2215,7 +2221,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     satz: "Fünf Sprünge über der Lippe: Höhe halten, drehen, greifen, sauber landen.",
     modi: [{ id: "finale", name: "Finale", sub: (R) => (R.S.best && R.S.best.punkte ? `Bestwert ${R.zahl(R.S.best.punkte)}` : "Acht Starter, zwei Läufe, der bessere zählt"), start: () => finale(false) },
       { id: "train", name: "Training", sub: () => "Ein Lauf ohne Gegner", start: () => finale(true), ohneName: true }],
-    info: [["Schwung", "Die ersten Sprünge sind klein. Jede saubere Landung gibt Schwung, jede wacklige nimmt ihn: So wächst die Höhe von Sprung zu Sprung, oder sie verhungert."],
+    info: [["Landung", "Die Landung entscheidet: Kurz vor dem Aufsetzen noch einmal tippen, je näher am Boden, desto besser. Eine perfekte Landung gibt Schwung für den nächsten Sprung und verlängert deine Kette, ein Wackler nimmt Schwung und reißt die Kette ab. So wächst die Höhe von Sprung zu Sprung, oder sie verhungert."],
       ["Tricks", "Ein Knopf: In der Luft halten dreht, loslassen stoppt. Gelandet wird in halben Drehungen (180, 360, 540 …), die Gradzahl oben wird grün, wenn es passt. Mehr Höhe heißt mehr Zeit für mehr Drehung. Den Griff setzt die Figur selbst."],
       ["Wertung", "Sechs Punktrichter, 0 bis 100, die höchste und die niedrigste Note fallen weg. Es zählen Höhe, Schwierigkeit, Griffe, Abwechslung und saubere Landungen. Nach zwei Stürzen ist der Lauf vorbei."],
       ["Noch nicht drin", "Trickkarte mit Namen, Qualifikation, Superpipe 1998, Duell per Link."]],
