@@ -2088,6 +2088,489 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   root.CMRahmen = { v: 1, W, H, spiel, rng, clamp };
 })(typeof window !== "undefined" ? window : globalThis);
 
+/* Cold Medal · gemeinsame Figur in 3D (WebGL, ohne Bibliothek), zusätzlich zu figur.js (global Figur3D).
+ * Liest dieselben Posen (lean, sL, fL, aF, aB, ao, fA, sA, aFA, aBA, hd) und dasselbe Aussehen (cleanLook) und baut daraus ein Skelett
+ * im Raum: verjüngte Glieder, Rumpf aus einem Stück mit Schrägstreifen, Kopf mit Gesicht und Frisur aus dem Pass, Schlittschuhe.
+ * Licht in Stufen wie im Plakat, dunkler Umriss. Seit Eiskunstlauf 0.44 im Lauf (Mat, 13.11.2026); andere Spiele bleiben bei figur.js.
+ *   Figur3D.make(canvas, { ortho })  → { draw(o) }   o: pose, turn, lift, look, swap, az, el, shadow
+ *   Figur3D.sprite(px)               → { canvas, render(o) }  Figur als Bild zum Einsetzen in eine 2D-Szene: Knöchel des Standbeins
+ *                                      bei (SPR.cx, SPR.cy) im Bild, SPR.u Figur-Einheiten über die ganze Breite (wie figur.js: x, y, s)
+ *   o.hold (frei): { roses, toys, cols }  Strauß Rosen in der vorderen Hand, Stofftiere im hinteren Arm (Eiskunstlauf 0.53)
+ *   o.outfit = "winter" (frei, Schneeball 0.4): Winterkleidung der 1920er statt Kostüm und Schlittschuhen: Strickmütze mit Bommel
+ *                                      (o.cap), Pullover mit Bordüre (Brust in der Zweitfarbe), Kniebundhose (o.pants), Wollstrümpfe
+ *                                      (o.sock), Lederschuhe (o.shoe), Handschuhe (o.glove, null = bloße Hand); o.ball = { r, col } Schneeball
+ *                                      in der vorderen Hand (r in Figur-Einheiten). Ohne outfit bleibt alles wie bisher.
+ *                                      o.feet = "boots" (frei, Schneeball 0.9.2): Winterstiefel bis zur halben Wade mit Filzrand, Schnürung
+ *                                      und dicker Profilsohle; der Fuß rollt im Lauf ab (Ferse auf, Spitze ab) statt starr zum Schienbein.
+ *   Figur3D.gift(px)                 → { canvas, render(kind, col, yaw, tilt) }  ein Geschenk allein als Bild ("rose", "teddy", "star"),
+ *                                      Mitte des Bildes = Mitte des Geschenks, GIFT_U Einheiten über die ganze Breite
+ */
+(function (root) {
+  "use strict";
+  const F = root.CMFigur;
+  // ---------------------------------------------------------------- kleine Matrix-Hilfen (Spaltenweise wie WebGL)
+  const M4 = {
+    id: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    mul(a, b) { const o = new Array(16); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; o[c * 4 + r] = s; } return o; },
+    persp(fov, asp, n, f) { const t = 1 / Math.tan(fov / 2); return [t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; },
+    look(e, c, u) {
+      const z = norm(sub(e, c)), x = norm(cross(u, z)), y = cross(z, x);
+      return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1];
+    },
+  };
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const norm = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  const hex = (h) => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
+  // Modell-Matrix: Einheitskörper (Achse y von 0 bis 1, Radius 1) von a nach b mit Radien rx, rz
+  function segM(a, b, rx, rz) {
+    const d = sub(b, a), L = Math.hypot(d[0], d[1], d[2]) || 1e-6, y = [d[0] / L, d[1] / L, d[2] / L];
+    const h = Math.abs(y[1]) < 0.95 ? [0, 1, 0] : [1, 0, 0], x = norm(cross(h, y)), z = cross(x, y);
+    return [x[0] * rx, x[1] * rx, x[2] * rx, 0, y[0] * L, y[1] * L, y[2] * L, 0, z[0] * rz, z[1] * rz, z[2] * rz, 0, a[0], a[1], a[2], 1];
+  }
+  const ellM = (c, rx, ry, rz, rotY) => { const cs = Math.cos(rotY || 0), sn = Math.sin(rotY || 0); return [cs * rx, 0, -sn * rx, 0, 0, ry, 0, 0, sn * rz, 0, cs * rz, 0, c[0], c[1], c[2], 1]; };
+
+  // ---------------------------------------------------------------- Netze
+  function sphere(n) {
+    const p = [], nr = [], ix = [];
+    for (let i = 0; i <= n; i++) { const v = i / n * Math.PI; for (let j = 0; j <= n * 2; j++) { const u = j / (n * 2) * Math.PI * 2, x = Math.sin(v) * Math.cos(u), y = Math.cos(v), z = Math.sin(v) * Math.sin(u); p.push(x, y, z); nr.push(x, y, z); } }
+    for (let i = 0; i < n; i++) for (let j = 0; j < n * 2; j++) { const a = i * (n * 2 + 1) + j, b = a + n * 2 + 1; ix.push(a, a + 1, b, b, a + 1, b + 1); }
+    return { p, nr, ix };
+  }
+  // Rumpf aus einem Stück wie in figur.js: Querschnitte (Höhe über der Hüfte, halbe Tiefe, halbe Breite), weich verbunden,
+  // unten und oben gerundet. x = vorn, y = oben, z = Seite; Einheiten der Figur.
+  function torsoMesh() {
+    const LV = [[-5.5, 2.5, 3], [-3.5, 5.4, 6.2], [-1, 6.2, 6.8], [6, 4.8, 5.6], [13, 6, 6.6], [18, 7.0, 7.4], [23.5, 7.0, 8.5], [26, 5.6, 7.2], [27.6, 2.6, 3.4]];
+    const at = (y) => { let i = 0; while (i < LV.length - 2 && y > LV[i + 1][0]) i++; const a = LV[i], b = LV[i + 1], u = Math.max(0, Math.min(1, (y - a[0]) / (b[0] - a[0]))), k = u * u * (3 - 2 * u); return [a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k]; };
+    const p = [], nr = [], ix = [], R = 40, n = 26;
+    for (let i = 0; i <= R; i++) {
+      const y = LV[0][0] + (LV[LV.length - 1][0] - LV[0][0]) * i / R, [d, w] = at(y), [d2, w2] = at(y + 0.4), [d1, w1] = at(y - 0.4);
+      for (let j = 0; j <= n; j++) {
+        const u = j / n * Math.PI * 2, cx = Math.cos(u), cz = Math.sin(u);
+        p.push(d * cx, y, w * cz);
+        const sl = -((d2 - d1) * Math.abs(cx) + (w2 - w1) * Math.abs(cz)) / 0.8; // Neigung der Wand nach oben
+        const m = (d + w) / 2; nr.push(w * cx / m, sl * 0.6, d * cz / m); // Normale der Ellipse, dazu die Neigung der Wand
+      }
+    }
+    for (let i = 0; i < R; i++) for (let j = 0; j < n; j++) { const a = i * (n + 1) + j, b = a + n + 1; ix.push(a, b, a + 1, b, b + 1, a + 1); }
+    return { p, nr, ix };
+  }
+  // Kopf aus einem glatten Stück (statt aufgesetzter Kugeln, die Beulen machen): Ei-Form, Kiefer und Kinn verjüngt, sanfte Nase
+  // und Brauenbogen als weiche Erhebungen. x = vorn, y = oben, z = Seite. Normalen aus den Dreiecken gemittelt.
+  const sq = (v) => v * v;
+  function headMesh() {
+    const n = 28, p = [], ix = [];
+    for (let i = 0; i <= n; i++) {
+      const v = i / n * Math.PI;
+      for (let j = 0; j <= n * 2; j++) {
+        const u = j / (n * 2) * Math.PI * 2;
+        let x = Math.sin(v) * Math.cos(u), y = Math.cos(v), z = Math.sin(v) * Math.sin(u);
+        let X = x * 5.7, Y = y * 6.5, Z = z * 5.3;
+        const jaw = Math.max(0, Math.min(1, (-Y - 0.5) / 5.5)), jj = jaw * jaw * (3 - 2 * jaw);
+        Z *= 1 - 0.32 * jj; X *= 1 - 0.1 * jj + (X > 0 ? 0.04 * jj : 0);           // Kiefer schmaler, Kinn leicht vor
+        if (Y > 2) Z *= 1 + 0.04 * Math.min(1, (Y - 2) / 3);                       // Schläfen etwas voller
+        if (X > 0) {
+          const front = Math.max(0, x);
+          X += front * 0.75 * Math.exp(-sq((Y + 0.7) / 1.25) - sq(Z / 0.75));     // Nase
+          X += front * 0.35 * Math.exp(-sq((Y - 1.6) / 0.6) - sq(Z / 3.2));       // Brauenbogen
+          X -= front * 0.18 * Math.exp(-sq((Y - 0.45) / 0.7) - sq((Math.abs(Z) - 2.1) / 0.9)); // Augenhöhlen
+          X += front * 0.2 * Math.exp(-sq((Y + 2.8) / 0.55) - sq(Z / 1.4));        // Lippen
+        }
+        p.push(X, Y, Z);
+      }
+    }
+    for (let i = 0; i < n; i++) for (let j = 0; j < n * 2; j++) { const a = i * (n * 2 + 1) + j, b = a + n * 2 + 1; ix.push(a, a + 1, b, b, a + 1, b + 1); }
+    const nr = new Array(p.length).fill(0);
+    for (let k = 0; k < ix.length; k += 3) {
+      const [A, B, C] = [ix[k], ix[k + 1], ix[k + 2]].map((q) => [p[q * 3], p[q * 3 + 1], p[q * 3 + 2]]);
+      const nn = cross(sub(B, A), sub(C, A));
+      for (const q of [ix[k], ix[k + 1], ix[k + 2]]) { nr[q * 3] += nn[0]; nr[q * 3 + 1] += nn[1]; nr[q * 3 + 2] += nn[2]; }
+    }
+    // Naht der Kugel (gleiche Punkte am Anfang und Ende jedes Rings) und Pole glatt
+    for (let i = 0; i <= n; i++) { const a = i * (n * 2 + 1), b = a + n * 2; for (let c = 0; c < 3; c++) { const m = nr[a * 3 + c] + nr[b * 3 + c]; nr[a * 3 + c] = nr[b * 3 + c] = m; } }
+    for (let q = 0; q < p.length / 3; q++) { const l = Math.hypot(nr[q * 3], nr[q * 3 + 1], nr[q * 3 + 2]) || 1; for (let c = 0; c < 3; c++) nr[q * 3 + c] /= l; if (!isFinite(nr[q * 3])) { nr[q * 3] = 0; nr[q * 3 + 1] = p[q * 3 + 1] > 0 ? 1 : -1; nr[q * 3 + 2] = 0; } }
+    // Pole: Normale gerade nach oben/unten
+    for (let j = 0; j <= n * 2; j++) { nr[j * 3] = 0; nr[j * 3 + 1] = 1; nr[j * 3 + 2] = 0; const q = n * (n * 2 + 1) + j; nr[q * 3] = 0; nr[q * 3 + 1] = -1; nr[q * 3 + 2] = 0; }
+    return { p, nr, ix };
+  }
+  // Kapsel als offene Röhre (Enden schließen Kugeln, die extra gezeichnet werden)
+  function tube(n) {
+    const p = [], nr = [], ix = [];
+    for (let i = 0; i <= 1; i++) for (let j = 0; j <= n; j++) { const u = j / n * Math.PI * 2, x = Math.cos(u), z = Math.sin(u); p.push(x, i, z); nr.push(x, 0, z); }
+    for (let j = 0; j < n; j++) { const a = j, b = j + n + 1; ix.push(a, b, a + 1, b, b + 1, a + 1); }
+    return { p, nr, ix };
+  }
+
+  // uTaper: Röhre verjüngt sich zum Ende (Oberschenkel → Knie, Unterarm → Handgelenk)
+  const VS = `attribute vec3 aP; attribute vec3 aN; uniform mat4 uM, uV, uP; uniform float uGrow, uTaper; varying vec3 vN; varying vec3 vW; varying vec3 vL;
+    void main(){ vec3 q = aP; q.xz *= mix(1.0, uTaper, clamp(aP.y, 0.0, 1.0)); vec3 n = normalize(mat3(uM) * aN); vec4 w = uM * vec4(q, 1.0); w.xyz += n * uGrow; vN = n; vW = w.xyz; vL = aP; gl_Position = uP * uV * w; }`;
+  // Kostüm im Shader (uMode): 1 Rumpf – Farbverlauf, Ausschnitt mit Steinbesatz, Ranken, Taillenband; 2 Oberarm; 3 Unterarm –
+  // Ärmel werden zum Handgelenk durchscheinend (Farbe zur Haut), Manschette mit Steinen; 4 Bein (Muster aus dem Pass:
+  // Längsstreifen, Beine in der Zweitfarbe); 5 Band (Seidenglanz). Dazu funkelnde Strasssteinchen (uT = Zeit).
+  const FS = `precision mediump float; uniform vec3 uC, uC2, uL, uE, uA, uBl, uBr, uLp; uniform float uFlat, uBand, uT, uPat; varying vec3 vN; varying vec3 vW; varying vec3 vL;
+    float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+    void main(){ if (uFlat > 0.5) { gl_FragColor = vec4(uC, 1.0); return; }
+      vec3 col = uC; const vec3 STONE = vec3(1.0, 0.97, 0.88); float glit = 0.0; vec3 gs = vec3(3.0, 16.0, 3.0);
+      int m = int(uBand + 0.5);
+      if (m == 1) {
+        float y = vL.y, x = vL.x, az = abs(vL.z); gs = vec3(1.3);
+        col = mix(uC * 0.78, uC * 1.1, smoothstep(-4.0, 24.0, y));
+        if (x > 0.0) {
+          float vy = 15.5 + az * 1.55;
+          if (y > 15.0 && y < 26.6 && abs(y - vy) < 0.8) { col = uA; if (fract((y + az) * 0.6) < 0.34) col = STONE; }
+          float r1 = length(vec2(y - 5.6, az - 2.7)); if (r1 > 2.35 && r1 < 2.95 && y > 4.2) col = uA;
+          float r2 = length(vec2(y - 2.6, az - 5.3)); if (r2 > 0.9 && r2 < 1.45) col = uA;
+          if (length(vec2(y - 8.0, az - 0.0)) < 0.7) col = STONE;
+        } else {
+          float by = 12.0 + az * az * 0.18; if (y > 12.0 && y < 24.0 && abs(y - by) < 0.6) col = uA; // Rückenausschnitt als Bogen
+        }
+        if (y > 9.4 && y < 10.9) { col = uA; if (fract(atan(vL.z, vL.x) * 2.6) < 0.22) col = STONE; }
+        glit = 1.0;
+      } else if (m == 2 || m == 4) {
+        if (uPat > 1.5 && m == 4) col = uA;
+        if (uPat > 0.5 && uPat < 1.5 && vL.z > 0.8) col = uA;
+        glit = 1.0;
+      } else if (m == 3) {
+        col = mix(uC, uC2, smoothstep(0.0, 0.7, vL.y));
+        if (vL.y > 0.86) { col = uA; if (fract(atan(vL.z, vL.x) * 1.5) < 0.3) col = STONE; }
+        glit = 0.6;
+      }
+      if (m == 7) {
+        // Pullover (Winterkleidung): Bordüre auf der Brust mit hellem Zickzack, Bund unten dunkler
+        float y = vL.y; col = uC;
+        if (y > 15.5 && y < 21.5) { col = uA; float zz = abs(fract(atan(vL.z, vL.x) * 2.2) - 0.5) * 4.0; if (abs(y - 17.2 - zz) < 0.55) col = vec3(0.96, 0.94, 0.88); }
+        if (y > 14.6 && y < 15.5 || y > 21.5 && y < 22.4) col = vec3(0.96, 0.94, 0.88);
+        if (y < -2.5) col = uC * 0.8;
+      }
+      if (m == 6) {
+        // Gesicht aufgemalt auf den glatten Kopf: Rouge, mandelförmige Augen mit Iris und Glanzpunkt, Wimpernlinie, Brauen, Lippen
+        float u = vL.y, az = abs(vL.z);
+        if (vL.x > 1.5) {
+          float bl = exp(-((az - 2.9) * (az - 2.9) + (u + 1.3) * (u + 1.3)) / 1.4); col = mix(col, uBl, 0.5 * bl);
+          float ex = (az - 2.05) / 1.05, ey = (u - 0.42) / 0.58, e = ex * ex + ey * ey;
+          if (e < 1.0) { col = vec3(0.97, 0.96, 0.94); float ir = length(vec2(az - 2.0, u - 0.36)); if (ir < 0.5) col = vec3(0.32, 0.22, 0.14); if (ir < 0.22) col = vec3(0.06); if (length(vec2(az - 1.86, u - 0.56)) < 0.1) col = vec3(1.0); }
+          if (e >= 0.82 && e < 1.4 && u > 0.36) col = vec3(0.08, 0.09, 0.13);
+          float bx = (az - 2.25) / 1.3, by = 2.0 + 0.3 * (1.0 - bx * bx);
+          if (abs(bx) < 1.0 && abs(u - by) < 0.16 + 0.05 * (1.0 - abs(bx))) col = uBr;
+          float lx = vL.z / 1.25, ly = (u + 2.85) / 0.44, le = lx * lx + ly * ly;
+          if (le < 1.0) { col = uLp; if (abs(u + 2.85) < 0.07 && abs(lx) < 0.92) col = uLp * 0.62; }
+        }
+      }
+      if (glit > 0.0) { vec3 q = vL * gs; float h = hash(floor(q)); vec3 fq = fract(q) - 0.5; if (h > 0.955 && length(fq.xz) < 0.3 && abs(fq.y) < 0.3) { float tw = 0.5 + 0.5 * sin(uT * 7.0 + h * 60.0); col = mix(col, STONE, glit * (0.45 + 0.55 * tw)); } }
+      vec3 n = normalize(vN); float d = dot(n, normalize(uL));
+      float band = d > 0.45 ? 1.0 : d > -0.05 ? 0.84 : 0.66;                     // Stufen wie im Plakat …
+      float s = mix(band, 0.66 + 0.34 * max(d, 0.0), m == 6 ? 0.9 : 0.55);         // Gesicht weich, ohne harte Stufen                       // … mit etwas weichem Verlauf
+      float rim = pow(1.0 - max(dot(n, normalize(uE - vW)), 0.0), 3.0) * (m == 5 ? 0.45 : 0.18);  // Lichtkante, Seide glänzt mehr
+      gl_FragColor = vec4(col * s + rim, 1.0); }`;
+
+  const SPR = { x0: -100, x1: 100, y0: -30, y1: 170 }; // Ausschnitt des Bildes in Figur-Einheiten (Knöchel bei 0, 0)
+  const GIFT_U = 26; // Breite des Geschenk-Bildes in Figur-Einheiten
+  // Geschenke aus Kugeln und Röhren (Figur-Einheiten): Rose mit Blüte aus Blättern, Kelch und Stiel; Teddy; Stern aus Plüsch.
+  // G: Werkzeuge aus draw (limb, ball, ell), b: Mitte bzw. Fuß des Geschenks, u/f/s: Achsen oben/vorn/Seite
+  function giftParts(G, kind, col, b, u, f, s) {
+    const P = (x, y, z) => [b[0] + f[0] * x + u[0] * y + s[0] * z, b[1] + f[1] * x + u[1] * y + s[1] * z, b[2] + f[2] * x + u[2] * y + s[2] * z];
+    const E = (c, rf, ru, rs, colr, mode) => G.ell(c, f, u, s, rf, ru, rs, colr, mode);
+    const green = [0.25, 0.48, 0.3];
+    if (kind === "rose") {
+      G.limb(P(0, 0, 0), P(0, 9, 0), 0.32, 0.32, green);
+      E(P(0.6, 4.5, 0.6), 0.9, 0.35, 1.6, green); E(P(-0.5, 6.2, -0.6), 0.8, 0.3, 1.4, green); // Blätter am Stiel
+      E(P(0, 9.4, 0), 1.6, 1.0, 1.6, green);                                                       // Kelch
+      for (let k = 0; k < 5; k++) { const a = k * 1.2566; E(P(Math.cos(a) * 1.3, 10.6, Math.sin(a) * 1.3), 1.55, 1.4, 1.55, col, 5); }
+      E(P(0, 11.6, 0), 1.5, 1.6, 1.5, col.map((x) => x * 0.82), 5);                               // Knospe innen, dunkler
+    } else if (kind === "teddy") {
+      const br = col, lt = [Math.min(1, br[0] * 1.35 + 0.1), Math.min(1, br[1] * 1.35 + 0.1), Math.min(1, br[2] * 1.35 + 0.1)], dk = [0.08, 0.06, 0.05];
+      E(P(0, 3.2, 0), 2.4, 3.0, 2.3, br); E(P(0.9, 2.8, 0), 1.6, 1.9, 1.5, lt);                  // Bauch
+      E(P(0, 7.3, 0), 2.1, 2.0, 2.1, br);                                                        // Kopf
+      for (const sd of [-1, 1]) { G.ball(P(-0.2, 9.0, sd * 1.6), 0.85, br); G.ball(P(0.2, 9.0, sd * 1.6), 0.45, lt); }
+      E(P(1.8, 6.8, 0), 0.9, 0.7, 0.9, lt); G.ball(P(2.55, 7.1, 0), 0.35, dk);                 // Schnauze, Nase
+      for (const sd of [-1, 1]) G.ball(P(1.7, 7.9, sd * 0.85), 0.28, dk);                        // Augen
+      for (const sd of [-1, 1]) { E(P(0.6, 4.3, sd * 2.4), 0.9, 1.6, 0.9, br); E(P(1.3, 0.6, sd * 1.3), 1.4, 0.9, 1.0, br); }
+      E(P(0.4, 5.6, 0), 0.5, 0.45, 1.6, [0.85, 0.2, 0.25], 5);                                   // Schleife am Hals
+    } else {
+      // Plüschstern: fünf Zacken um die Mitte, liegt in der Ebene oben/Seite
+      G.ball(P(0, 0, 0), 2.0, col);
+      for (let k = 0; k < 5; k++) { const a = k * 1.2566 - Math.PI / 2, c = Math.cos(a), sn = Math.sin(a);
+        G.limb(P(0, -c * 1.2, sn * 1.2), P(0, -c * 5.2, sn * 5.2), 1.5, 0.35, col); }
+      for (const sd of [-1, 1]) G.ball(P(1.6, 0.6, sd * 0.7), 0.3, [0.08, 0.06, 0.05]);
+    }
+  }
+  function make(canvas, opts) {
+    opts = opts || {};
+    const gl = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: true, preserveDrawingBuffer: !!opts.ortho });
+    if (!gl) return null;
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+    const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
+    const U = {}; for (const k of ["uM", "uV", "uP", "uGrow", "uC", "uC2", "uL", "uE", "uFlat", "uA", "uBand", "uTaper", "uT", "uPat", "uBl", "uBr", "uLp"]) U[k] = gl.getUniformLocation(pr, k);
+    const aP = gl.getAttribLocation(pr, "aP"), aN = gl.getAttribLocation(pr, "aN");
+    const upload = (m) => {
+      const b = { p: gl.createBuffer(), n: gl.createBuffer(), i: gl.createBuffer(), c: m.ix.length };
+      gl.bindBuffer(gl.ARRAY_BUFFER, b.p); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m.p), gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ARRAY_BUFFER, b.n); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m.nr), gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.i); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(m.ix), gl.STATIC_DRAW);
+      return b;
+    };
+    const SPH = upload(sphere(opts.ortho ? 8 : 10)), TUB = upload(tube(opts.ortho ? 12 : 18)), TOR = upload(torsoMesh()), HEAD = upload(headMesh());
+    // Eis: eine flache Scheibe (Kugel stark gestaucht) reicht für den Vergleich
+    function drawMesh(b, M, col, grow, flat, band, taper) {
+      gl.uniform1f(U.uBand, +band || 0); gl.uniform1f(U.uTaper, taper || 1);
+      gl.bindBuffer(gl.ARRAY_BUFFER, b.p); gl.vertexAttribPointer(aP, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(aP);
+      gl.bindBuffer(gl.ARRAY_BUFFER, b.n); gl.vertexAttribPointer(aN, 3, gl.FLOAT, false, 0, 0); gl.enableVertexAttribArray(aN);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, b.i);
+      gl.uniformMatrix4fv(U.uM, false, M); gl.uniform3fv(U.uC, col); gl.uniform1f(U.uGrow, grow || 0); gl.uniform1f(U.uFlat, flat ? 1 : 0);
+      gl.drawElements(gl.TRIANGLES, b.c, gl.UNSIGNED_SHORT, 0);
+    }
+
+    // ---------------------------------------------------------------- Skelett aus der Pose
+    // Profil von figur.js: x vorn, y nach unten, Knöchel des Standbeins im Ursprung. Im Raum: x vorn, y oben, z zur Seite.
+    const ZH = 3.4, ZS = 6.4;
+    function skeleton(p, turn, lift, swap) {
+      const J = F.joints(p), rad = (d) => d * Math.PI / 180;
+      const ax = J.hip[0], c = Math.cos(turn), s = Math.sin(turn);
+      // seitlich abspreizen (wie figur.js): Drehung um die Achse nach vorn durch den Wurzelpunkt
+      const abd = (pt, root, z, A, side) => { if (!A) return [pt[0], pt[1], z]; const dy = pt[1] - root[1], a = rad(A); return [pt[0], root[1] + dy * Math.cos(a), z + side * dy * Math.sin(a)]; };
+      const ao = rad(p.ao3 != null ? p.ao3 : p.ao || 0); // 3D: Arme seitlich nach der Pose (ao3), nicht nach der Blickrichtung
+      const armAo = (pt, root, z, side) => { if (!ao) return [pt[0], pt[1], z]; const dx = pt[0] - root[0]; return [root[0] + dx * Math.cos(ao), pt[1], z + side * Math.abs(dx) * Math.sin(ao)]; };
+      const W = (q) => { const x = q[0] - ax, z = q[2]; return [ax + x * c - z * s, -q[1] + lift, x * s + z * c]; }; // um die Hüftachse drehen, y nach oben
+      const near = 1, far = -1, side = swap ? -1 : 1;
+      const legPts = (pts, z0, A, sd) => pts.map((pt, i) => W(i ? abd(pt, pts[0], z0, A, sd) : [pt[0], pt[1], z0]));
+      const armPts = (pts, z0, A, sd) => pts.map((pt, i) => { if (!i) return W([pt[0], pt[1], z0]); const a = abd(pt, pts[0], z0, A, sd); return W(armAo([a[0], a[1]], pts[0], a[2], sd)); });
+      const S = legPts([J.hip, J.knee, J.ank], ZH * near * side, p.sA, near * side);
+      const Fr = legPts([J.hip, J.fKn, J.fAn], ZH * far * side, p.fA, far * side);
+      const AF = armPts(J.aF, ZS * near * side, p.aFA, near * side), AB = armPts(J.aB, ZS * far * side, p.aBA, far * side);
+      const hip = W([J.hip[0], J.hip[1], 0]), nk = W([J.nk[0], J.nk[1], 0]), sh = W([J.sh[0], J.sh[1], 0]);
+      const head = W([J.nk[0] + Math.sin(rad(p.lean - (p.hd || 0))) * 7.5, J.nk[1] - Math.cos(rad(p.lean - (p.hd || 0))) * 7.5, 0]);
+      return { S, Fr, AF, AB, hip, nk, sh, head, turn, lean: p.lean };
+    }
+    const state = {};
+    const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+    // ein Geschenk allein (für geworfene Rosen und Stofftiere): von vorn, ohne Perspektive, gedreht um yaw, geneigt um tilt
+    function drawGift(o) {
+      const w = canvas.width, h = canvas.height, ink = hex(F.INK);
+      gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+      const r = GIFT_U / 2;
+      gl.uniformMatrix4fv(U.uP, false, [1 / r, 0, 0, 0, 0, 1 / r, 0, 0, 0, 0, -2 / 800, 0, 0, 0, -1, 1]);
+      gl.uniformMatrix4fv(U.uV, false, M4.look([0, 0, 400], [0, 0, 0], [0, 1, 0])); gl.uniform3fv(U.uE, [0, 0, 400]); gl.uniform3fv(U.uL, [0.4, 0.9, 0.55]);
+      gl.uniform1f(U.uT, 0); gl.uniform1f(U.uPat, 0);
+      const parts = [];
+      const limb = (a, b, r0, r1, col) => { parts.push([TUB, segM(a, b, r0, r0), col, 0, r1 / r0]); parts.push([SPH, ellM(a, r0, r0, r0), col]); parts.push([SPH, ellM(b, r1, r1, r1), col]); };
+      const ball = (c, rr, col) => parts.push([SPH, ellM(c, rr, rr, rr), col]);
+      const ell = (c, f, u, s, rf, ru, rs, colr, mode) => parts.push([SPH, [f[0] * rf, f[1] * rf, f[2] * rf, 0, u[0] * ru, u[1] * ru, u[2] * ru, 0, s[0] * rs, s[1] * rs, s[2] * rs, 0, c[0], c[1], c[2], 1], colr, mode || 0]);
+      const cy = Math.cos(o.yaw || 0), sy = Math.sin(o.yaw || 0), ct = Math.cos(o.tilt || 0), st = Math.sin(o.tilt || 0);
+      // Achsen: oben um tilt in der Bildebene geneigt, vorn/Seite um yaw gedreht
+      const u = [-st, ct, 0], f0 = [cy, 0, sy], s0 = [-sy, 0, cy];
+      const rot = (v) => [v[0] * ct - v[1] * st, v[0] * st + v[1] * ct, v[2]], f = rot(f0), s = rot(s0);
+      const ofs = o.kind === "rose" ? 5.5 : o.kind === "teddy" ? 4.8 : 0, b = [-u[0] * ofs, -u[1] * ofs, -u[2] * ofs];
+      giftParts({ limb, ball, ell }, o.kind, hex(o.col || "#C23B2A"), b, u, f, s);
+      gl.depthMask(false); gl.cullFace(gl.FRONT); for (const [m, M, , , tp] of parts) drawMesh(m, M, ink, 0.32, true, false, tp);
+      gl.depthMask(true); gl.uniform3fv(U.uA, [1, 1, 1]);
+      gl.cullFace(gl.BACK); for (const [m, M, col, band, tp] of parts) drawMesh(m, M, col, 0, false, band, tp);
+    }
+    function draw(o) {
+      if (o.gift) return drawGift(o);
+      const w = canvas.width, h = canvas.height;
+      gl.viewport(0, 0, w, h); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE);
+      const L = F.cleanLook(o.look), skin = hex(F.SKIN[L.skin] || F.SKIN[1]), suit = hex(typeof L.suit === "number" ? F.SUIT[L.suit] : L.suit), acc = hex(typeof L.accent === "number" ? F.SUIT[L.accent] : L.accent);
+      const hair = hex(F.HAIRC[L.hairC] || F.HAIRC[0]), ink = hex(F.INK), boot = [0.95, 0.94, 0.9], blade = [0.75, 0.78, 0.82];
+      const sk = skeleton(o.pose, o.turn || 0, o.lift || 0, !!o.swap), WIN = o.outfit === "winter";
+      const sheer = [skin[0] * 0.75 + suit[0] * 0.25, skin[1] * 0.75 + suit[1] * 0.25, skin[2] * 0.75 + suit[2] * 0.25]; // Ärmel durchscheinend
+      gl.uniform3fv(U.uC2, sheer); gl.uniform1f(U.uT, o.time != null ? o.time : performance.now() / 1000);
+      gl.uniform1f(U.uPat, L.pattern === "stripe" ? 1 : L.pattern === "split" ? 2 : 0);
+      // Kamera: seitlich, etwas von oben, wie im Spiel (az dreht um die Figur)
+      const az = o.az || 0, el = o.el || 0.18, dist = 255, tgt = [0, 40, 0];
+      const eye = [tgt[0] + Math.sin(az) * dist * Math.cos(el), tgt[1] + Math.sin(el) * dist, tgt[2] + Math.cos(az) * dist * Math.cos(el)];
+      if (opts.ortho) {
+        // Sprite: genau von der Seite, ohne Perspektive – Figur-Einheiten liegen linear im Bild (passt zur 2D-Szene)
+        const l = SPR.x0, r = SPR.x1, b = SPR.y0, t = SPR.y1;
+        gl.uniformMatrix4fv(U.uP, false, [2 / (r - l), 0, 0, 0, 0, 2 / (t - b), 0, 0, 0, 0, -2 / 800, 0, -(r + l) / (r - l), -(t + b) / (t - b), -1, 1]);
+        gl.uniformMatrix4fv(U.uV, false, M4.look([0, 0, 400], [0, 0, 0], [0, 1, 0])); gl.uniform3fv(U.uE, [0, 40, 400]);
+      } else { gl.uniformMatrix4fv(U.uP, false, M4.persp(0.5, w / h, 10, 800)); gl.uniformMatrix4fv(U.uV, false, M4.look(eye, tgt, [0, 1, 0])); }
+      gl.uniform3fv(U.uL, [0.4, 0.9, 0.55]); if (!opts.ortho) gl.uniform3fv(U.uE, eye);
+      const parts = [];
+      // Glied: verjüngte Röhre von a (Radius r0) nach b (Radius r1), runde Gelenke an beiden Enden
+      const limb = (a, b, r0, r1, col, mode, colB) => { parts.push([TUB, segM(a, b, r0, r0), col, mode || 0, r1 / r0]); parts.push([SPH, ellM(a, r0, r0, r0), col]); parts.push([SPH, ellM(b, r1, r1, r1), colB || col]); };
+      const cap = (a, b, r, col) => limb(a, b, r, r, col);
+      const ball = (c, r, col) => parts.push([SPH, ellM(c, r, r, r), col]);
+      // Körperachsen: vorn, Seite
+      const zs = [-Math.sin(sk.turn), 0, Math.cos(sk.turn)], fx = [Math.cos(sk.turn), 0, Math.sin(sk.turn)];
+      const off = (q, f, z) => [q[0] + fx[0] * f + zs[0] * z, q[1], q[2] + fx[2] * f + zs[2] * z];
+      // Beine: Oberschenkel kräftig zum Knie schmaler, Wade zum Knöchel schmaler
+      const legC = L.pattern === "split" ? acc : suit;
+      if (WIN) {
+        // Kniebundhose bis unters Knie, darunter Wollstrümpfe
+        const pants = hex(o.pants || "#4D4237"), sock = hex(o.sock || "#E9E2D2");
+        for (const L2 of [sk.S, sk.Fr]) { limb(L2[0], L2[1], 3.9, 3.1, pants); limb(L2[1], lerp(L2[1], L2[2], 0.22), 3.1, 2.4, pants); limb(lerp(L2[1], L2[2], 0.2), L2[2], 2.25, 1.75, sock); }
+      } else {
+      limb(sk.S[0], sk.S[1], 3.5, 2.55, suit, 4); limb(sk.S[1], sk.S[2], 2.55, 1.7, legC, 4);
+      limb(sk.Fr[0], sk.Fr[1], 3.4, 2.5, suit, 4); limb(sk.Fr[1], sk.Fr[2], 2.5, 1.65, legC, 4);
+      }
+      // Arme: runde Schulter, Oberarm, Unterarm, Hand in Richtung des Unterarms
+      for (const A of [sk.AF, sk.AB]) {
+        if (WIN) {
+          // Pulloverärmel bis zum Handgelenk, Handschuh (oder bloße Hand) rund
+          ball(A[0], 2.9, suit); limb(A[0], A[1], 2.5, 2.1, suit); limb(A[1], A[2], 2.1, 1.75, suit);
+          const d = norm(sub(A[2], A[1])), gc = o.glove ? hex(o.glove) : skin;
+          parts.push([SPH, segM([A[2][0] + d[0] * 0.8, A[2][1] + d[1] * 0.8, A[2][2] + d[2] * 0.8], [A[2][0] + d[0] * 3.6, A[2][1] + d[1] * 3.6, A[2][2] + d[2] * 3.6], o.glove ? 1.85 : 1.4, o.glove ? 1.6 : 1.0), gc]);
+          continue;
+        }
+        ball(A[0], 2.75, suit); limb(A[0], A[1], 2.3, 1.85, suit, 2); limb(A[1], A[2], 1.85, 1.35, suit, 3, sheer);
+        const d = norm(sub(A[2], A[1])), c = [A[2][0] + d[0] * 1.7, A[2][1] + d[1] * 1.7, A[2][2] + d[2] * 1.7];
+        parts.push([SPH, segM(c, [c[0] + d[0] * 2.0, c[1] + d[1] * 2.0, c[2] + d[2] * 2.0], 1.35, 0.9), skin]); // Hand, flach und länglich
+      }
+      // Schneeball in der vorderen Hand
+      if (o.ball) { const A = sk.AF, d = norm(sub(A[2], A[1])), r = o.ball.r || 2.6; ball([A[2][0] + d[0] * (2.6 + r * 0.6), A[2][1] + d[1] * (2.6 + r * 0.6), A[2][2] + d[2] * (2.6 + r * 0.6) + 1.2], r, hex(o.ball.col || "#F7F6F2")); }
+      // Lederschuhe (Winterkleidung): niedrig, Fuß in Zehenrichtung, dicke Sohle; mit o.feet = "boots" Winterstiefel
+      if (WIN) for (const L2 of [sk.S, sk.Fr]) {
+        const kn = L2[1], an = L2[2], down = norm(sub(an, kn)), shoe = hex(o.shoe || "#4A2F1F");
+        let fd = norm(cross(zs, down));
+        if (o.feet === "boots") {
+          // Abrollen: halb zum Schienbein, halb waagrecht; so setzt die Ferse vorn auf und die Spitze drückt hinten ab
+          const fl = norm([fd[0], 0, fd[2]]); fd = norm(lerp(fd, fl, 0.45));
+          const at = (q, f, d) => [q[0] + fd[0] * f + down[0] * d, q[1] + fd[1] * f + down[1] * d, q[2] + fd[2] * f + down[2] * d];
+          const dk = hex(o.sole || "#2A1F17"), cuff = hex(o.cuff || "#D9CFBC"), lace = hex("#1E1610");
+          // Schaft bis zur halben Wade, oben weiter, mit Filzrand
+          const top = lerp(an, kn, 0.42);
+          limb(top, an, 2.55, 2.35, shoe);
+          limb(lerp(top, an, -0.06), lerp(top, an, 0.1), 2.85, 2.8, cuff);
+          // Fuß: kräftig, runde Kappe vorn
+          const heel = at(an, -1.6, 1.4), toe = at(an, 5.0, 1.75);
+          limb(heel, toe, 2.35, 2.0, shoe);
+          ball(at(an, 4.6, 1.55), 2.05, shoe);
+          // dicke Sohle mit Absatz, etwas breiter als der Schuh
+          const sh = at(an, -1.9, 3.15), st = at(an, 5.6, 3.25);
+          limb(sh, st, 1.15, 1.0, dk);
+          // Schnürung: kleine Haken vorn am Schaft
+          for (let k = 0; k < 4; k++) { const q = lerp(an, top, 0.12 + k * 0.24); ball([q[0] + fd[0] * 2.35, q[1] + fd[1] * 2.35, q[2] + fd[2] * 2.35], 0.42, lace); }
+          continue;
+        }
+        const heel = [an[0] - fd[0] * 1.4 + down[0] * 1.3, an[1] - fd[1] * 1.4 + down[1] * 1.3, an[2] - fd[2] * 1.4 + down[2] * 1.3];
+        const toe = [an[0] + fd[0] * 5.2 + down[0] * 1.7, an[1] + fd[1] * 5.2 + down[1] * 1.7, an[2] + fd[2] * 5.2 + down[2] * 1.7];
+        limb(lerp(an, heel, 0.2), an, 2.2, 2.0, shoe); limb(heel, toe, 2.1, 1.7, shoe);
+      }
+      // Schlittschuhe: hoher weißer Stiefel, Fuß in Zehenrichtung (senkrecht zum Schienbein), Kufe mit Zacke vorn
+      if (!WIN) for (const L2 of [sk.S, sk.Fr]) {
+        const kn = L2[1], an = L2[2], down = norm(sub(an, kn)), fd = norm(cross(zs, down));
+        const top = [an[0] - down[0] * 4.2, an[1] - down[1] * 4.2, an[2] - down[2] * 4.2];
+        limb(top, an, 2.15, 2.25, boot);
+        const heel = [an[0] - fd[0] * 1.6 + down[0] * 1.4, an[1] - fd[1] * 1.6 + down[1] * 1.4, an[2] - fd[2] * 1.6 + down[2] * 1.4];
+        const toe = [an[0] + fd[0] * 5.4 + down[0] * 1.8, an[1] + fd[1] * 5.4 + down[1] * 1.8, an[2] + fd[2] * 5.4 + down[2] * 1.8];
+        limb(heel, toe, 2.0, 1.55, boot);
+        const bh = [heel[0] + down[0] * 2.9 - fd[0] * 0.6, heel[1] + down[1] * 2.9 - fd[1] * 0.6, heel[2] + down[2] * 2.9 - fd[2] * 0.6];
+        const bt = [toe[0] + down[0] * 2.5 + fd[0] * 1.8, toe[1] + down[1] * 2.5 + fd[1] * 1.8, toe[2] + down[2] * 2.5 + fd[2] * 1.8];
+        cap(bh, bt, 0.42, blade); ball([bt[0] - down[0] * 0.6 + fd[0] * 0.2, bt[1] - down[1] * 0.6 + fd[1] * 0.2, bt[2] - down[2] * 0.6 + fd[2] * 0.2], 0.7, blade); // Zacke
+        cap(lerp(heel, bh, 0.45), lerp(heel, bh, 0.95), 0.35, blade); cap(lerp(toe, bt, 0.4), lerp(toe, bt, 0.95), 0.35, blade);     // Halter
+      }
+      // Geschenke in der Hand: Strauß Rosen vorn, Stofftiere im hinteren Arm (nur, wenn o.hold gesetzt ist)
+      if (o.hold && (o.hold.roses || o.hold.toys)) {
+        const ell = (c, f, u, s, rf, ru, rs, colr, mode) => parts.push([SPH, [f[0] * rf, f[1] * rf, f[2] * rf, 0, u[0] * ru, u[1] * ru, u[2] * ru, 0, s[0] * rs, s[1] * rs, s[2] * rs, 0, c[0], c[1], c[2], 1], colr, mode || 0]);
+        const G = { limb, ball, ell }, cols = (o.hold.cols || ["#C23B2A"]).map(hex);
+        const A = sk.AF, d = norm(sub(A[2], A[1])), hand = [A[2][0] + d[0] * 2.4, A[2][1] + d[1] * 2.4, A[2][2] + d[2] * 2.4];
+        const nR = Math.min(9, o.hold.roses | 0);
+        if (nR) {
+          const uB = norm([fx[0] * 0.55 + zs[0] * 0.45, 0.75, fx[2] * 0.55 + zs[2] * 0.45]) /* schräg nach vorn und außen, nicht vors Gesicht */, fB = norm(cross(zs, uB)), sB = cross(uB, fB);
+          const foot = [hand[0] - uB[0] * 3, hand[1] - uB[1] * 3, hand[2] - uB[2] * 3];
+          limb(foot, [foot[0] + uB[0] * 9, foot[1] + uB[1] * 9, foot[2] + uB[2] * 9], 1.0, 3.2, [0.96, 0.93, 0.84]); // Papier um den Strauß
+          for (let k = 0; k < nR; k++) {
+            const a = (k / nR) * Math.PI * 2 + 0.4, r = nR === 1 ? 0 : 1.1 + (k % 2) * 0.7, tilt = nR === 1 ? 0 : 0.22;
+            const uk = norm([uB[0] + (fB[0] * Math.cos(a) + sB[0] * Math.sin(a)) * tilt, uB[1] + (fB[1] * Math.cos(a) + sB[1] * Math.sin(a)) * tilt, uB[2] + (fB[2] * Math.cos(a) + sB[2] * Math.sin(a)) * tilt]);
+            const fk = norm(cross(zs, uk)), skk = cross(uk, fk);
+            const bk = [foot[0] + (fB[0] * Math.cos(a) + sB[0] * Math.sin(a)) * r * 0.3, foot[1] + (fB[1] * Math.cos(a) + sB[1] * Math.sin(a)) * r * 0.3, foot[2] + (fB[2] * Math.cos(a) + sB[2] * Math.sin(a)) * r * 0.3];
+            const sc = 1.35; giftParts(G, "rose", cols[k % cols.length], bk, uk.map((x) => x * sc), fk.map((x) => x * sc), skk.map((x) => x * sc));
+          }
+        }
+        const nT = Math.min(3, o.hold.toys | 0);
+        for (let k = 0; k < nT; k++) {
+          // Stofftiere vor dem Bauch im Arm, nebeneinander zur Kamera hin, damit man sie sieht
+          const ch = lerp(sk.hip, sk.nk, 0.22), sc = 1.5, sp = (k - (nT - 1) / 2) * 7;
+          const base = [ch[0] + fx[0] * 8 + zs[0] * (sp + 3), ch[1] - 2 + (k === 1 ? 2 : 0), ch[2] + fx[2] * 8 + zs[2] * (sp + 3)];
+          giftParts(G, k === 2 ? "star" : "teddy", k === 2 ? hex("#F3C969") : hex(k ? "#C9A27A" : "#9C6A3E"), base, [0, sc, 0], fx.map((x) => x * sc), zs.map((x) => x * sc));
+        }
+      }
+      // Rumpf aus einem Stück mit Schrägstreifen
+      const up = norm(sub(sk.nk, sk.hip)), Lt = Math.hypot(...sub(sk.nk, sk.hip)), at = (u) => [sk.hip[0] + up[0] * Lt * u, sk.hip[1] + up[1] * Lt * u, sk.hip[2] + up[2] * Lt * u];
+      const torsoM = (c, rx, ry, rz) => { const y = up, x0 = norm(cross(y, zs)), z = cross(x0, y); return [x0[0] * rx, x0[1] * rx, x0[2] * rx, 0, y[0] * ry, y[1] * ry, y[2] * ry, 0, z[0] * rz, z[1] * rz, z[2] * rz, 0, c[0], c[1], c[2], 1]; };
+      parts.push([TOR, torsoM(sk.hip, 1, Lt / 26, 1), suit, WIN ? 7 : 1]);
+      // Bänder an der Taille hinten, verspielt: hängen und wehen; in schnellen Drehungen fliegen sie nach außen
+      if (!WIN) {
+        const now = o.time != null ? o.time : (typeof performance !== "undefined" ? performance.now() / 1000 : 0), st = state;
+        const fresh = st.t == null || now - st.t > 0.005, om = st.t != null && fresh ? (sk.turn - st.turn) / (now - st.t) : st.om || 0; if (fresh) { st.t = now; st.turn = sk.turn; }
+        st.om = (st.om || 0) + (Math.max(-30, Math.min(30, om)) - (st.om || 0)) * 0.2;
+        const lift = Math.min(1, Math.abs(st.om) / 14), base = at(0.37);
+        for (const sd of [-1, 1]) {
+          let p0 = off(base, -5.6, sd * 1.4);
+          for (let k = 0; k < 5; k++) {
+            const sw = Math.sin(now * 3.1 + k * 0.7 + sd) * 0.25, f = (k + 1) / 5;
+            const dn = norm([-up[0] * (1 - lift * f) - fx[0] * (0.55 + lift * f) + zs[0] * (sw + sd * 0.15 + lift * f * 0.4 * Math.sign(st.om || 1)),
+              -up[1] * (1 - lift * f) + lift * f * 0.25, -up[2] * (1 - lift * f) - fx[2] * (0.55 + lift * f) + zs[2] * (sw + sd * 0.15 + lift * f * 0.4 * Math.sign(st.om || 1))]);
+            const p1 = [p0[0] + dn[0] * 3.4, p0[1] + dn[1] * 3.4, p0[2] + dn[2] * 3.4];
+            parts.push([TUB, segM(p0, p1, 0.75, 0.75), acc, 5, 0.85]); parts.push([SPH, ellM(p1, 0.66, 0.66, 0.66), acc, 5]);
+            p0 = p1;
+          }
+        }
+      }
+      // Kopf in eigenen Achsen (neigt sich mit Rumpf und Kopfhaltung): f vorn, u oben, s Seite
+      const hu = norm(sub(sk.head, sk.nk)), hf = norm(cross(hu, zs)), hs = cross(hf, hu);
+      const H = (f, u, sd) => [sk.head[0] + hf[0] * f + hu[0] * u + hs[0] * sd, sk.head[1] + hf[1] * f + hu[1] * u + hs[1] * sd, sk.head[2] + hf[2] * f + hu[2] * u + hs[2] * sd];
+      const hM = (c, rf, ru, rs) => [hf[0] * rf, hf[1] * rf, hf[2] * rf, 0, hu[0] * ru, hu[1] * ru, hu[2] * ru, 0, hs[0] * rs, hs[1] * rs, hs[2] * rs, 0, c[0], c[1], c[2], 1];
+      cap(sk.nk, H(-0.8, -4.5, 0), 1.75, skin);                                         // Hals
+      // Kopf aus einem glatten Stück, Gesicht aufgemalt (Shader m == 6) – keine aufgesetzten Teile, keine Beulen
+      const mixC = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+      gl.uniform3fv(U.uBl, mixC(skin, [0.88, 0.42, 0.44], 0.5)); gl.uniform3fv(U.uBr, mixC(hair, [0, 0, 0], 0.2)); gl.uniform3fv(U.uLp, mixC(skin, [0.74, 0.22, 0.28], 0.6));
+      parts.push([HEAD, hM(H(0, 0.4, 0), 1, 1, 1), skin, 6]);
+      for (const sd of [-1, 1]) parts.push([SPH, hM(H(-0.2, -0.3, sd * 5.15), 1.1, 1.6, 0.55), skin, 0, 1, false, true]); // Ohren
+      // Frisur nach Pass (figur.js HAIRS): Dutt, Kurz, Zopf, Locken, Bubikopf, Lang, Scheitel, Stoppeln, Afro
+      const hs2 = L.hair | 0, big = hs2 === 3 || hs2 === 8 ? (hs2 === 8 ? 2.2 : 1.1) : 0, thin = hs2 === 7 ? -0.6 : 0;
+      parts.push([SPH, hM(H(-1.6, 2.9, 0), 6.3 + big + thin, 5.7 + big + thin, 6.05 + big + thin), hair]);
+      if (hs2 === 0) ball(H(-5.6, 5.6, 0), 3.1, hair);
+      if (WIN) {
+        // Strickmütze mit Rand und Bommel
+        const capC = hex(o.cap || (typeof L.cap === "string" ? L.cap : null) || "#C23B2A"), rim = [0.96, 0.94, 0.88];
+        parts.push([SPH, hM(H(-0.9, 3.4, 0), 6.75 + big * 0.6, 5.3, 6.6 + big * 0.6), capC]);
+        parts.push([SPH, hM(H(-0.7, 1.3, 0), 6.95 + big * 0.6, 1.7, 6.85 + big * 0.6), rim]);
+        ball(H(-1.4, 9.6, 0), 2.5, rim);
+      }
+      // Schleife im Haar und Ohrstecker: verspielt und elegant
+      if (!WIN) {
+      const bowC = hs2 === 0 ? H(-3.6, 7.6, 0) : hs2 === 2 ? H(-6.0, 3.6, 0) : H(-2.0, 8.0, 0);
+      for (const sd of [-1, 1]) parts.push([SPH, hM([bowC[0] + hs[0] * sd * 1.9, bowC[1] + hs[1] * sd * 1.9, bowC[2] + hs[2] * sd * 1.9], 1.1, 1.3, 1.9), acc, 5]);
+      ball(bowC, 0.85, acc);
+      for (const sd of [-1, 1]) parts.push([SPH, hM(H(0.1, -2.3, sd * 5.3), 0.5, 0.5, 0.5), [1, 0.97, 0.88], 0, 1, true, true]);
+      }
+      if (hs2 === 2) { cap(H(-6.2, 3.2, 0), H(-7.6, -2.5, 0), 1.9, hair); cap(H(-7.6, -2.5, 0), H(-8.6, -8.5, 0), 1.6, hair); }
+      if (hs2 === 4) parts.push([SPH, hM(H(-1.2, -0.8, 0), 6.0, 4.2, 6.5), hair]);
+      if (hs2 === 5) parts.push([SPH, hM(H(-3.6, -5.5, 0), 3.2, 8.5, 5.8), hair]);
+      // Schatten auf dem Eis: flache, dunklere Scheibe unter der Hüfte, kleiner und blasser im Sprung
+      const sh = Math.max(0.35, 1 - (o.lift || 0) / 70);
+      if (o.shadow !== false) drawMesh(SPH, ellM([sk.hip[0], 0.05, sk.hip[2]], 17 * sh, 0.05, 6 * sh), [0.66, 0.71, 0.79], 0, true);
+      // Kontur: Rückseiten der leicht vergrößerten Hülle in Tinte
+      // Kontur nur als Umriss: zuerst ohne Tiefe schreiben, der Körper malt innen darüber – keine dunklen Nähte, wo Teile ineinander stecken
+      gl.depthMask(false); gl.cullFace(gl.FRONT); for (const [m, M, , , tp, flat, noOut] of parts) if (!flat && !noOut) drawMesh(m, M, ink, opts.ortho ? 0.85 : 0.6, true, false, tp);
+      gl.depthMask(true);
+      gl.uniform3fv(U.uA, acc);
+      gl.cullFace(gl.BACK); for (const [m, M, col, band, tp, flat] of parts) drawMesh(m, M, col, 0, !!flat, band, tp);
+      return { eye };
+    }
+    return { draw };
+  }
+  // Figur als Bild für eine 2D-Szene (ein WebGL-Kontext, wird je Bild neu gezeichnet)
+  function sprite(px) {
+    const c = typeof document !== "undefined" ? document.createElement("canvas") : null; if (!c) return null;
+    c.width = c.height = px;
+    let R = null; try { R = make(c, { ortho: true }); } catch (e) { R = null; }
+    if (!R) return null;
+    return { canvas: c, render(o) { R.draw(Object.assign({ shadow: false }, o)); return c; } };
+  }
+  // ein Geschenk als Bild (eigener kleiner WebGL-Kontext)
+  function gift(px) {
+    const c = typeof document !== "undefined" ? document.createElement("canvas") : null; if (!c) return null;
+    c.width = c.height = px;
+    let R = null; try { R = make(c, { ortho: true }); } catch (e) { R = null; }
+    if (!R) return null;
+    return { canvas: c, render(kind, col, yaw, tilt) { R.draw({ gift: true, kind, col, yaw, tilt }); return c; } };
+  }
+  root.Figur3D = { make, sprite, gift, SPR, GIFT_U };
+})(typeof window !== "undefined" ? window : globalThis);
+
 // Cold Medal · Eisstock – Physik ohne DOM, in echten Einheiten (m, s, kg). Global ESPhys.
 // Gleiten: Bremsung a = μ·g, Weite s = v²/(2·μ·g); μ = Sohle × Eis. Die Masse fällt beim Gleiten heraus und zählt erst im Stoß.
 // Stöße: Kreisscheiben (Stöcke, Daube), Stoßimpuls J = −(1+e)·v_rel,n / (1/m1 + 1/m2) entlang der Kontakt-Normalen.
@@ -2297,7 +2780,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // ---------------------------------------------------------------- Körper: Profil (Halbmesser, Höhe, Teil) um die Achse gedreht
   const P = [], N = [], T = [], IX = [], SEG = 32;
   const v = (p, n, t) => { P.push(p[0], p[1], p[2]); N.push(n[0], n[1], n[2]); T.push(t); return P.length / 3 - 1; };
-  const PROFIL = [[0.94, 0, 0], [0.94, 0.06, 0], [1.0, 0.06, 1], [1.0, 0.27, 1], [0.9, 0.31, 1], [0.86, 0.31, 2], [0.52, 0.48, 2], [0.22, 0.62, 2], [0.2, 0.72, 3], [0, 0.72, 3]];
+  const PROFIL = [[0, 0, 0], [0.94, 0, 0], [0.94, 0.06, 0], [1.0, 0.06, 1], [1.0, 0.27, 1], [0.9, 0.31, 1], [0.86, 0.31, 2], [0.52, 0.48, 2], [0.22, 0.62, 2], [0.2, 0.72, 3], [0, 0.72, 3]];
   for (let i = 0; i + 1 < PROFIL.length; i++) { const [r0, y0, teil] = PROFIL[i], [r1, y1] = PROFIL[i + 1], dr = r1 - r0, dy = y1 - y0, l = Math.hypot(dr, dy) || 1, nr = dy / l, ny = -dr / l;
     for (let k = 0; k < SEG; k++) { const a0 = k / SEG * 6.2832, a1 = (k + 1) / SEG * 6.2832, q = (r, y, a) => v([r * Math.cos(a), y, r * Math.sin(a)], [nr * Math.cos(a), ny, nr * Math.sin(a)], teil);
       const A = q(r0, y0, a0), B = q(r0, y0, a1), C = q(r1, y1, a1), D = q(r1, y1, a0); IX.push(A, B, C, A, C, D); } }
@@ -2349,7 +2832,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const gx0 = -GRIFF[0], gy0 = GRIFF[1], gx = gx0 * Math.cos(kipp) - gy0 * Math.sin(kipp), gy = (gx0 * Math.sin(kipp) + gy0 * Math.cos(kipp)) * Math.cos(el);
     c.drawImage(cv, hx - (FX + gx * EINH) * k, hy - (FY - gy * EINH) * k, S * k, S * k);
   }
-  root.ESStock3D = { zeichne, inHand, bild: cv };
+  // Am Griff gehalten, von hinten gesehen: Der Griff liegt bei (hx, hy); el größer = der Stock kippt mit dem Fuß nach vorn (Arm vorn),
+  // el kleiner oder negativ = der Fuß kommt zum Betrachter (Arm hinten, man sieht die Laufsohle)
+  function amGriff(c, hx, hy, rPx, phi, el, farbe, sohle) {
+    const th = Math.PI / 2 - (phi || 0); rendere(th, el, 0, farbe, sohle);
+    const k = rPx / EINH, xs = GRIFF[0] * Math.cos(th), zs = -GRIFF[0] * Math.sin(th), ys = GRIFF[1] * Math.cos(el) - zs * Math.sin(el);
+    c.drawImage(cv, hx - (FX + xs * EINH) * k, hy - (FY - ys * EINH) * k, S * k, S * k);
+  }
+  root.ESStock3D = { zeichne, inHand, amGriff, bild: cv };
 })(typeof window !== "undefined" ? window : globalThis);
 
 // Cold Medal · Eisstock – der Teich in Lana: was um die Bahn steht (Zuschauer mit Haferl, Feuerkörbe, Tannen, Hütte der Eisschützen,
@@ -2534,7 +3024,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.13.0";
+  const VERSION = "0.14.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2677,6 +3167,36 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 
   const AUFGABEN = P.AUFGABEN, VERSUCHE = 3;
 
+  // Der Schütze als 3D-Figur der Reihe, von hinten gesehen, in Winterkleidung (wie Schneeball und Halfpipe). false, wenn es kein WebGL gibt.
+  let S3 = null, s3Versucht = false; const TURN3 = (() => { const m = /[?&]turn=(-?[0-9.]+)/.exec(location.search); return m ? +m[1] : -Math.PI / 2; })();
+  function figur3(c, x, y, s, pose, look) {
+    if (!s3Versucht) { s3Versucht = true; try { S3 = window.Figur3D && window.Figur3D.sprite(512); } catch (e) { S3 = null; } }
+    if (!S3) return false;
+    const L = F.cleanLook(look), img = S3.render({ pose, turn: TURN3, lift: 0, look, outfit: "winter", feet: "boots", shoe: "#3A2A20", glove: "#22272E", cap: L.cap || null, pants: "#3B4252", el: 0.32 });
+    c.drawImage(img, x - 100 * s, y - 170 * s, 200 * s, 200 * s); return true;
+  }
+  // Eigener Ton fürs Eis: Gleiten als Rauschen, das mit dem Tempo leiser und dunkler wird, und ein Klack je nach Härte des Treffers
+  const KLANG = (() => { let ac = null, g = null, filt = null;
+    function an() { if (!R.S.ton || R.schnell) return null; try { if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ac = new A(); const buf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        const q = ac.createBufferSource(); q.buffer = buf; q.loop = true; filt = ac.createBiquadFilter(); filt.type = "bandpass"; filt.frequency.value = 900; filt.Q.value = 0.7; g = ac.createGain(); g.gain.value = 0; q.connect(filt); filt.connect(g); g.connect(ac.destination); q.start(); }
+      if (ac.state === "suspended") ac.resume(); } catch (e) { ac = null; } return ac; }
+    return { wecken: an,
+      gleiten(v) { if (!ac || !g) return; const t = ac.currentTime; g.gain.setTargetAtTime(R.S.ton && !R.schnell ? Math.min(0.11, v * 0.02) : 0, t, 0.08); filt.frequency.setTargetAtTime(450 + v * 280, t, 0.1); },
+      klack(h) { if (!an()) return false; const t = ac.currentTime, o = ac.createOscillator(), og = ac.createGain(); o.type = "triangle"; o.frequency.setValueAtTime(480 + h * 70, t); o.frequency.exponentialRampToValueAtTime(130, t + 0.09); og.gain.setValueAtTime(Math.min(0.5, 0.1 + h * 0.09), t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.17); o.connect(og); og.connect(ac.destination); o.start(t); o.stop(t + 0.19); return true; } };
+  })();
+  // Schiefertafel der Eisschützen: Punkte je Kehre, nach jeder Kehre gezeigt
+  function kehrenTafel(c, verlauf, stand, namen, ein) {
+    const w = 460, h = 150, x = R.W / 2 - w / 2, y = 150 + (1 - ein) * 30; c.save(); c.globalAlpha = ein;
+    c.fillStyle = "#7A5636"; c.fillRect(x - 8, y - 8, w + 16, h + 16); c.fillStyle = "#2B363C"; c.fillRect(x, y, w, h); c.strokeStyle = "#141B25"; c.lineWidth = 2; c.strokeRect(x - 8, y - 8, w + 16, h + 16);
+    const kreide = "#EDE8DA", sp = (i) => x + 190 + i * 44, zl = [y + 30, y + 74, y + 116];
+    R.text(c, "KEHRE", x + 16, zl[0], 13, kreide, "left"); for (let i = 0; i < KEHREN; i++) R.text(c, String(i + 1), sp(i), zl[0], 14, i === verlauf.length - 1 ? "#DDA43B" : kreide); R.text(c, "PUNKTE", x + w - 46, zl[0], 12, kreide);
+    c.strokeStyle = "rgba(237,232,218,0.5)"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + 12, y + 48); c.lineTo(x + w - 12, y + 48); c.stroke();
+    for (const wer of [0, 1]) { R.text(c, namen[wer].toUpperCase().slice(0, 14), x + 16, zl[wer + 1], 15, wer === 0 ? "#E8806E" : "#8FB3E0", "left");
+      for (let i = 0; i < KEHREN; i++) { const v = verlauf[i]; R.text(c, !v ? "" : v.wer === wer ? String(v.punkte) : "–", sp(i), zl[wer + 1], 17, i === verlauf.length - 1 ? "#DDA43B" : kreide); }
+      R.text(c, String(stand[wer]), x + w - 46, zl[wer + 1], 22, kreide); }
+    c.restore();
+  }
+
   function spiel(modus) {
     const duell = modus === "duell", aufg = modus === "aufg", zielM = modus === "ziel";
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, rnd = P.rng(seed), eis = ["glatt", "rau", "stumpf"][Math.floor(rnd() * 3)], feld = R.feld(11, seed, 0.6), geg = feld[0];
@@ -2693,7 +3213,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       let oben = true; const kOben = R.knopf({ seite: karteLinks ? "rechts" : "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
-      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? pendelPose(R.t, u) : pendelPose(R.t, 0.67), k: R.clamp((v - 3) / 3.2, 0, 1), dauer: wurfDauer(R.clamp((v - 3) / 3.2, 0, 1)) }; phase = "wurf"; tPh = 0; R.tippWeg(); }
+      let wackel = 0, vorspulen = false, vorLage = { fremd: 0, dx: 0, dy: 0 };
+      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); vorspulen = false; vorLage = { fremd: W.st.filter((q) => P.imFeld(q) && q.wer !== dran).length, dx: W.daube.x, dy: W.daube.y }; zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? pendelPose(R.t, u) : pendelPose(R.t, 0.67), k: R.clamp((v - 3) / 3.2, 0, 1), dauer: wurfDauer(R.clamp((v - 3) / 3.2, 0, 1)) }; phase = "wurf"; tPh = 0; R.tippWeg(); }
       let aNr = 0, aVersuch = 1, aGeloest = [], vorBest = null, nachMessen = null;
       function lade() { W = P.neu(eis); for (const [x, y, wer] of AUFGABEN[aNr].st) P.lege(W, x, y, wer); dran = 0; phase = "zielen"; tPh = 0; winkel = 0; u = 0; zug = null; msg = null; }
       let zv = 0; const zD = () => Math.min(3, Math.floor(zv / 6));
@@ -2702,12 +3223,12 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         if (zielM) return ladeZiel();
         const fertig = !aufg && n[0] >= (duell ? STOECKE : 5) && (!duell || n[1] >= STOECKE);
         if (fertig) { phase = "messen"; tPh = 0; const w = P.wertung(W);
-          if (duell) { if (w.wer != null) stand[w.wer] += w.punkte; verlauf.push(w); msg = w.gleich ? "Gleich weit: keine Punkte" : w.wer == null ? "Kein Stock im Zielfeld" : `${w.punkte} ${w.punkte === 1 ? "Punkt" : "Punkte"} für ${w.wer === 0 ? R.myName() : geg.name}`; w.wer === 0 ? R.ton.jubel() : R.ton.raunen(); jubel = w.wer === 0 ? 1 : 0.4; }
+          if (duell) { if (w.wer != null) stand[w.wer] += w.punkte; verlauf.push(w); msg = w.gleich ? "Gleich weit: keine Punkte" : w.wer == null ? "Kein Stock im Zielfeld" : `${w.punkte} ${w.punkte === 1 ? "Punkt" : "Punkte"} für ${w.wer === 0 ? (R.myName() === "Du" ? "dich" : R.myName()) : geg.name}`; w.wer === 0 ? R.ton.jubel() : R.ton.raunen(); jubel = w.wer === 0 ? 1 : 0.4; }
           else { msg = `${ziel.reduce((s, v) => s + v, 0)} Punkte`; R.ton.glocke(); }
           return; }
         // Es spielt, wer nicht die Bestlage hat; ohne Bestlage, wer mehr Stöcke übrig hat, sonst wer die Kehre anspielt
         if (aufg) return lade();
-        if (duell) { const best = P.bestlage(W), an = (kehre + 1) % 2; dran = best != null ? 1 - best : n[0] > n[1] ? 1 : n[1] > n[0] ? 0 : an; if (n[dran] >= STOECKE) dran = 1 - dran; } else dran = 0;
+        if (duell) { const best = P.bestlage(W), an = (kehre + 1) % 2; dran = best != null ? 1 - best : n[0] > n[1] ? 1 : n[1] > n[0] ? 0 : an; if (n[dran] >= STOECKE) dran = 1 - dran; if (n[0] + n[1] === 0 && kehre === KEHREN) R.sag("Letzte Kehre", 1.8); else if (dran === 0 && n[0] === STOECKE - 1) R.sag("Dein letzter Stock", 1.6); } else dran = 0;
         phase = "zielen"; tPh = 0; winkel = 0; u = 0; zug = null; W.lauf = null; W.aus = false; W.klack = 0; kiPlan = null;
       }
       function ende() {
@@ -2726,7 +3247,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         R.stand({ kicker: "Lana · Zielwettbewerb", titel: platz === 1 ? "Sieg!" : `Platz ${platz}`, zeilen, note: `Deine Durchgänge: ${P.ZW.map((D, d) => `${D.name} ${teil[d]}`).join(", ")}. Zusammen ${sum} von 240.${neu ? " Neue Bestleistung." : ""}`, knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => spiel("ziel") }] });
       }
       R.szene({
-        onDown(x, y, id) { if (phase === "zielen" && dran === 0 && !zug) { if (karteLinks ? x < R.W * 0.36 : x > R.W * 0.64) { karteLinks = !karteLinks; R.S.karteLinks = karteLinks; } /* nur wechseln, wenn der Finger auf der Seite der Karte ansetzt */ zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
+        onDown(x, y, id) { KLANG.wecken(); if (phase === "lauf") vorspulen = true; if (phase === "zielen" && dran === 0 && !zug) { if (karteLinks ? x < R.W * 0.36 : x > R.W * 0.64) { karteLinks = !karteLinks; R.S.karteLinks = karteLinks; } /* nur wechseln, wenn der Finger auf der Seite der Karte ansetzt */ zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
         onMove(x, y, id) { if (zug && (id == null || zug.id == null || id === zug.id)) zieh(x, y); },
         onUp(x, y, id) { if (!zug || (id != null && zug.id != null && id !== zug.id)) return; zieh(x, y); if (u > ZUG_MIN && zug.bewegt) abgeben(winkelE(), tempo()); else { zug = null; u = 0; winkel = 0; } },
         bot() { if (phase === "zielen" && dran === 0 && tPh > 0.3) abgeben((n[0] % 3 - 1) * 0.4, P.tempoFuer(P.BAHN.daubeX - 0.5 - P.X0 + (n[0] % 2) * 0.3, eis, sohle)); },
@@ -2738,8 +3259,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           } else if (phase === "wurf") {
             if (tPh >= wurf.dauer) { P.schuss(W, wurf.wer, wurf.w, wurf.v, wurf.sohle); n[wurf.wer]++; phase = "lauf"; tPh = 0; akk = 0; dz = W.daubeZurueck; R.ton.wusch(); }
           } else if (phase === "lauf") {
-            akk += dt * (dran === 1 ? 2.5 : 1.4);   // Zeitraffer nur fürs Zuschauen, die Rechnung bleibt dieselbe
-            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { const q = W.lauf && W.lauf.lebt ? W.lauf : null; if (q && !R.schnell) for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 0.6 + Math.random() * 1.6; splitter.push({ x: q.x + 0.1, y: q.y, z: 0.05, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 1.2 + Math.random() * 1.6, t: 0 }); } R.ton.klack(); if (!R.schnell && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* egal */ } } jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
+            akk += dt * (vorspulen ? 6 : dran === 1 ? 2.5 : 1.4);   // Zeitraffer nur fürs Zuschauen, die Rechnung bleibt dieselbe; Tippen spult vor
+            if (tPh > 1.6 && !vorspulen) R.tipp("vor", "Tippen spult vor, bis alles liegt.", 4);
+            while (akk >= P.DT && !P.ruht(W)) { akk -= P.DT; const vor = W.klack; P.schritt(W); if (W.klack > vor + 0.15) { const q = W.lauf && W.lauf.lebt ? W.lauf : null; if (q && !R.schnell) for (let i = 0; i < 12; i++) { const a = Math.random() * 6.28, v = 0.6 + Math.random() * 1.6; splitter.push({ x: q.x + 0.1, y: q.y, z: 0.05, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 1.2 + Math.random() * 1.6, t: 0 }); } if (!KLANG.klack(W.klack)) R.ton.klack(); wackel = Math.min(7, 1.5 + W.klack * 1.4); if (!R.schnell && navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* egal */ } } jubel = Math.max(jubel, Math.min(1, 0.35 + W.klack * 0.2)); } }
+            { let vm = 0; for (const q of W.st) if (q.lebt) vm = Math.max(vm, Math.hypot(q.vx, q.vy)); KLANG.gleiten(vorspulen ? 0 : vm); }
             if (W.daubeZurueck > dz) { dz = W.daubeZurueck; R.sag("Daube zurück aufs Mittelkreuz", 1.6); }
             if ((P.ruht(W) || tPh > 30) && aufg) { const ok = AUFGABEN[aNr].ziel(P.wertung(W), W); phase = "messen"; tPh = 0;
               if (ok) { aGeloest[aNr] = aVersuch; msg = "Gelöst!"; jubel = 1; R.ton.jubel(); } else if (aVersuch < VERSUCHE) { msg = `Noch nicht. Versuch ${aVersuch + 1} von ${VERSUCHE}`; R.ton.raunen(); } else { msg = "Nicht gelöst"; R.ton.raunen(); }
@@ -2748,13 +3271,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
               nachMessen = () => { if (zv >= 24) return ende(); if (zD() !== d0) R.sag(`Durchgang ${zD() + 1}: ${P.ZW[zD()].name}`, 2); ladeZiel(); }; }
             else if (P.ruht(W) || tPh > 30) { const s = W.lauf; if (false) { }
               else if (s && !s.lebt && dran === 0) R.sag("Aus!", 1.2, true);
-              else if (duell) { const nach = P.bestlage(W), nm = geg.name.split(" ")[0]; if (nach === dran && vorBest !== dran) { if (dran === 0) { R.sag(vorBest === 1 ? "Bestlage geholt!" : "Bestlage!", 1.4); jubel = 1; R.ton.gut(); } else R.sag(`${nm} holt die Bestlage`, 1.4, true); } }
+              else if (duell) { const nach = P.bestlage(W), nm = geg.name.split(" ")[0], fremdNach = W.st.filter((q) => P.imFeld(q) && q.wer !== dran).length, daubeWeg = Math.hypot(W.daube.x - vorLage.dx, W.daube.y - vorLage.dy) > 0.08, nah = s && P.imFeld(s) ? P.abstand(W, s) : 9;
+                if (dran === 0) { const wort = nach === 0 && vorBest !== 0 ? (vorBest === 1 ? "Bestlage geholt!" : "Bestlage!") : fremdNach < vorLage.fremd ? "Weggeschossen!" : daubeWeg && nach === 0 ? "Daube verschoben!" : nach === 0 && nah < 0.2 ? "Maß!" : null;
+                  if (wort) { R.sag(wort, 1.4); jubel = 1; R.ton.gut(); } else if (!s || !P.imFeld(s)) R.ton.raunen(); }
+                else if (nach === 1 && vorBest !== 1) R.sag(`${nm} holt die Bestlage`, 1.4, true); else if (fremdNach < vorLage.fremd) R.sag(`${nm} schießt dich weg`, 1.4, true); }
               naechster(); }
           } else if (phase === "messen" && (aufg || zielM)) { if (tPh > (zielM ? 1.5 : 2.2)) { const f = nachMessen; nachMessen = null; if (f) f(); }
-          } else if (phase === "messen" && tPh > 2.8) {
+          } else if (phase === "messen" && tPh > (duell ? 6.4 : 2.8)) {
             if (duell && kehre < KEHREN) { kehre++; W = P.neu(eis); n = [0, 0]; msg = null; naechster(); } else ende();
           }
-          jubel = Math.max(0, jubel - dt * 0.55);
+          jubel = Math.max(0, jubel - dt * 0.55); wackel *= Math.exp(-dt * 9); if (phase !== "lauf") KLANG.gleiten(0);
           if (phase === "wurf") spur = []; if (phase === "lauf" && W.lauf && W.lauf.lebt && (W.lauf.vx || W.lauf.vy)) { const l = spur[spur.length - 1]; if (!l || Math.hypot(l[0] - W.lauf.x, l[1] - W.lauf.y) > 0.12) { spur.push([W.lauf.x, W.lauf.y]); if (spur.length > 60) spur.shift(); } }
           for (const q of splitter) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z = Math.max(0, q.z + q.vz * dt); q.vz -= 6 * dt; } if (splitter.length) splitter = splitter.filter((q) => q.t < 0.6);
           cam = mixCam(cam, kameraZiel(W, phase === "wurf" ? "zielen" : phase, phase === "wurf" ? wurf.wer : dran), R.schnell ? 1 : 1 - Math.exp(-dt * 3.2));
@@ -2765,6 +3291,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             : [["Zielwettbewerb", "dark"], [`Durchgang ${zD() + 1}/4`], [`Versuch ${Math.min(6, zv % 6 + 1)}/6`], [`${ziel.reduce((s, v) => s + v, 0)} Punkte`, "gold"]]);
         },
         draw(c, t) {
+          const wk = wackel > 0.25 && !R.schnell ? wackel : 0; if (wk) { c.save(); c.translate(Math.sin(t * 90) * wk, Math.cos(t * 70) * wk * 0.6); }
           const zieht = phase === "zielen" && dran === 0 && zug && u > 0;
           const hilfe = zieht ? { ziel: true, winkel: winkelE(), weite: P.weite(tempo(), eis, sohle), nurSpur: stufe.hilfe < 2 } : null; if (hilfe && !hilfe.nurSpur) hilfe.kontakt = P.ersterKontakt(W, hilfe.winkel, hilfe.weite);
           // Schütze an der Abspielstelle mit dem Stock in der Hand: pendeln, ausholen, Ausfallschritt, aufsetzen, nachschwingen
@@ -2772,12 +3299,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           const zielP = wer === 1 ? pendelPose(t, weichP((tPh - 0.4) / 0.9) * 0.67) : pendelPose(t, zug ? u : 0), [lp, vor] = phase === "lauf" ? nachPose(tPh, wurf ? wurf.k : 0.3) : [null, 0];
           const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / wurf.dauer, wurf.k) : lp;
           const fk = sk(vor) * cam.mpx / 205;
-          bahn(c, t, W, hilfe, (c) => { if (phase !== "messen" && sichtbar(vor + 0.5) && fk < 2.4) { const fx = SX(vor, -0.3), fy = SY(vor) + 14 * fk, fs = 1.25 * fk;
-            R.figur(c, { x: fx, y: fy, s: fs, pose: ps, look, kit: KIT, dir: 1 });
-            if (phase === "zielen" || phase === "wurf") { const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / wurf.dauer - 0.7) / 0.3) : 0;
-              let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
-              if (k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so);
-              else { hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k; T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); } } } });
+          bahn(c, t, W, hilfe, (c) => { if (phase !== "messen" && sichtbar(vor + 0.5) && fk < 2.4) { const drei = !!window.Figur3D && (!s3Versucht || !!S3), fx = SX(vor, drei ? -0.2 : -0.3), fy = SY(vor) + (drei ? 2 : 14) * fk, fs = (drei ? 1.45 : 1.25) * fk;
+            const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / wurf.dauer - 0.7) / 0.3) : 0, hat = phase === "zielen" || (phase === "wurf" && k <= 0.98);
+            const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
+            const figur = () => { if (!drei || !figur3(c, fx, fy, fs, ps, look)) R.figur(c, { x: fx, y: fy, s: fs, pose: ps, look, kit: KIT, dir: 1 }); };
+            const stockHand = () => { if (!hat) return; const d3 = drei && S3 && window.ESStock3D;
+              let hx = d3 ? fx + 12 * fs : fx + hd[0] * fs, hy = d3 ? fy + hd[1] * fs * 0.96 - hd[0] * 0.28 * fs : fy + hd[1] * fs;
+              hx += (SX(P.X0, 0) - hx) * k; hy += (SY(P.X0) - 34 * fk - hy) * k;
+              if (d3) window.ESStock3D.amGriff(c, hx, hy, 13 * fs * 0.95, Math.PI, R.clamp(0.32 + a * (1 - k), -0.6, 1.25), farbe, so); else T.stockInHand(c, hx, hy, a * (1 - k), fs * 0.95, farbe, so); };
+            /* Arm vorn: der Stock ist weiter weg als der Körper und wird zuerst gezeichnet; Arm hinten: der Stock liegt davor */
+            if (a > 0.1) { stockHand(); figur(); } else { figur(); stockHand(); }
+            if (phase === "wurf" && k > 0.98) T.stock(c, SX(P.X0, 0), SY(P.X0), P.RS * cam.mpx * sk(P.X0), flach(P.X0), { phi: Math.PI }, farbe, so); } });
           if ((aufg || zielM) && phase === "zielen" && !(zug && u > 0)) tafelMitte(c, R.W / 2, 50, 30, [[aufg ? AUFGABEN[aNr].text : P.ZW[zD()].text, 13]]);
           if (zug && phase === "zielen") {   // der Zug unter dem Finger und das Abgabetempo
             c.strokeStyle = "rgba(20,27,37,0.7)"; c.lineWidth = 3; c.beginPath(); c.moveTo(zug.x0, zug.y0); c.lineTo(zug.x, zug.y); c.stroke();
@@ -2789,9 +3321,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           }
           if (oben && dran === 0 && (phase === "zielen" || phase === "wurf")) draufsicht(c, W, hilfe);
           if (phase === "messen" && msg) {
-            if (duell || aufg) for (const wer of [1, 0]) { const s = W.st.filter((q) => P.imFeld(q) && q.wer === wer).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0]; if (!s) continue;   // Maßband zum besten Stock jeder Seite
-              c.strokeStyle = FARBE[wer]; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(W.daube.x, W.daube.y), SY(W.daube.x)); c.lineTo(SX(s.x, s.y), SY(s.x)); c.stroke(); R.tafel(c, SX(s.x, s.y) - 34, SY(s.x) - 52, 68, 22, [[R.zahl(P.abstand(W, s) * 100, 0) + " cm", 12, FARBE[wer]]]); }
-            tafelMitte(c, R.W / 2, 84, 36, [[msg, 17, "#C23B2A"]], 240); }
+            const f = duell ? weichP(tPh / 0.9) : 1;
+            if (duell || aufg) for (const wer of [1, 0]) { const s = W.st.filter((q) => P.imFeld(q) && q.wer === wer).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0]; if (!s) continue;
+              /* Maßband zum besten Stock jeder Seite: wächst von der Daube aus, die Zahl zählt mit */
+              const ax = W.daube.x, ay = W.daube.y, bx = ax + (s.x - ax) * f, by = ay + (s.y - ay) * f;
+              c.strokeStyle = FARBE[wer]; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(ax, ay), SY(ax)); c.lineTo(SX(bx, by), SY(bx)); c.stroke(); R.tafel(c, SX(bx, by) - 34 + (wer ? 44 : -44), SY(bx) - 58, 68, 22, [[R.zahl(P.abstand(W, s) * 100 * f, 0) + " cm", 12, FARBE[wer]]]); }
+            if (!duell || tPh > 1.1) tafelMitte(c, R.W / 2, 84, 36, [[msg, 17, "#C23B2A"]], 240);
+            if (duell && tPh > 3.1) kehrenTafel(c, verlauf, stand, [R.myName(), geg.name.split(" ")[0]], weichP((tPh - 3.1) / 0.4)); }
+          if (wk) c.restore();
         },
       });
       naechster(); n = [0, 0]; dran = 0; phase = "zielen";
