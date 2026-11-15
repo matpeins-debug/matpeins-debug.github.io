@@ -2289,12 +2289,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   "use strict";
   const TAU = Math.PI * 2, INK = "#141B25";
   function rng(seed) { let s = (seed >>> 0) || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; }
-  const KLEID = ["#B5442F", "#2F7F86", "#C99A2E", "#7B3F6E", "#3E6FA8", "#4F8A5B"], HAAR = ["#5A3A22", "#2B2320", "#C9A55A", "#8A4A2A"], TUCH = ["#F1E7D2", "#C23B2A", "#DDA43B", "#2F5FA8"];
-  const MANTEL = ["#7A4C2C", "#3F6B55", "#8E3B2E", "#4D4237", "#23466B", "#6B5A3A", "#5A3550"], HUT = ["#3A2A1C", "#2B3A2E", "#4A1F1A", "#26303F"];
+  // Gedeckte Farben: Loden, Wolle, Filz
+  const LODEN = ["#5B6157", "#465646", "#6B5846", "#3D4756", "#6E423C", "#7B7466", "#34403A", "#58503F"], HOSE = ["#3A3632", "#4A443A", "#2F3438", "#51493C"];
+  const HUT = ["#3F4A3C", "#4A3B2C", "#2E3338", "#5A4A3A"], HAAR = ["#5A3A22", "#2B2320", "#B8975A", "#7A4A2A"], SCHAL = ["#8E3B32", "#C9B48A", "#3F5A6B", "#6A7A4A"], TUCH = ["#C9BFA8", "#7E3F3A", "#51607A", "#6F7A55"], PELZ = ["#D8CDB8", "#6B4E38", "#3A3230"];
 
   // Was am Teich steht: x längs der Bahn (m ab Abspielstelle), y quer (Bahn ±1,5 m)
   function baue() {
-    const r = rng(1908), L = [], mensch = (x, y) => L.push({ art: "mensch", x, y, m: Math.floor(r() * MANTEL.length), h: Math.floor(r() * HUT.length), gr: 0.44 + r() * 0.12, haferl: r() < 0.3, schal: r() < 0.5, ph: r() * TAU, frau: r() < 0.55, k: Math.floor(r() * 6), haar: Math.floor(r() * 4) });
+    const r = rng(1908), L = [], mensch = (x, y) => L.push({ art: "mensch", x, y, m: Math.floor(r() * 7), h: Math.floor(r() * HUT.length), gr: 0.44 + r() * 0.12, haferl: r() < 0.3, schal: r() < 0.5, ph: r() * TAU, frau: r() < 0.55, k: Math.floor(r() * 6), haar: Math.floor(r() * 4) });
     for (let x = 2.4; x < 28.6; x += x > 19 ? 0.5 : 1.1) for (const sd of [-1, 1]) { if (r() < 0.14) continue; mensch(x + r() * 0.3, sd * (2.2 + r() * 0.45)); if (x > 19 && r() < 0.65) mensch(x + 0.2 + r() * 0.3, sd * (3.0 + r() * 0.5)); }
     for (let y = -3.3; y <= 3.3; y += 0.55) { if (r() < 0.2) continue; mensch(29.2 + r() * 0.5, y + r() * 0.2); if (r() < 0.5) mensch(30.1 + r() * 0.4, y + 0.25); }
     L.push({ art: "feuer", x: 8, y: -3.4 }, { art: "feuer", x: 23.2, y: 4.3 }, { art: "tafel", x: 19.3, y: -3.3 }, { art: "bank", x: 1.6, y: 2.7 }, { art: "huette", x: 36, y: -6.2 });
@@ -2304,35 +2305,47 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
 
   const ZEICHNE = {
-    mensch(c, d, px, py, u, t, jubel) { if (d.frau) return ZEICHNE.frau(c, d, px, py, u, t, jubel);
-      const h = d.gr * u, b = h * 0.3, hupf = (jubel > 0 ? Math.abs(Math.sin(t * 9 + d.ph)) * jubel * 0.09 : Math.max(0, Math.sin(t * 1.3 + d.ph)) * 0.012) * h, y = py - hupf;
+    // Zuschauer um 1930 im Südtiroler Winter: gedeckte Lodenfarben. Männer in Joppe und Hose oder Kniebundhose mit hellen Stutzen,
+    // Tirolerhut mit Feder oder Schiebermütze. Frauen im geraden, knielangen Mantel mit Pelzkragen, Glockenhut oder gebundenem Kopftuch.
+    mensch(c, d, px, py, u, t, jubel) {
+      const frau = d.frau, h = d.gr * (frau ? 0.95 : 1) * u, b = h * 0.28, hupf = (jubel > 0 ? Math.abs(Math.sin(t * 9 + d.ph)) * jubel * 0.09 : Math.max(0, Math.sin(t * 1.3 + d.ph)) * 0.012) * h, y = py - hupf;
+      const stoff = LODEN[(d.m + (frau ? 3 : 0)) % LODEN.length], dunkel = "#2B2A28", haut = "#E6C6A6", saum = frau ? 0.3 : 0.44, schulter = 0.8, hoch = jubel > 0.3;
       c.fillStyle = "rgba(30,45,70,0.16)"; c.beginPath(); c.ellipse(px + h * 0.1, py, b * 0.75, b * 0.2, 0, 0, TAU); c.fill();
-      c.fillStyle = "#2E2A28"; c.fillRect(px - b * 0.36, y - h * 0.36, b * 0.3, h * 0.36); c.fillRect(px + b * 0.06, y - h * 0.36, b * 0.3, h * 0.36);
-      c.fillStyle = MANTEL[d.m]; c.beginPath(); c.moveTo(px - b * 0.5, y - h * 0.3); c.lineTo(px - b * 0.42, y - h * 0.8); c.lineTo(px + b * 0.42, y - h * 0.8); c.lineTo(px + b * 0.5, y - h * 0.3); c.closePath(); c.fill();
-      if (jubel > 0.3) { c.strokeStyle = MANTEL[d.m]; c.lineWidth = Math.max(1.5, b * 0.2); c.lineCap = "round"; c.beginPath(); c.moveTo(px - b * 0.4, y - h * 0.74); c.lineTo(px - b * 0.75, y - h * 0.98); c.moveTo(px + b * 0.4, y - h * 0.74); c.lineTo(px + b * 0.75, y - h * 0.98); c.stroke(); }
-      if (d.schal) { c.fillStyle = "#C23B2A"; c.fillRect(px - b * 0.36, y - h * 0.83, b * 0.72, h * 0.06); }
-      c.fillStyle = "#E8C9A8"; c.beginPath(); c.arc(px, y - h * 0.89, h * 0.085, 0, TAU); c.fill();
-      c.fillStyle = HUT[d.h]; c.beginPath(); c.ellipse(px, y - h * 0.95, h * 0.13, h * 0.03, 0, 0, TAU); c.fill(); c.fillRect(px - h * 0.075, y - h * 1.04, h * 0.15, h * 0.09);
-      if (d.haferl && jubel <= 0.3) { const hx = px + b * 0.52, hy = y - h * 0.6; c.fillStyle = "#F1E7D2"; c.fillRect(hx, hy, b * 0.24, h * 0.07); if (u > 60) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(hx + b * 0.12, hy - 1); c.quadraticCurveTo(hx + b * 0.3 * Math.sin(t * 2 + d.ph), hy - h * 0.07, hx + b * 0.12, hy - h * 0.13); c.stroke(); } }
-    },
-    // Frau am Teich: langer Mantel oder Rock bis zum Knöchel, Kopftuch, Mütze mit Bommel oder Zopf, Muff oder Haferl
-    frau(c, d, px, py, u, t, jubel) {
-      const h = d.gr * 0.95 * u, b = h * 0.3, hupf = (jubel > 0 ? Math.abs(Math.sin(t * 9 + d.ph)) * jubel * 0.09 : Math.max(0, Math.sin(t * 1.3 + d.ph)) * 0.012) * h, y = py - hupf, kl = KLEID[d.k], art = d.haar;
-      c.fillStyle = "rgba(30,45,70,0.16)"; c.beginPath(); c.ellipse(px + h * 0.1, py, b * 0.85, b * 0.2, 0, 0, TAU); c.fill();
-      c.fillStyle = "#2E2A28"; c.fillRect(px - b * 0.24, y - h * 0.1, b * 0.18, h * 0.1); c.fillRect(px + b * 0.06, y - h * 0.1, b * 0.18, h * 0.1);
-      c.fillStyle = kl; c.beginPath(); c.moveTo(px - b * 0.62, y - h * 0.08); c.quadraticCurveTo(px - b * 0.5, y - h * 0.5, px - b * 0.34, y - h * 0.8); c.lineTo(px + b * 0.34, y - h * 0.8); c.quadraticCurveTo(px + b * 0.5, y - h * 0.5, px + b * 0.62, y - h * 0.08); c.closePath(); c.fill();
-      c.fillStyle = "rgba(255,255,255,0.28)"; c.fillRect(px - b * 0.6, y - h * 0.13, b * 1.2, h * 0.035);   // Saum
-      c.fillStyle = "rgba(20,27,37,0.22)"; c.fillRect(px - b * 0.36, y - h * 0.52, b * 0.72, h * 0.03);   // Gürtel
-      if (jubel > 0.3) { c.strokeStyle = kl; c.lineWidth = Math.max(1.5, b * 0.18); c.lineCap = "round"; c.beginPath(); c.moveTo(px - b * 0.32, y - h * 0.74); c.lineTo(px - b * 0.7, y - h * 0.98); c.moveTo(px + b * 0.32, y - h * 0.74); c.lineTo(px + b * 0.7, y - h * 0.98); c.stroke(); }
-      else if (!d.haferl) { c.fillStyle = "#EFE6D2"; c.beginPath(); c.ellipse(px, y - h * 0.58, b * 0.3, h * 0.045, 0, 0, TAU); c.fill(); }   // Muff
-      c.fillStyle = "#F1E7D2"; c.fillRect(px - b * 0.3, y - h * 0.83, b * 0.6, h * 0.05);   // Pelzkragen
-      c.fillStyle = "#EBCBAA"; c.beginPath(); c.arc(px, y - h * 0.89, h * 0.08, 0, TAU); c.fill();
-      const hc = HAAR[d.h % HAAR.length], tc = TUCH[d.m % TUCH.length];
-      if (art === 0) { c.fillStyle = tc; c.beginPath(); c.arc(px, y - h * 0.905, h * 0.098, Math.PI * 0.95, Math.PI * 2.05); c.lineTo(px + h * 0.07, y - h * 0.8); c.lineTo(px, y - h * 0.84); c.lineTo(px - h * 0.07, y - h * 0.8); c.closePath(); c.fill(); }   // Kopftuch
-      else if (art === 1) { c.fillStyle = hc; c.beginPath(); c.arc(px, y - h * 0.9, h * 0.095, Math.PI, 0); c.fill(); c.fillRect(px - h * 0.1, y - h * 0.9, h * 0.035, h * 0.16); c.fillRect(px + h * 0.065, y - h * 0.9, h * 0.035, h * 0.16); c.fillStyle = tc; c.beginPath(); c.arc(px, y - h * 0.93, h * 0.092, Math.PI, 0); c.fill(); c.beginPath(); c.arc(px, y - h * 1.03, h * 0.035, 0, TAU); c.fill(); }   // Mütze mit Bommel, langes Haar
-      else if (art === 2) { c.fillStyle = hc; c.beginPath(); c.arc(px, y - h * 0.905, h * 0.095, Math.PI * 0.9, Math.PI * 2.1); c.fill(); c.strokeStyle = hc; c.lineWidth = Math.max(1.5, h * 0.035); c.lineCap = "round"; c.beginPath(); c.moveTo(px + h * 0.07, y - h * 0.88); c.quadraticCurveTo(px + h * 0.13, y - h * 0.8, px + h * 0.1, y - h * 0.68); c.stroke(); }   // Zopf
-      else { c.fillStyle = hc; c.beginPath(); c.arc(px, y - h * 0.9, h * 0.1, Math.PI * 0.85, Math.PI * 2.15); c.fill(); c.fillStyle = tc; c.beginPath(); c.ellipse(px, y - h * 0.965, h * 0.15, h * 0.028, -0.12, 0, TAU); c.fill(); c.fillRect(px - h * 0.07, y - h * 1.03, h * 0.14, h * 0.07); }   // Hut mit breiter Krempe, Bubikopf
-      if (d.haferl && jubel <= 0.3) { const hx = px + b * 0.46, hy = y - h * 0.6; c.fillStyle = "#F1E7D2"; c.fillRect(hx, hy, b * 0.24, h * 0.07); if (u > 60) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(hx + b * 0.12, hy - 1); c.quadraticCurveTo(hx + b * 0.3 * Math.sin(t * 2 + d.ph), hy - h * 0.07, hx + b * 0.12, hy - h * 0.13); c.stroke(); } }
+      // Beine und Schuhe
+      const bein = frau ? "#3B3632" : d.k % 3 === 0 ? "#D8CFBB" : HOSE[d.h % HOSE.length];
+      c.fillStyle = bein; c.fillRect(px - b * 0.3, y - h * saum, b * 0.24, h * saum - h * 0.03); c.fillRect(px + b * 0.06, y - h * saum, b * 0.24, h * saum - h * 0.03);
+      if (!frau && d.k % 3 === 0) { c.fillStyle = HOSE[d.h % HOSE.length]; c.fillRect(px - b * 0.34, y - h * saum, b * 0.3, h * 0.2); c.fillRect(px + b * 0.04, y - h * saum, b * 0.3, h * 0.2); }   // Kniebundhose über hellen Stutzen
+      c.fillStyle = dunkel; c.fillRect(px - b * 0.36, y - h * 0.035, b * 0.34, h * 0.035); c.fillRect(px + b * 0.04, y - h * 0.035, b * 0.34, h * 0.035);
+      // Mantel oder Joppe, gerade geschnitten
+      c.fillStyle = stoff; c.beginPath(); c.moveTo(px - b * (frau ? 0.5 : 0.46), y - h * saum); c.lineTo(px - b * 0.44, y - h * schulter); c.lineTo(px + b * 0.44, y - h * schulter); c.lineTo(px + b * (frau ? 0.5 : 0.46), y - h * saum); c.closePath(); c.fill();
+      c.strokeStyle = "rgba(20,27,37,0.3)"; c.lineWidth = Math.max(1, h * 0.012); c.beginPath(); c.moveTo(px + b * 0.04, y - h * schulter); c.lineTo(px + b * 0.04, y - h * saum); c.stroke();   // Knopfleiste
+      // Arme: hängend, oder hochgerissen beim Jubel
+      c.strokeStyle = stoff; c.lineWidth = Math.max(1.5, b * 0.2); c.lineCap = "round"; c.beginPath();
+      if (hoch) { c.moveTo(px - b * 0.42, y - h * 0.76); c.lineTo(px - b * 0.72, y - h * 0.98); c.moveTo(px + b * 0.42, y - h * 0.76); c.lineTo(px + b * 0.72, y - h * 0.98); }
+      else { c.moveTo(px - b * 0.48, y - h * 0.76); c.lineTo(px - b * 0.54, y - h * 0.52); c.moveTo(px + b * 0.48, y - h * 0.76); c.lineTo(px + b * (d.haferl ? 0.62 : 0.54), y - h * (d.haferl ? 0.6 : 0.52)); }
+      c.stroke(); c.lineCap = "butt";
+      if (!hoch) { c.fillStyle = frau ? PELZ[d.k % PELZ.length] : haut; c.beginPath(); c.arc(px - b * 0.54, y - h * 0.5, h * 0.022, 0, TAU); c.fill(); }
+      // Kragen: Pelz bei den Frauen, Schal bei manchen Männern
+      if (frau) { c.fillStyle = PELZ[d.k % PELZ.length]; c.beginPath(); c.ellipse(px, y - h * 0.8, b * 0.4, h * 0.035, 0, 0, TAU); c.fill(); }
+      else if (d.schal) { c.fillStyle = SCHAL[d.k % SCHAL.length]; c.fillRect(px - b * 0.3, y - h * 0.83, b * 0.6, h * 0.045); c.fillRect(px - b * 0.22, y - h * 0.8, b * 0.16, h * 0.13); }
+      // Kopf
+      c.fillStyle = haut; c.beginPath(); c.arc(px, y - h * 0.885, h * 0.078, 0, TAU); c.fill();
+      const hc = HAAR[d.h % HAAR.length], hut = HUT[d.h % HUT.length];
+      if (frau && d.haar < 2) {   // Glockenhut der Zwanziger: sitzt tief, schmale Krempe, Band; darunter der Bubikopf
+        c.fillStyle = hc; c.fillRect(px - h * 0.085, y - h * 0.9, h * 0.17, h * 0.05);
+        c.fillStyle = hut; c.beginPath(); c.arc(px, y - h * 0.905, h * 0.092, Math.PI, 0); c.lineTo(px + h * 0.105, y - h * 0.895); c.lineTo(px - h * 0.105, y - h * 0.895); c.closePath(); c.fill();
+        c.fillStyle = SCHAL[d.k % SCHAL.length]; c.fillRect(px - h * 0.09, y - h * 0.925, h * 0.18, h * 0.02);
+      } else if (frau) {   // Kopftuch, unter dem Kinn gebunden
+        c.fillStyle = TUCH[d.k % TUCH.length]; c.beginPath(); c.arc(px, y - h * 0.895, h * 0.094, Math.PI * 0.92, Math.PI * 2.08); c.lineTo(px + h * 0.05, y - h * 0.81); c.lineTo(px - h * 0.05, y - h * 0.81); c.closePath(); c.fill();
+        c.fillStyle = haut; c.beginPath(); c.arc(px, y - h * 0.875, h * 0.06, 0, TAU); c.fill();
+      } else if (d.haar < 2) {   // Tirolerhut: runde Krone, Krempe, Feder
+        c.fillStyle = hut; c.beginPath(); c.ellipse(px, y - h * 0.94, h * 0.125, h * 0.024, 0, 0, TAU); c.fill(); c.beginPath(); c.arc(px, y - h * 0.945, h * 0.075, Math.PI, 0); c.fill();
+        c.fillStyle = "#1E1D1B"; c.fillRect(px - h * 0.075, y - h * 0.96, h * 0.15, h * 0.016);
+        c.strokeStyle = "#E9E2D0"; c.lineWidth = Math.max(1, h * 0.014); c.beginPath(); c.moveTo(px + h * 0.06, y - h * 0.96); c.lineTo(px + h * 0.085, y - h * 1.05); c.stroke();
+      } else {   // Schiebermütze
+        c.fillStyle = hut; c.beginPath(); c.arc(px, y - h * 0.92, h * 0.085, Math.PI, 0); c.fill(); c.fillRect(px - h * 0.085, y - h * 0.925, h * 0.2, h * 0.02);
+      }
+      if (d.haferl && !hoch) { const hx = px + b * 0.6, hy = y - h * 0.64; c.fillStyle = "#EFE6D2"; c.fillRect(hx, hy, b * 0.22, h * 0.06); if (u > 60) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 1; c.beginPath(); c.moveTo(hx + b * 0.11, hy - 1); c.quadraticCurveTo(hx + b * 0.3 * Math.sin(t * 2 + d.ph), hy - h * 0.07, hx + b * 0.11, hy - h * 0.13); c.stroke(); } }
     },
     feuer(c, d, px, py, u, t) {
       const s = u * 0.5; c.fillStyle = "rgba(240,144,42,0.16)"; c.beginPath(); c.ellipse(px, py, s * 1.5, s * 0.42, 0, 0, TAU); c.fill();
@@ -2408,7 +2421,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     .concat(...PFAHL_X.map((x) => [-1, 1].map((sd) => ({ x, y: sd * PFAHL_Y, h: PFAHL_H, r: 0.95, a: 0.3, kern: 1 }))));
   function kette(c, ax, ay, bx, by, durch, n) {
     const mx = (ax + bx) / 2, my = (ay + by) / 2 + durch; c.strokeStyle = "rgba(20,27,37,0.55)"; c.lineWidth = 1; c.beginPath(); c.moveTo(ax, ay); c.quadraticCurveTo(mx, my, bx, by); c.stroke();
-    for (let i = 1; i <= n; i++) { const q = i / (n + 1), x = (1 - q) * (1 - q) * ax + 2 * q * (1 - q) * mx + q * q * bx, y = (1 - q) * (1 - q) * ay + 2 * q * (1 - q) * my + q * q * by, g = Math.max(2.5, durch * 0.5);
+    for (let i = 1; i <= n; i++) { const q = i / (n + 1), x = (1 - q) * (1 - q) * ax + 2 * q * (1 - q) * mx + q * q * bx, y = (1 - q) * (1 - q) * ay + 2 * q * (1 - q) * my + q * q * by, g = Math.max(2.5, Math.min(6, durch * 0.3));
       c.fillStyle = WIMPEL[i % WIMPEL.length]; c.beginPath(); c.moveTo(x - g * 0.6, y); c.lineTo(x + g * 0.6, y); c.lineTo(x, y + g * 1.3); c.closePath(); c.fill(); }
   }
   function pfaehle(c, K, t, abend) {
@@ -2439,7 +2452,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.11.0";
+  const VERSION = "0.11.1";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
