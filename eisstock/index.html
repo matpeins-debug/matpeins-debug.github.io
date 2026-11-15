@@ -2215,7 +2215,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
   // Zug, bei dem der Stock ohne Stoß x Meter vor der Abspielstelle liegen bleibt (für die Zuganzeige)
   const zugFuerWeite = (x, eis, sohle) => { const v = tempoFuer(x - X0, eis, sohle); return v > V_MAX ? null : zugFuer(v); };
-  const api = { kopie, lage, plan, zugFuerWeite, schnellRuhe, rng, G, DT, BAHN, X0, RS, RD, M_STOCK, M_DAUBE, E_STOCK, E_DAUBE, MU_DAUBE, EIS, SOHLE, V_MIN, V_MAX, mu, brems, weite, tempoFuer, tempoAusZug, zugFuer,
+  // Was der Stock auf gerader Bahn als Erstes berührt (für die Zielhilfe): { ding, weg } oder null. weite = Gleitweite ohne Stoß.
+  function ersterKontakt(W, winkel, weite) {
+    const a = winkel * Math.PI / 180, dx = Math.cos(a), dy = Math.sin(a); let best = null;
+    for (const o of W.st.filter((s) => s.lebt).concat(W.daube.aus ? [] : [W.daube])) {
+      const rx = o.x - X0, ry = o.y, t = rx * dx + ry * dy, quer = Math.abs(rx * dy - ry * dx), min = RS + o.r; if (t <= 0 || quer >= min) continue;
+      const weg = t - Math.sqrt(min * min - quer * quer); if (weg <= weite && (!best || weg < best.weg)) best = { ding: o, weg };
+    }
+    return best;
+  }
+  const api = { ersterKontakt, kopie, lage, plan, zugFuerWeite, schnellRuhe, rng, G, DT, BAHN, X0, RS, RD, M_STOCK, M_DAUBE, E_STOCK, E_DAUBE, MU_DAUBE, EIS, SOHLE, V_MIN, V_MAX, mu, brems, weite, tempoFuer, tempoAusZug, zugFuer,
     neu, lege, schuss, schritt, ruht, bisRuhe, imFeld, mitte, abstand, wertung, bestlage, zielPunkte, ki, daubeAufsKreuz };
   root.ESPhys = api; if (typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
@@ -2223,7 +2232,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.3.0";
+  const VERSION = "0.4.0";
   const P = window.ESPhys, F = window.CMFigur;
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   const POSE = { bereit: { lean: 24, crouch: 0, sL: [30, 44], fL: [-16, 20], aF: [10, 6], aB: [-30, -10], hd: -8 }, aus: { lean: 34, crouch: 0, sL: [40, 56], fL: [-30, 16], aF: [-60, -4], aB: [40, 20], hd: -10 },
@@ -2240,7 +2249,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   const sk = (x) => cam.d0 / Math.max(0.3 * cam.d0, cam.d0 + x - cam.cx), SX = (x, y) => 422 + y * cam.mpx * sk(x), SY = (x) => cam.hor + cam.hpx * sk(x);
   const sichtbar = (x) => x - cam.cx > -0.6 * cam.d0, flach = (x) => Math.max(0.24, cam.hpx * sk(x) / (cam.mpx * cam.d0)) / 0.24;   // flach: wie rund ein Kreis am Boden aussieht (1 = Blick von hinten)
   function kameraZiel(W, phase, dran) {
-    if (phase === "messen" || dran === 1) return CAM_FELD;
+    if (phase === "messen") return CAM_FELD;
     if (phase !== "lauf") return CAM_ZIEL;
     const s = W.lauf; if (!s || !s.lebt) return CAM_FELD;
     // mitfahren, dann ins Zielfeld übergehen; der Stock bleibt dabei am unteren Bildrand zu sehen
@@ -2263,10 +2272,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     c.strokeStyle = "#7A5636"; c.lineWidth = 5; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.stroke();
     c.strokeStyle = "rgba(194,59,42,0.75)"; c.lineWidth = 2; c.beginPath(); for (const x of [B.feld0, B.feld1]) { c.moveTo(SX(x, -h), SY(x)); c.lineTo(SX(x, h), SY(x)); } c.stroke();
     c.strokeStyle = "rgba(35,70,107,0.35)"; c.lineWidth = 1; for (const r of [0.5, 1.5]) { c.beginPath(); c.ellipse(SX(W.daube.x, W.daube.y), SY(W.daube.x), r * cam.mpx * sk(W.daube.x), r * cam.mpx * sk(W.daube.x) * 0.24 * flach(W.daube.x), 0, 0, R.TAU); c.stroke(); }
-    // Zielhilfe: gerade Linie und ungefähre Stoppstelle (ohne Stöße gerechnet)
-    if (o && o.ziel) { const a = o.winkel * Math.PI / 180, ende = Math.min(o.stopp, B.lang), ex = ende, ey = Math.tan(a) * (ende - P.X0);
-      c.strokeStyle = "rgba(20,27,37,0.55)"; c.lineWidth = 2; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(SX(P.X0, 0), SY(P.X0)); c.lineTo(SX(ex, ey), SY(ex)); c.stroke(); c.setLineDash([]);
-      if (o.stopp <= B.lang && Math.abs(ey) <= h) { const rr = 0.5 * cam.mpx * sk(ex); c.fillStyle = "rgba(194,59,42,0.22)"; c.strokeStyle = "rgba(194,59,42,0.8)"; c.lineWidth = 1.5; c.beginPath(); c.ellipse(SX(ex, ey), SY(ex), rr, rr * 0.24 * flach(ex), 0, 0, R.TAU); c.fill(); c.stroke(); } }
+    // Zielhilfe: Spur in der Breite des Stocks bis zur Stoppstelle oder zur ersten Berührung (danach wird nicht vorausgesagt)
+    if (o && o.ziel) { const a = o.winkel * Math.PI / 180, lauf = o.kontakt ? o.kontakt.weg : Math.min(o.weite, B.lang - P.X0), ex = P.X0 + Math.cos(a) * lauf, ey = Math.sin(a) * lauf, nx = -Math.sin(a) * P.RS, ny = Math.cos(a) * P.RS;
+      c.fillStyle = "rgba(20,27,37,0.10)"; c.beginPath(); c.moveTo(SX(P.X0 + nx, ny), SY(P.X0 + nx)); c.lineTo(SX(ex + nx, ey + ny), SY(ex + nx)); c.lineTo(SX(ex - nx, ey - ny), SY(ex - nx)); c.lineTo(SX(P.X0 - nx, -ny), SY(P.X0 - nx)); c.closePath(); c.fill();
+      c.strokeStyle = "rgba(20,27,37,0.6)"; c.lineWidth = 1.5; c.setLineDash([6, 5]); c.beginPath(); for (const v of [1, -1]) { c.moveTo(SX(P.X0 + nx * v, ny * v), SY(P.X0 + nx * v)); c.lineTo(SX(ex + nx * v, ey + ny * v), SY(ex + nx * v)); } c.stroke(); c.setLineDash([]);
+      const rr = P.RS * cam.mpx * sk(ex), fl = 0.3 * flach(ex);   // der eigene Stock an der Stelle, wo er liegen bleibt oder anstößt
+      c.fillStyle = o.kontakt ? "rgba(194,59,42,0.35)" : "rgba(194,59,42,0.22)"; c.strokeStyle = "rgba(194,59,42,0.9)"; c.lineWidth = 1.5; c.beginPath(); c.ellipse(SX(ex, ey), SY(ex), rr, rr * fl, 0, 0, R.TAU); c.fill(); c.stroke();
+      if (o.kontakt) { const d = o.kontakt.ding, r2 = (d.r + 0.05) * cam.mpx * sk(d.x); c.strokeStyle = "#C23B2A"; c.lineWidth = 2.5; c.beginPath(); c.ellipse(SX(d.x, d.y), SY(d.x) - (d.daube ? 0 : r2 * 0.2), r2 * 1.25, r2 * 1.25 * 0.3 * flach(d.x), 0, 0, R.TAU); c.stroke(); } }
     // Daube und Stöcke von hinten nach vorn
     const dinge = W.st.filter((s) => s.lebt).concat(W.daube.aus ? [] : [W.daube]).sort((a, b) => b.x - a.x);
     for (const s of dinge) { if (!sichtbar(s.x)) continue; const px = SX(s.x, s.y), py = SY(s.x), r = s.r * cam.mpx * sk(s.x), q = flach(s.x);
@@ -2299,8 +2311,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     c.fillStyle = "#EAF3F7"; c.strokeStyle = "#141B25"; c.lineWidth = 2; c.fillRect(x0, y0, bw, bh); c.strokeRect(x0, y0, bw, bh);
     c.strokeStyle = "rgba(35,70,107,0.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(X(-0.25), Y(B.daubeX)); c.lineTo(X(0.25), Y(B.daubeX)); c.moveTo(X(0), Y(B.daubeX - 0.25)); c.lineTo(X(0), Y(B.daubeX + 0.25)); c.stroke();
     c.save(); c.beginPath(); c.rect(x0, y0, bw, bh); c.clip();
-    if (o) { const t = Math.tan(o.winkel * Math.PI / 180), yAn = (x) => t * (x - P.X0); c.strokeStyle = "rgba(20,27,37,0.55)"; c.lineWidth = 1.5; c.setLineDash([5, 5]); c.beginPath(); c.moveTo(X(yAn(B.feld0)), Y(B.feld0)); c.lineTo(X(yAn(Math.min(o.stopp, B.feld1))), Y(Math.min(o.stopp, B.feld1))); c.stroke(); c.setLineDash([]);
-      if (o.stopp >= B.feld0 && o.stopp <= B.feld1) { c.fillStyle = "rgba(194,59,42,0.22)"; c.strokeStyle = "rgba(194,59,42,0.8)"; c.beginPath(); c.arc(X(yAn(o.stopp)), Y(o.stopp), 0.5 * m, 0, R.TAU); c.fill(); c.stroke(); } }
+    if (o) { const a = o.winkel * Math.PI / 180, lauf = o.kontakt ? o.kontakt.weg : o.weite, ex = P.X0 + Math.cos(a) * lauf, ey = Math.sin(a) * lauf, ax = B.feld0 - 0.5, ay = Math.tan(a) * (ax - P.X0);
+      if (ex > ax) { c.strokeStyle = "rgba(20,27,37,0.14)"; c.lineWidth = 2 * P.RS * m; c.beginPath(); c.moveTo(X(ay), Y(ax)); c.lineTo(X(ey), Y(ex)); c.stroke(); }   // Spur in Stockbreite
+      c.fillStyle = o.kontakt ? "rgba(194,59,42,0.35)" : "rgba(194,59,42,0.22)"; c.strokeStyle = "rgba(194,59,42,0.9)"; c.lineWidth = 1.5; c.beginPath(); c.arc(X(ey), Y(ex), P.RS * m, 0, R.TAU); c.fill(); c.stroke();
+      if (o.kontakt) { const d = o.kontakt.ding; c.strokeStyle = "#C23B2A"; c.lineWidth = 2.5; c.beginPath(); c.arc(X(d.y), Y(d.x), (d.r + 0.06) * m, 0, R.TAU); c.stroke(); } }
     for (const s of W.st) if (s.lebt) { c.fillStyle = FARBE[s.wer]; c.strokeStyle = "#141B25"; c.lineWidth = 1.2; c.beginPath(); c.arc(X(s.y), Y(s.x), s.r * m, 0, R.TAU); c.fill(); c.stroke(); }
     if (!W.daube.aus) { c.fillStyle = "#DDA43B"; c.strokeStyle = "#141B25"; c.lineWidth = 1.2; c.beginPath(); c.arc(X(W.daube.y), Y(W.daube.x), Math.max(3, W.daube.r * m), 0, R.TAU); c.fill(); c.stroke(); }
     c.restore(); R.text(c, "ZIELFELD 6 × 3 M", x0 + bw / 2, y0 + bh + 10, 9, "#141B25");
@@ -2369,7 +2383,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         },
         draw(c, t) {
           const zieht = phase === "zielen" && dran === 0 && zug && u > 0;
-          bahn(c, t, W, zieht ? { ziel: true, winkel, stopp: P.X0 + P.weite(tempo(), eis, sohle) } : null);
+          const hilfe = zieht ? { ziel: true, winkel, weite: P.weite(tempo(), eis, sohle) } : null; if (hilfe) hilfe.kontakt = P.ersterKontakt(W, winkel, hilfe.weite);
+          bahn(c, t, W, hilfe);
           // Schütze von hinten an der Abspielstelle: zielen, ausholen, abgeben, nachschwingen
           const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look;
           const ps = phase === "zielen" ? (wer === 1 ? F.mix(POSE.bereit, POSE.aus, Math.min(1, tPh)) : zug ? F.mix(POSE.bereit, POSE.aus, Math.min(1, u * 1.6)) : F.idle(POSE.bereit, t, 1)) : phase === "wurf" ? F.mix(POSE.aus, POSE.ab, Math.min(1, tPh / WURF_SEK)) : POSE.ab;
@@ -2380,9 +2395,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             c.fillStyle = u > ZUG_MIN ? "#C23B2A" : "rgba(20,27,37,0.5)"; c.beginPath(); c.arc(zug.x, zug.y, 13, 0, R.TAU); c.fill(); c.stroke();
             zuganzeige(c, zug, u, eis, sohle, W);
             const lauf = P.weite(tempo(), eis, sohle), zuWeit = P.X0 + lauf > P.BAHN.lang;
-            R.tafel(c, R.W / 2 - 130, 50, 260, 46, [[zuWeit ? "Harter Schuss: läuft über die Bahn hinaus" : `Stock läuft ${R.zahl(lauf, 1)} m`, zuWeit ? 13 : 17, zuWeit ? "#C23B2A" : "#141B25"], [`Daube liegt bei ${R.zahl(W.daube.x - P.X0, 1)} m`, 12]]);
+            R.tafel(c, R.W / 2 - 130, 50, 260, 46, [[hilfe && hilfe.kontakt ? `Trifft ${hilfe.kontakt.ding.daube ? "die Daube" : hilfe.kontakt.ding.wer === 0 ? "deinen Stock" : "den fremden Stock"} nach ${R.zahl(hilfe.kontakt.weg, 1)} m` : zuWeit ? "Harter Schuss: läuft über die Bahn hinaus" : `Stock läuft ${R.zahl(lauf, 1)} m`, hilfe && hilfe.kontakt || zuWeit ? 14 : 17, hilfe && hilfe.kontakt || zuWeit ? "#C23B2A" : "#141B25"], [`Daube liegt bei ${R.zahl(W.daube.x - P.X0, 1)} m`, 12]]);
           }
-          if (oben && dran === 0 && (phase === "zielen" || phase === "wurf")) draufsicht(c, W, zieht ? { winkel, stopp: P.X0 + P.weite(tempo(), eis, sohle) } : null);
+          if (oben && dran === 0 && (phase === "zielen" || phase === "wurf")) draufsicht(c, W, hilfe);
           if (phase === "messen" && msg) { const s = W.st.filter(P.imFeld).sort((a, b) => P.abstand(W, a) - P.abstand(W, b))[0];
             if (s && duell) { c.strokeStyle = "#DDA43B"; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(W.daube.x, W.daube.y), SY(W.daube.x)); c.lineTo(SX(s.x, s.y), SY(s.x)); c.stroke(); R.tafel(c, SX(s.x, s.y) - 34, SY(s.x) - 44, 68, 22, [[R.zahl(P.abstand(W, s) * 100, 0) + " cm", 12]]); }
             R.tafel(c, R.W / 2 - 170, 84, 340, 36, [[msg, 17, "#C23B2A"]]); }
@@ -2400,7 +2415,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       { id: "duell", name: "Duell", sub: () => `Eins gegen Eins, ${KEHREN} Kehren mit je ${STOECKE} Stöcken`, start: () => spiel(true) },
       { id: "ziel", name: "Zielschießen", sub: (R) => (R.S.best.ziel ? `Bestleistung ${R.S.best.ziel} Punkte` : "Allein: fünf Stöcke an die Daube"), start: () => spiel(false) },
     ],
-    info: [["So geht’s", "Finger aufs Eis legen, nach hinten ziehen und loslassen. Je länger der Zug, desto fester der Schuss; seitlich ziehen zielt wie bei einer Schleuder. Die Linie zeigt die Richtung, der rote Kreis, wo der Stock ungefähr liegen bleibt, wenn er nichts trifft."],
+    info: [["So geht’s", "Finger aufs Eis legen, nach hinten ziehen und loslassen. Je länger der Zug, desto fester der Schuss; seitlich ziehen zielt wie bei einer Schleuder. Die gestrichelte Spur ist so breit wie dein Stock: Du siehst, ob er an einem anderen vorbeikommt. Der rote Kreis zeigt, wo er liegen bleibt; berührt er vorher etwas, endet die Spur dort und der getroffene Stock ist rot umrandet. Was nach dem Stoß passiert, sagt die Hilfe nicht."],
       ["Die Zuganzeige", "Neben dem Finger steht ein Balken: Er zeigt, wie weit du ziehen kannst (bis MAX). Grün ist der Zug, mit dem der Stock im Zielfeld liegen bleibt, der gelbe Strich ist die Daube, rot darunter wird der Schuss hart: zum Wegschießen. Oben steht, wie viele Meter der Stock läuft und wo die Daube liegt. Eis und Sohle sind schon eingerechnet: Du musst nichts umrechnen, nur den Strich treffen."],
       ["Eis und Sohle", "Der Stock gleitet gerade und bremst gleichmäßig: doppeltes Tempo, vierfache Weite. Der Eisbericht sagt, wie das Eis läuft. Die Laufsohle wählst du selbst: Schwarz läuft weit, Blau bremst. Keine ist besser, du musst nur den Zug dazu finden."],
       ["Stöße", "Ein Treffer in die Mitte schiebt den anderen Stock geradeaus weg, dein Stock bleibt bald liegen. Seitlich getroffen laufen beide schräg auseinander. Die Daube ist leicht und rutscht mit: Fliegt sie aus dem Zielfeld, kommt sie zurück aufs Mittelkreuz."],
