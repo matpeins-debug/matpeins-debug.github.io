@@ -2383,16 +2383,26 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.8.2";
+  const VERSION = "0.9.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
-  const POSE = { ziel: { lean: 10, crouch: 0, sL: [8, 14], fL: [-6, 10], aF: [6, 4], aB: [-14, -12], hd: -4 },
-    rueck: { lean: 30, crouch: 0, sL: [22, 34], fL: [-14, 14], aF: [-68, -4], aB: [34, 24], hd: -8 },
-    schritt: { lean: 40, crouch: 0, sL: [46, 58], fL: [-30, 14], aF: [-22, -2], aB: [20, 20], hd: -12 },
-    setz: { lean: 54, crouch: 0, sL: [62, 78], fL: [-46, 8], aF: [38, 4], aB: [-40, -10], hd: -16 },
-    nach: { lean: 46, crouch: 0, sL: [56, 70], fL: [-42, 12], aF: [80, 8], aB: [-50, -10], hd: -10 } };
+  const POSE = { ziel: { lean: 6, crouch: 0, sL: [10, 16], fL: [-8, 10], aF: [6, 4], aB: [-8, -10], hd: 0 },   // aufrecht, Knie leicht gebeugt, Ausfallbein zeigt zum Ziel
+    rueck: { lean: 22, crouch: 0, sL: [14, 22], fL: [-10, 12], aF: [-70, -4], aB: [26, 20], hd: -4 },   // letzter Rückschwung bis 70°, Oberkörper neigt sich vor
+    schritt: { lean: 30, crouch: 0, sL: [34, 40], fL: [-22, 12], aF: [-25, -2], aB: [16, 18], hd: -6 },   // kleiner Ausfallschritt, Gewicht nach vorn
+    setz: { lean: 40, crouch: 0, sL: [46, 56], fL: [-34, 10], aF: [30, 4], aB: [-30, -10], hd: -10 },   // flach neben dem Ausfallbein aufsetzen und loslassen
+    nach: { lean: 32, crouch: 0, sL: [40, 48], fL: [-30, 12], aF: [72, 8], aB: [-36, -10], hd: -4 },   // die Hand geht dem Stock nach
+    gehA: { lean: 14, crouch: 0, sL: [18, 8], fL: [-22, 26], aF: [40, 10], aB: [-20, -8], hd: -2 }, gehB: { lean: 14, crouch: 0, sL: [-16, 6], fL: [24, 18], aF: [15, 8], aB: [10, -8], hd: -2 },   // ein paar Schritte nachlaufen
+    schau: { lean: 6, crouch: 0, sL: [6, 8], fL: [-6, 8], aF: [8, 6], aB: [-6, -8], hd: 0 } };
   const mitArm = (p, a) => Object.assign({}, p, { aF: [a, p.aF[1]] }), weichP = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
+  // Pendeln vor der Abgabe: Der Arm schwingt vor und zurück, mit dem Zug weiter (bis 70°), der Oberkörper neigt sich dabei etwas vor
+  function pendelPose(t, u) { const k = Math.min(1, u * 1.5), A = 14 + 56 * k, p = mitArm(F.mix(POSE.ziel, POSE.rueck, k * 0.45), A * Math.sin(t * 2.6)); return p; }
+  // Nach dem Loslassen: nachschwingen, drei Schritte dem Stock nach, dann stehen und schauen. Rückgabe [Pose, Weg nach vorn in Metern]
+  function nachPose(t) {
+    if (t < 0.4) return [F.mix(POSE.setz, POSE.nach, weichP(t / 0.4)), 0];
+    const q = (t - 0.4) / 0.42, weg = 1.5 * weichP(q / 3); if (q >= 3) return [F.mix(POSE.gehA, POSE.schau, weichP(q - 3)), 1.5];
+    const folge = [POSE.nach, POSE.gehA, POSE.gehB, POSE.gehA], i = Math.floor(q); return [F.mix(folge[i], folge[i + 1], weichP(q - i)), weg];
+  }
   // Abgabe in WURF_SEK: kurz ganz ausholen, Ausfallschritt, aufsetzen
   function wurfPose(von, k) { return k < 0.25 ? F.mix(von, POSE.rueck, weichP(k / 0.25)) : k < 0.62 ? F.mix(POSE.rueck, POSE.schritt, weichP((k - 0.25) / 0.37)) : F.mix(POSE.schritt, POSE.setz, weichP((k - 0.62) / 0.38)); }
   const FARBE = ["#C23B2A", "#23466B"], KEHREN = 4, STOECKE = 4;
@@ -2400,7 +2410,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   const GEGNER = { hobby: { st: 0.3, schwank: 0, hilfe: 2, name: "Hobby", satz: "Hobby: ruhige Hand, die Hilfe zeigt Stoppstelle und Berührung.", gegner: " Der Gegner legt einfach an." },
     verein: { st: 0.6, schwank: 1, hilfe: 2, name: "Verein", satz: "Verein: Die Hand schwankt, bei festem Zug stärker. Im richtigen Moment loslassen.", gegner: " Der Gegner schießt dich auch einmal weg." },
     meister: { st: 0.9, schwank: 1.7, hilfe: 1, name: "Meister", satz: "Meister: Die Hand schwankt stark, die Hilfe zeigt nur noch die Spur.", gegner: " Der Gegner rechnet voraus und schiebt die Daube." } };
-  const ZUG_MAX = 220, ZUG_MIN = 0.05, GRAD_JE_PX = 0.035, WINKEL_MAX = 6, WURF_SEK = 0.55;   // Wischen: 220 px voller Zug, 1 px seitlich = 0,035°
+  const ZUG_MAX = 220, ZUG_MIN = 0.05, GRAD_JE_PX = 0.035, WINKEL_MAX = 6, WURF_SEK = 0.7;   // Wischen: 220 px voller Zug, 1 px seitlich = 0,035°
   let R;
   // Kamera: Tiefe x, quer y. cx = Stelle auf der Bahn, d0 = Abstand der Kamera dahinter, mpx = Pixel je Meter dort, hpx = Höhe, hor = Horizont.
   // Drei Blicke: Zielen (von hinten über die ganze Bahn), Gleiten (fährt mit dem Stock mit), Zielfeld (groß und schräg von oben).
@@ -2507,7 +2517,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       let oben = true; const kOben = R.knopf({ seite: "links", text: "Karte", symbol: "stock", klein: true, onDown: () => { oben = !oben; R.ton.klick(); } });
       // Wischen: Finger aufs Eis, nach hinten ziehen (Kraft) und seitlich (Richtung, wie eine Schleuder), loslassen
       function zieh(x, y) { if (!zug) return; if (Math.hypot(x - zug.x0, y - zug.ys) > 8) { zug.bewegt = true; R.tippWeg(); } zug.x = x; zug.y = y; u = R.clamp((y - zug.y0) / ZUG_MAX, 0, 1); winkel = R.clamp(-(x - zug.x0) * GRAD_JE_PX, -WINKEL_MAX, WINKEL_MAX); }
-      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? F.mix(POSE.ziel, POSE.rueck, weichP(u * 1.5)) : POSE.rueck }; phase = "wurf"; tPh = 0; R.tippWeg(); }
+      function abgeben(w, v) { if (phase !== "zielen") return; vorBest = P.bestlage(W); zug = null; wurf = { w, v, wer: dran, sohle: dran === 0 ? sohle : "mittel", von: dran === 0 ? pendelPose(R.t, u) : pendelPose(R.t, 0.67) }; phase = "wurf"; tPh = 0; R.tippWeg(); }
       let aNr = 0, aVersuch = 1, aGeloest = [], vorBest = null, nachMessen = null;
       function lade() { W = P.neu(eis); for (const [x, y, wer] of AUFGABEN[aNr].st) P.lege(W, x, y, wer); dran = 0; phase = "zielen"; tPh = 0; winkel = 0; u = 0; zug = null; msg = null; }
       function naechster() {
@@ -2576,11 +2586,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           const hilfe = zieht ? { ziel: true, winkel: winkelE(), weite: P.weite(tempo(), eis, sohle), nurSpur: stufe.hilfe < 2 } : null; if (hilfe && !hilfe.nurSpur) hilfe.kontakt = P.ersterKontakt(W, hilfe.winkel, hilfe.weite);
           bahn(c, t, W, hilfe);
           // Schütze an der Abspielstelle mit dem Stock in der Hand: pendeln, ausholen, Ausfallschritt, aufsetzen, nachschwingen
-          const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look, pendel = mitArm(POSE.ziel, 6 + 15 * Math.sin(t * 2.3));
-          const zielP = wer === 1 ? F.mix(pendel, POSE.rueck, weichP((tPh - 0.6) / 0.7)) : zug ? F.mix(POSE.ziel, POSE.rueck, weichP(u * 1.5)) : pendel;
-          const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / WURF_SEK) : F.mix(F.mix(POSE.setz, POSE.nach, weichP(tPh / 0.45)), POSE.ziel, weichP((tPh - 2.2) / 1.2) * 0.8);
-          const fk = sk(0) * cam.mpx / 205;
-          if (phase !== "messen" && sichtbar(0.5) && fk < 2.4) { const fx = SX(0, -0.3), fy = SY(0) + 14 * fk, fs = 1.25 * fk;
+          const wer = phase === "wurf" ? wurf.wer : dran, look = wer === 0 ? R.myLook() : geg.look;
+          const zielP = wer === 1 ? pendelPose(t, weichP((tPh - 0.4) / 0.9) * 0.67) : pendelPose(t, zug ? u : 0), [lp, vor] = phase === "lauf" ? nachPose(tPh) : [null, 0];
+          const ps = phase === "zielen" ? zielP : phase === "wurf" ? wurfPose(wurf.von, tPh / WURF_SEK) : lp;
+          const fk = sk(vor) * cam.mpx / 205;
+          if (phase !== "messen" && sichtbar(vor + 0.5) && fk < 2.4) { const fx = SX(vor, -0.3), fy = SY(vor) + 14 * fk, fs = 1.25 * fk;
             R.figur(c, { x: fx, y: fy, s: fs, pose: ps, look, kit: KIT, dir: 1 });
             if (phase === "zielen" || phase === "wurf") { const J = F.joints(ps), e = J.aF[1], hd = J.aF[2], a = Math.atan2(hd[0] - e[0], hd[1] - e[1]), k = phase === "wurf" ? weichP((tPh / WURF_SEK - 0.7) / 0.3) : 0;
               let hx = fx + hd[0] * fs, hy = fy + hd[1] * fs; const farbe = FARBE[wer], so = P.SOHLE[wer === 0 ? sohle : "mittel"].farbe;
@@ -2622,7 +2632,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       ["Eis und Sohle", "Der Stock gleitet gerade und bremst gleichmäßig: doppeltes Tempo, vierfache Weite. Der Eisbericht sagt, wie das Eis läuft. Die Laufsohle wählst du selbst: Schwarz läuft weit, Blau bremst. Keine ist besser, du musst nur den Zug dazu finden."],
       ["Stöße", "Ein Treffer in die Mitte schiebt den anderen Stock geradeaus weg, dein Stock bleibt bald liegen. Seitlich getroffen laufen beide schräg auseinander. Die Daube ist leicht und rutscht mit: Fliegt sie aus dem Zielfeld, kommt sie zurück aufs Mittelkreuz."],
       ["Wertung", `Duell: ${KEHREN} Kehren mit je ${STOECKE} Stöcken. Es spielt immer, wer gerade nicht am nächsten liegt. Am Ende der Kehre gibt es 1 Punkt für jeden eigenen Stock, der näher an der Daube liegt als der beste fremde; gemessen wird von Rand zu Rand. Zielschießen: bis 30 cm 10 Punkte, bis 70 cm 7, bis 1,20 m 5, bis 2 m 3, sonst im Feld 1.`]],
-    plakat(c, t) { cam = Object.assign({}, CAM_ZIEL); bahn(c, t, demoW); if (R) { const ps = mitArm(POSE.ziel, 6 + 15 * Math.sin(t * 2.3)), J = F.joints(ps), hd = J.aF[2], e = J.aF[1]; R.figur(c, { x: 360, y: 386, s: 1.25, pose: ps, look: R.myLook(), kit: KIT }); T.stockInHand(c, 360 + hd[0] * 1.25, 386 + hd[1] * 1.25, Math.atan2(hd[0] - e[0], hd[1] - e[1]), 1.19, FARBE[0], P.SOHLE.mittel.farbe); } },
+    plakat(c, t) { cam = Object.assign({}, CAM_ZIEL); bahn(c, t, demoW); if (R) { const ps = pendelPose(t, 0), J = F.joints(ps), hd = J.aF[2], e = J.aF[1]; R.figur(c, { x: 360, y: 386, s: 1.25, pose: ps, look: R.myLook(), kit: KIT }); T.stockInHand(c, 360 + hd[0] * 1.25, 386 + hd[1] * 1.25, Math.atan2(hd[0] - e[0], hd[1] - e[1]), 1.19, FARBE[0], P.SOHLE.mittel.farbe); } },
   });
 })();
 </script>
