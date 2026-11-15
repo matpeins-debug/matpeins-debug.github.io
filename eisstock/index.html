@@ -2654,7 +2654,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         R.stand({ kicker: "Lana · Zielwettbewerb", titel: platz === 1 ? "Sieg!" : `Platz ${platz}`, zeilen, note: `Deine Durchgänge: ${P.ZW.map((D, d) => `${D.name} ${teil[d]}`).join(", ")}. Zusammen ${sum} von 240.${neu ? " Neue Bestleistung." : ""}`, knoepfe: [{ text: "Menü", fn: R.menu }, { text: "Noch einmal", rot: true, fn: () => spiel("ziel") }] });
       }
       R.szene({
-        onDown(x, y, id) { if (phase === "zielen" && dran === 0 && !zug) { if (karteLinks ? x < R.W * 0.36 : x > R.W * 0.64) { karteLinks = !karteLinks; R.S.karteLinks = karteLinks; }   // nur wechseln, wenn der Finger auf der Seite der Karte ansetzt zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
+        onDown(x, y, id) { if (phase === "zielen" && dran === 0 && !zug) { if (karteLinks ? x < R.W * 0.36 : x > R.W * 0.64) { karteLinks = !karteLinks; R.S.karteLinks = karteLinks; } /* nur wechseln, wenn der Finger auf der Seite der Karte ansetzt */ zug = { x0: x, y0: Math.min(y, R.H - ZUG_MAX - 12), ys: y, x, y, id, bewegt: false, seit: 0 }; zieh(x, y); } },
         onMove(x, y, id) { if (zug && (id == null || zug.id == null || id === zug.id)) zieh(x, y); },
         onUp(x, y, id) { if (!zug || (id != null && zug.id != null && id !== zug.id)) return; zieh(x, y); if (u > ZUG_MIN && zug.bewegt) abgeben(winkelE(), tempo()); else { zug = null; u = 0; winkel = 0; } },
         bot() { if (phase === "zielen" && dran === 0 && tPh > 0.3) abgeben((n[0] % 3 - 1) * 0.4, P.tempoFuer(P.BAHN.daubeX - 0.5 - P.X0 + (n[0] % 2) * 0.3, eis, sohle)); },
