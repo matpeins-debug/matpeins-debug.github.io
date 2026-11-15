@@ -2383,7 +2383,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.7.0";
+  const VERSION = "0.8.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -2404,7 +2404,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   let R;
   // Kamera: Tiefe x, quer y. cx = Stelle auf der Bahn, d0 = Abstand der Kamera dahinter, mpx = Pixel je Meter dort, hpx = Höhe, hor = Horizont.
   // Drei Blicke: Zielen (von hinten über die ganze Bahn), Gleiten (fährt mit dem Stock mit), Zielfeld (groß und schräg von oben).
-  const CAM_ZIEL = { cx: 0, d0: 19.2, mpx: 205, hpx: 276, hor: 96 }, CAM_FELD = { cx: 20.3, d0: 7, mpx: 200, hpx: 527, hor: -120 };
+  const CAM_ZIEL = { cx: 0, d0: 12, mpx: 205, hpx: 276, hor: 96 }, CAM_FELD = { cx: 20.3, d0: 7, mpx: 200, hpx: 527, hor: -120 };
   let cam = Object.assign({}, CAM_ZIEL);
   const mixCam = (a, b, w) => { const o = {}; for (const k in a) o[k] = a[k] + (b[k] - a[k]) * w; return o; }, weich = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * (3 - 2 * u); };
   const sk = (x) => cam.d0 / Math.max(0.3 * cam.d0, cam.d0 + x - cam.cx), SX = (x, y) => 422 + y * cam.mpx * sk(x), SY = (x) => cam.hor + cam.hpx * sk(x);
@@ -2430,6 +2430,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     c.fillStyle = g; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.closePath(); c.fill();
     c.strokeStyle = "#7A5636"; c.lineWidth = 5; c.beginPath(); c.moveTo(SX(xn, -h), SY(xn)); c.lineTo(SX(B.lang, -h), SY(B.lang)); c.lineTo(SX(B.lang, h), SY(B.lang)); c.lineTo(SX(xn, h), SY(xn)); c.stroke();
     T.eisspuren(c, KAM, TEICH.kratzer);
+    // Meterlinien alle 5 m mit Zahl am Rand: damit man sieht, wie lang die Bahn ist
+    for (const x of [5, 10, 15, 20]) { if (!sichtbar(x)) continue; const y = SY(x), u = cam.mpx * sk(x), xl = SX(x, -h), xr = SX(x, h);
+      c.strokeStyle = "rgba(35,70,107,0.4)"; c.lineWidth = Math.max(1, u * 0.012); c.beginPath(); c.moveTo(xl, y); c.lineTo(xr, y); c.stroke();
+      for (const sd of [-1, 1]) R.text(c, `${x} m`, sd < 0 ? xl + u * 0.3 : xr - u * 0.3, y - Math.max(6, u * 0.07), Math.max(9, u * 0.11), "rgba(35,70,107,0.75)"); }   // Zahl aufs Eis gemalt, am Rand der Bahn
     c.strokeStyle = "rgba(60,90,120,0.22)"; c.lineWidth = 9; c.beginPath(); c.moveTo(SX(xn, -h) - 6, SY(xn)); c.lineTo(SX(B.lang, -h) - 6, SY(B.lang) - 3); c.lineTo(SX(B.lang, h) + 6, SY(B.lang) - 3); c.lineTo(SX(xn, h) + 6, SY(xn)); c.stroke();   // Schneewall hinter der Bande
     T.zeichne(c, KAM, TEICH, t, jubel);
     c.strokeStyle = "rgba(194,59,42,0.75)"; c.lineWidth = 2; c.beginPath(); for (const x of [B.feld0, B.feld1]) { c.moveTo(SX(x, -h), SY(x)); c.lineTo(SX(x, h), SY(x)); } c.stroke();
