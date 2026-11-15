@@ -2957,10 +2957,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   function stock(c, px, py, r, q, s, farbe, sohle) {
     // Aufbau wie ein Turnierstock: Laufsohle unten, breiter Stahlring, darauf der Stockkörper als flacher Kegel in der Mannschaftsfarbe,
     // oben der Stiel mit dunklem Griff. Der Stiel ist leicht gebogen; die Biegung zeigt die Eigendrehung (phi).
-    const ry = r * 0.3 * q, ring = r * 0.2, kegel = r * 0.42, hals = r * 0.2, yR = py - ring, yH = yR - kegel;
+    const ry = r * Math.min(1, 0.3 * q), ring = r * 0.2, kegel = r * 0.42, hals = r * 0.2, yR = py - ring, yH = yR - kegel;
     c.fillStyle = "rgba(20,30,50,0.2)"; c.beginPath(); c.ellipse(px + r * 0.22, py + r * 0.08, r * 1.12, ry * 1.15, 0, 0, TAU); c.fill();
     c.globalAlpha = 0.16; c.fillStyle = farbe; c.beginPath(); c.ellipse(px, py + ry * 0.9, r * 0.9, ry * 0.85, 0, 0, TAU); c.fill(); c.globalAlpha = 1;   // Spiegelung im Eis
-    if (root.ESStock3D) return root.ESStock3D.zeichne(c, px, py, r, s.phi, Math.asin(Math.min(0.92, 0.3 * q)), farbe, sohle);   // 3D-Stock; ohne WebGL folgt die gezeichnete Fassung
+    if (root.ESStock3D) return root.ESStock3D.zeichne(c, px, py, r, s.phi, Math.asin(Math.min(0.99, 0.3 * q)), farbe, sohle);   // 3D-Stock; ohne WebGL folgt die gezeichnete Fassung
     c.fillStyle = sohle; c.beginPath(); c.ellipse(px, py, r * 0.94, ry * 0.94, 0, 0, TAU); c.fill();
     // Stahlring: Mantelfläche und Oberkante
     c.fillStyle = "#8D969F"; c.beginPath(); c.ellipse(px, py - ring * 0.15, r, ry, 0, 0, Math.PI); c.lineTo(px - r, yR); c.ellipse(px, yR, r, ry, 0, Math.PI, 0, true); c.closePath(); c.fill();
@@ -3024,7 +3024,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Cold Medal · Eisstock – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js). Konzept: docs/KONZEPT.md.
 (function () {
   "use strict";
-  const VERSION = "0.14.0";
+  const VERSION = "0.15.0";
   const P = window.ESPhys, F = window.CMFigur, T = window.ESTeich, TEICH = T.baue();
   const KIT = { head: "cap", feet: "shoes", torso: "sweater", legs: "knickers", glove: "suit", bootC: "#4A2F1F", pants: ["#4D4237", "#3A3129"] };
   // Fünf Posen der Stockabgabe (Lehrbuch): zielen, Rückschwung, Ausfallschritt mit Beschleunigen, Aufsetzen neben dem vorderen Bein, Nachschwingen
@@ -3074,8 +3074,19 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     w = Math.max(w, minB || 0); const x = R.clamp(cx - w / 2, 12, R.W - 12 - w);
     R.tafel(c, x, y, w, h, zeilen.map(([s, px, col]) => [s, Math.floor(px * k), col]));
   }
+  // Blick senkrecht von oben für die Schlussmessung im Duell: Daube in der Bildmitte, so nah, dass der beste Stock jeder Seite und alle
+  // zählenden Stöcke im Bild sind (höchstens 120 Pixel je Meter). Ein sehr großes d0 macht aus der Kamera einen Blick ohne Fluchtpunkt.
+  let obenMessen = false;
+  function camOben(W) {
+    const D = W.daube, im = W.st.filter(P.imFeld).sort((a, b) => P.abstand(W, a) - P.abstand(W, b)), wichtig = [];
+    for (const wer of [0, 1]) { const s = im.find((q) => q.wer === wer); if (s) wichtig.push(s); }
+    if (im.length) { for (const s of im) { if (s.wer !== im[0].wer) break; wichtig.push(s); } }
+    let weit = 0.9; for (const s of wichtig) weit = Math.max(weit, Math.abs(s.x - D.x) + 0.45);
+    const m = Math.min(120, 150 / weit), d0 = 400;
+    return { cx: D.x, d0, mpx: m, hpx: m * d0, hor: 215 - m * d0 };
+  }
   function kameraZiel(W, phase, dran) {
-    if (phase === "messen") return CAM_FELD;
+    if (phase === "messen") return W.ringe || W.daube.aus || !obenMessen ? CAM_FELD : camOben(W);
     if (phase !== "lauf") return CAM_ZIEL;
     const s = W.lauf; if (!s || !s.lebt) return CAM_FELD;
     // mitfahren, dann ins Zielfeld übergehen; der Stock bleibt dabei am unteren Bildrand zu sehen
@@ -3283,6 +3294,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           jubel = Math.max(0, jubel - dt * 0.55); wackel *= Math.exp(-dt * 9); if (phase !== "lauf") KLANG.gleiten(0);
           if (phase === "wurf") spur = []; if (phase === "lauf" && W.lauf && W.lauf.lebt && (W.lauf.vx || W.lauf.vy)) { const l = spur[spur.length - 1]; if (!l || Math.hypot(l[0] - W.lauf.x, l[1] - W.lauf.y) > 0.12) { spur.push([W.lauf.x, W.lauf.y]); if (spur.length > 60) spur.shift(); } }
           for (const q of splitter) { q.t += dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z = Math.max(0, q.z + q.vz * dt); q.vz -= 6 * dt; } if (splitter.length) splitter = splitter.filter((q) => q.t < 0.6);
+          obenMessen = duell;
           cam = mixCam(cam, kameraZiel(W, phase === "wurf" ? "zielen" : phase, phase === "wurf" ? wurf.wer : dran), R.schnell ? 1 : 1 - Math.exp(-dt * 3.2));
           const karte = dran === 0 && (phase === "zielen" || phase === "wurf");
           kOben.set({ aktiv: oben, hidden: !karte, seite: karteLinks ? "rechts" : "links" });
@@ -3326,7 +3338,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
               /* Maßband zum besten Stock jeder Seite: wächst von der Daube aus, die Zahl zählt mit */
               const ax = W.daube.x, ay = W.daube.y, bx = ax + (s.x - ax) * f, by = ay + (s.y - ay) * f;
               c.strokeStyle = FARBE[wer]; c.lineWidth = 3; c.beginPath(); c.moveTo(SX(ax, ay), SY(ax)); c.lineTo(SX(bx, by), SY(bx)); c.stroke(); R.tafel(c, SX(bx, by) - 34 + (wer ? 44 : -44), SY(bx) - 58, 68, 22, [[R.zahl(P.abstand(W, s) * 100 * f, 0) + " cm", 12, FARBE[wer]]]); }
-            if (!duell || tPh > 1.1) tafelMitte(c, R.W / 2, 84, 36, [[msg, 17, "#C23B2A"]], 240);
+            if (!duell || tPh > 1.1) tafelMitte(c, R.W / 2, duell ? 334 : 84, 36, [[msg, 17, "#C23B2A"]], 240);
             if (duell && tPh > 3.1) kehrenTafel(c, verlauf, stand, [R.myName(), geg.name.split(" ")[0]], weichP((tPh - 3.1) / 0.4)); }
           if (wk) c.restore();
         },
