@@ -2624,10 +2624,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const RING = 2.275, ABSTAND = 0.96;   // Ring: 4,55 m Durchmesser; Abstand der beiden Körpermitten im Kampf
   // Handlungen: vor = Ausholen (der Gegner kann es lesen), aktiv = Wirkung, nach = Erholen
-  const AKT = { schub: { vor: 0.4, aktiv: 0.12, nach: 0.32 }, griff: { vor: 0.5, aktiv: 0.12, nach: 0.38 }, weich: { vor: 0.2, aktiv: 0.45, nach: 0.34 }, wurf: { vor: 0.55, aktiv: 0.15, nach: 0.6 } };
+  const AKT = { schub: { vor: 0.4, aktiv: 0.12, nach: 0.32 }, griff: { vor: 0.5, aktiv: 0.12, nach: 0.38 }, weich: { vor: 0.2, aktiv: 0.45, nach: 0.34 }, wurf: { vor: 0.55, aktiv: 0.15, nach: 0.6 }, heben: { vor: 0.6, aktiv: 0.2, nach: 0.6 } };
+  const LADEN = 0.9, GRIFF_FEST = 2.4;   // Schub aufladen (Sekunden bis voll); so lange dauert es, bis ein Griff fest sitzt
   const TYPEN = { schieber: { schub: 5, griff: 1.4, weich: 1.1 }, greifer: { schub: 2, griff: 4.2, weich: 1.1 }, trickser: { schub: 2.2, griff: 1.6, weich: 3.4 } };
 
-  function ringer(o) { return Object.assign({ kraft: 1, masse: 1, st: 0.6, typ: "schieber", bal: 1, akt: null, griff: false, rand: false, pause: 0, fehl: 0, start: null }, o); }
+  function ringer(o) { return Object.assign({ kraft: 1, masse: 1, st: 0.6, typ: "schieber", bal: 1, akt: null, griff: false, griffT: 0, rand: false, pause: 0, fehl: 0, start: null }, o); }
   function kampf(a, b, seed) { const r = rng(seed || 1); a.seite = -1; b.seite = 1; return { phase: "bereit", t: 0, tPh: 0, m: 0, A: a, B: b, signal: 1.3 + r() * 1.4, r, sieger: null, kimarite: null, wie: null, ev: [] }; }
   const andere = (s, f) => (f === s.A ? s.B : s.A), ort = (s, f) => s.m + f.seite * ABSTAND / 2, zumRand = (s, f) => RING - Math.abs(ort(s, f)) * (Math.sign(ort(s, f)) === f.seite ? 1 : -1);
   const melde = (s, art, f, text) => s.ev.push({ art, wer: f === s.A ? "A" : "B", text });
@@ -2646,44 +2647,56 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
 
   // ---- Kampf
-  function tu(s, f, art) {
+  // art: "schub" | "griff" | "weich" (die drei Wische). Mit Griff wird aus "griff" (hoch) das Ausheben und aus "weich" (zurück) der Wurf.
+  // opt.halten: der Schub lädt, solange gehalten wird (lass() löst ihn aus); opt.lade: Rechner laden bis zu diesem Wert.
+  function tu(s, f, art, opt) {
     if (s.phase !== "kampf" || f.akt || f.pause > 0.12) return false;
-    if (art === "griff" && f.griff) art = "wurf"; if (art === "wurf" && !f.griff) art = "griff";
-    f.akt = { art, t: 0, fertig: false }; return true;
+    if (f.griff) { if (art === "griff") art = "heben"; else if (art === "weich") art = "wurf"; } else if (art === "wurf" || art === "heben") art = "griff";
+    f.akt = { art, t: 0, fertig: false, lade: 0, haelt: art === "schub" && !!(opt && (opt.halten || opt.lade)), ladeZiel: opt && opt.lade ? opt.lade : null }; return true;
   }
+  function lass(s, f) { if (f.akt) f.akt.haelt = false; }
+  const fest = (f) => (f.griff ? clamp(f.griffT / GRIFF_FEST, 0, 1) : 0);
   function ende(s, sieger, kimarite, wie) { if (s.phase === "ende") return; s.phase = "ende"; s.tPh = 0; s.sieger = sieger === s.A ? "A" : "B"; s.kimarite = kimarite; s.wie = wie; melde(s, "ende", sieger, kimarite); }
   function wirke(s, f) {
-    const o = andere(s, f), dir = -f.seite, A = f.akt.art, oa = o.akt, K = oa && AKT[oa.art];
+    const o = andere(s, f), dir = -f.seite, A = f.akt.art, oa = o.akt, K = oa && AKT[oa.art], L = clamp(f.akt.lade / LADEN, 0, 1), wucht = 1 + 0.9 * L;
     const weicht = oa && oa.art === "weich" && oa.t >= K.vor && oa.t < K.vor + K.aktiv;
     if (A === "schub") {
-      if (weicht && !f.griff) { f.bal -= 0.5; s.m += dir * 0.26; melde(s, "leere", f); if (f.bal <= 0.14) return ende(s, o, "Hatakikomi", "boden"); }
-      else if (oa && oa.art === "griff" && !oa.fertig) { o.akt = null; o.pause = 0.35; o.bal -= 0.12; s.m += dir * 0.6 * Math.sqrt(f.kraft / o.masse); melde(s, "gesprengt", f); }
-      else if (oa && oa.art === "schub" && Math.abs(oa.t - K.vor) < 0.1) { const z = f.kraft * f.masse * (0.6 + 0.4 * f.bal) - o.kraft * o.masse * (0.6 + 0.4 * o.bal); s.m += dir * clamp(z, -1, 1) * 0.3; f.bal -= 0.04; o.bal -= 0.04; oa.fertig = true; melde(s, "prall", f); }
-      else { s.m += dir * (f.griff ? 0.74 : 0.54) * Math.sqrt(f.kraft / o.masse) * (1.5 - 0.5 * clamp(o.bal, 0, 1)) * (1 + s.tPh / 14) /* müde Beine */; o.bal -= f.griff ? 0.05 : 0.1; if (o.griff && !f.griff) { o.griff = false; melde(s, "geloest", f); } else melde(s, f.griff ? "draengen" : "schub", f); }
+      if (weicht && !f.griff) { f.bal -= 0.5 + 0.45 * L; s.m += dir * (0.26 + 0.5 * L); melde(s, "leere", f, L > 0.4 ? "voll" : ""); if (f.bal <= 0.14) return ende(s, o, "Hatakikomi", "boden"); }
+      else if (oa && oa.art === "griff" && !oa.fertig) { o.akt = null; o.pause = 0.35; o.bal -= 0.12; s.m += dir * 0.6 * wucht * Math.sqrt(f.kraft / o.masse); melde(s, "gesprengt", f); }
+      else if (oa && oa.art === "schub" && Math.abs(oa.t - K.vor) < 0.1) { const z = f.kraft * f.masse * (0.6 + 0.4 * f.bal) * wucht - o.kraft * o.masse * (0.6 + 0.4 * o.bal) * (1 + 0.9 * clamp(oa.lade / LADEN, 0, 1)); s.m += dir * clamp(z, -1, 1) * 0.3; f.bal -= 0.04; o.bal -= 0.04; oa.fertig = true; melde(s, "prall", f); }
+      else { const haelt = o.griff && !f.griff && fest(o) >= 0.5 && L < 0.45;   // ein fester Griff hält einem einfachen Stoß stand, nur ein geladener sprengt ihn
+        s.m += dir * (f.griff ? 0.74 : 0.54) * wucht * (haelt ? 0.5 : 1) * Math.sqrt(f.kraft / o.masse) * (1.5 - 0.5 * clamp(o.bal, 0, 1)) * (1 + s.tPh / 14) /* müde Beine */; o.bal -= (f.griff ? 0.05 : 0.1) * wucht;
+        if (haelt) { o.griffT -= 1.1; melde(s, "haelt", f); } else if (o.griff && !f.griff) { o.griff = false; o.griffT = 0; melde(s, "geloest", f); } else melde(s, f.griff ? "draengen" : "schub", f, L > 0.4 ? "voll" : ""); }
       if (o.bal <= 0) return ende(s, f, f.griff ? "Yoritaoshi" : "Oshitaoshi", "boden");
     } else if (A === "griff") {
-      if (weicht) { f.griff = true; o.griff = false; o.bal -= 0.2; o.akt = null; o.pause = 0.3; melde(s, "gefangen", f); }
-      else { f.griff = true; melde(s, "griff", f); }
+      if (weicht) { f.griff = true; f.griffT = 0.8; o.griff = false; o.bal -= 0.2; o.akt = null; o.pause = 0.3; melde(s, "gefangen", f); }
+      else { f.griff = true; f.griffT = 0; melde(s, "griff", f); }
     } else if (A === "wurf") {
       const amRand = zumRand(s, o) < 0.55, ichAmRand = zumRand(s, f) < 0.55, imSchub = oa && oa.art === "schub" && !oa.fertig && oa.t > K.vor - 0.16;
       if (o.bal < 0.55 || amRand || imSchub) { o.bal = 0; return ende(s, f, ichAmRand ? "Utchari" : imSchub ? "Sukuinage" : "Uwatenage", "boden"); }
-      f.bal -= 0.3; f.griff = false; o.bal -= 0.1; melde(s, "pariert", f); if (f.bal <= 0) return ende(s, o, "Kirikaeshi", "boden");
+      f.bal -= 0.3; f.griff = false; f.griffT = 0; o.bal -= 0.1; melde(s, "pariert", f); if (f.bal <= 0) return ende(s, o, "Kirikaeshi", "boden");
+    } else if (A === "heben") {
+      // Ausheben (Tsuridashi): am festen Griff anheben und zum Rand tragen. Wer dabei in einen Schub gerät, wird niedergedrückt.
+      if (oa && oa.art === "schub" && !oa.fertig && oa.t > K.vor - 0.16) { f.bal = 0; return ende(s, o, "Abisetaoshi", "boden"); }
+      if (fest(f) >= 0.55 && o.bal < 0.8) { s.m += dir * 0.95 * Math.sqrt(f.kraft / o.masse); o.bal -= 0.08; f.bal -= 0.06; o.akt = null; o.pause = 0.5; melde(s, "gehoben", f); return rand(s, "Tsuridashi"); }
+      f.bal -= 0.22; melde(s, "zuschwer", f);
     }
     rand(s);
   }
-  function rand(s) {
+  function rand(s, technik) {
     for (const f of [s.A, s.B]) { const o = andere(s, f), x = ort(s, f) * f.seite;   // > RING: draußen
       if (x <= RING) continue;
       if (!f.rand && f.bal > 0.5) { f.rand = true; f.bal -= 0.2; s.m -= f.seite * (x - RING + 0.02); melde(s, "strohballen", f); }
-      else return ende(s, o, o.griff ? "Yorikiri" : "Oshidashi", "raus"); }
+      else return ende(s, o, technik || (o.griff ? "Yorikiri" : "Oshidashi"), "raus"); }
   }
   function schritt(s, dt) {
     s.t += dt; s.tPh += dt; s.ev.length = 0;
     if (s.phase === "bereit") { if (s.tPh >= s.signal && ((s.A.start != null && s.B.start != null) || s.tPh > s.signal + 0.7)) aufprall(s); return s.ev; }
     if (s.phase !== "kampf") return s.ev;
     for (const f of [s.A, s.B]) {
-      f.bal = Math.min(1, f.bal + 0.07 * dt); if (f.pause > 0) f.pause -= dt;
-      const a = f.akt; if (!a) continue; const K = AKT[a.art]; a.t += dt;
+      f.bal = Math.min(1, f.bal + 0.07 * dt); if (f.pause > 0) f.pause -= dt; if (f.griff) f.griffT = Math.min(GRIFF_FEST, f.griffT + dt); else f.griffT = 0;
+      const a = f.akt; if (!a) continue; const K = AKT[a.art];
+      if (a.haelt && !a.fertig && a.t >= K.vor - 0.03) { a.lade += dt; if (a.lade >= LADEN || (a.ladeZiel != null && a.lade >= a.ladeZiel)) a.haelt = false; } else a.t += dt;
       if (!a.fertig && a.t >= K.vor && a.art !== "weich") { a.fertig = true; wirke(s, f); if (s.phase !== "kampf") return s.ev; }
       if (f.akt === a && a.t >= K.vor + K.aktiv + K.nach) {
         if (a.art === "weich") { const o = andere(s, f); if (o.griff) f.bal -= 0.15; else { s.m += f.seite * 0.3; f.bal -= 0.03; } rand(s); if (s.phase !== "kampf") return s.ev; }
@@ -2698,20 +2711,20 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     if (s.phase === "bereit") { if (f.start == null && s.tPh >= s.signal + 0.16 + 0.26 * (1 - f.st) + (f.zoegern != null ? f.zoegern : (f.zoegern = r() * 0.12))) { f.zoegern = null; los(s, f); } return; }
     if (s.phase !== "kampf" || f.akt || f.pause > 0) return;
     const oa = o.akt;
-    if (oa && !oa.fertig && oa.t < AKT[oa.art].vor - 0.12 && r() < 0.1 + 0.55 * f.st) { const kontra = oa.art === "schub" ? (o.griff ? "schub" : "weich") : oa.art === "griff" ? "schub" : oa.art === "weich" ? "griff" : "schub"; tu(s, f, kontra); f.pause = 0; return; }
-    const w = Object.assign({ wurf: 0 }, TYPEN[f.typ] || TYPEN.schieber);
-    if (f.griff) { w.schub = 5; w.griff = 0; w.wurf = o.bal < 0.55 || zumRand(s, o) < 0.55 ? 5 : 0.6; w.weich = 0.2; }
+    if (oa && !oa.fertig && oa.t < AKT[oa.art].vor - 0.12 && r() < 0.1 + 0.55 * f.st) { const kontra = oa.art === "schub" ? (o.griff ? "schub" : f.griff ? "wurf" : "weich") : oa.art === "griff" ? "schub" : oa.art === "weich" ? "griff" : "schub"; tu(s, f, kontra); f.pause = 0; return; }
+    const w = Object.assign({ wurf: 0, heben: 0 }, TYPEN[f.typ] || TYPEN.schieber);
+    if (f.griff) { w.schub = 5; w.griff = 0; w.wurf = o.bal < 0.55 || zumRand(s, o) < 0.55 ? 5 : 0.6; w.weich = 0; w.heben = fest(f) >= 0.55 && o.bal < 0.8 ? 2.4 : 0; }
     if (o.griff) { w.schub *= 2.2; w.weich *= 0.15; }
     if (zumRand(s, f) < 0.6) { w.weich *= 1.9; if (f.griff) w.wurf += 3; }
     if (o.bal < 0.4) w.weich *= 1.4;
     let sum = 0; for (const k in w) sum += w[k]; let z = r() * sum, wahl = "schub"; for (const k in w) { z -= w[k]; if (z <= 0) { wahl = k; break; } }
-    tu(s, f, wahl); f.pause = 0; f.naechste = 0.2 + (1 - f.st) * 0.55 + r() * 0.3;
+    tu(s, f, wahl, wahl === "schub" && r() < 0.18 + 0.3 * f.st ? { lade: 0.25 + r() * 0.6 } : null); f.pause = 0; f.naechste = 0.2 + (1 - f.st) * 0.55 + r() * 0.3;
   }
   function nachAkt(f) { if (!f.akt && f.naechste) { f.pause = f.naechste; f.naechste = 0; } }
   // ganzer Kampf zwischen zwei Rechnern (für Tests und Vorführung)
   function spiele(a, b, seed) { const s = kampf(a, b, seed); for (let i = 0; i < 60 * 120 && s.phase !== "ende"; i++) { ki(s, s.A); ki(s, s.B); schritt(s, 1 / 60); nachAkt(s.A); nachAkt(s.B); } return s; }
-  const KIMARITE = { Oshidashi: "Hinausschieben", Yorikiri: "Hinausdrängen am Gürtel", Oshitaoshi: "Niederschieben", Yoritaoshi: "Niederdrängen am Gürtel", Hatakikomi: "Ausweichen und Niederschlagen", Uwatenage: "Wurf am Gürtel", Sukuinage: "Wurf in den Angriff hinein", Utchari: "Wurf vom Rand, rückwärts", Kirikaeshi: "Konter gegen den Wurf" };
-  const api = { RING, ABSTAND, AKT, TYPEN, KIMARITE, clamp, rng, ringer, kampf, los, tu, schritt, ki, nachAkt, spiele, ort, zumRand, andere };
+  const KIMARITE = { Oshidashi: "Hinausschieben", Yorikiri: "Hinausdrängen am Gürtel", Oshitaoshi: "Niederschieben", Yoritaoshi: "Niederdrängen am Gürtel", Hatakikomi: "Ausweichen und Niederschlagen", Uwatenage: "Wurf am Gürtel", Sukuinage: "Wurf in den Angriff hinein", Utchari: "Wurf vom Rand, rückwärts", Kirikaeshi: "Konter gegen den Wurf", Tsuridashi: "Ausheben und Hinaustragen", Abisetaoshi: "Niederdrücken des Hebenden" };
+  const api = { RING, ABSTAND, AKT, LADEN, GRIFF_FEST, TYPEN, KIMARITE, clamp, rng, ringer, kampf, los, tu, lass, fest, schritt, ki, nachAkt, spiele, ort, zumRand, andere };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.SUPhys = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2719,7 +2732,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Ablauf wie im Sumo: Einzug, Stampfen (Shiko), Salz, Hocke, Fäuste auf den Boden, Aufprall (Tachiai), Kampf, Siegtechnik (Kimarite).
 (function () {
   "use strict";
-  const VERSION = "0.1.1";
+  const VERSION = "0.2.0";
   const P = window.SUPhys, F = window.CMFigur, F3 = window.Figur3D;
   const CX = 422, CY = 294, RX = 300, RY = 58, PXM = RX / P.RING, SC = 1.95;
   const YETIS = [
@@ -2752,6 +2765,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     stolper: { lean: 62, sL: [72, 62], fL: [-38, 52], sA: 8, fA: 10, aF: [124, 10], aB: [104, 10], ao: 20, hd: -12 },
     liegt: { lean: 97, sL: [92, 12], fL: [84, 24], sA: 10, fA: 14, aF: [156, 10], aB: [146, 10], ao: 26, hd: -24 },
     rueck: { lean: -56, sL: [-26, 24], fL: [34, 64], sA: 10, fA: 16, aF: [-124, 20], aB: [-150, 10], ao: 44, hd: 22 },
+    ladung: { lean: 0, sL: [54, 88], fL: [-12, 40], sA: 14, fA: 18, aF: [-10, 122], aB: [-40, 112], ao: 18, hd: -6 },
+    hebenAkt: { lean: -12, sL: [22, 34], fL: [10, 26], sA: 18, fA: 18, aF: [46, 74], aB: [38, 74], ao: 16, hd: -4 },
+    gehoben: { lean: 4, sL: [16, 50], fL: [-24, 56], sA: 22, fA: 22, aF: [130, 30], aB: [-110, 30], ao: 40, hd: 14 },
     sieg: { lean: -4, sL: [16, 24], fL: [6, 18], sA: 16, fA: 16, aF: [162, 22], aB: [152, 22], ao: 34, hd: -16 },
   };
   const KEYS = ["lean", "hd", "ao", "sA", "fA"], ARR = ["sL", "fL", "aF", "aB"];
@@ -2806,17 +2822,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const V = [{ f: a, art: ICH, dir: 1, pose: PO.steh, x: -1.9, turn: 0.42, kipp: 0, fall: 0 }, { f: b, art: gegner, dir: -1, pose: PO.steh, x: 1.9, turn: 0.42, kipp: 0, fall: 0 }];
     const st = { ph: "einzug", t: 0, faecher: { w: -0.5, seite: 1 }, jubel: 0, beben: 0, zeit: 1, teile: [], banner: null, haelt: false, botAn: false, acc: [0, 0], sperre: 0, tEnde: 0, hinweis: null };
     const staub = (x, n, kraft, farbe) => { for (let i = 0; i < n; i++) st.teile.push({ x: CX + x * PXM + (Math.random() - 0.5) * 30, y: CY + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 120 * kraft, vy: -Math.random() * 90 * kraft, g: 240, l: 0.5 + Math.random() * 0.5, r: 2 + Math.random() * 3, c: farbe || "rgba(255,255,255,0.85)" }); };
-    function eingabe(art) { if (st.ph !== "kampf" || st.sperre > 0) return; if (P.tu(s, a, art)) { st.sperre = 0.12; R.ton.klick(); } }
+    function eingabe(art) { if (st.ph !== "kampf" || st.sperre > 0) return; if (P.tu(s, a, art, art === "schub" && st.haelt ? { halten: true } : null)) { st.sperre = 0.12; R.ton.klick(); } }
     function wisch(dx, dy) { st.acc[0] += dx; st.acc[1] += dy; const [x, y] = st.acc; if (Math.hypot(x, y) < 26) return; st.acc = [0, 0]; eingabe(-y > Math.abs(x) ? "griff" : x > 0 ? "schub" : "weich"); }
     function runter() { st.acc = [0, 0]; if (st.ph === "ritual") { st.ph = "hocke"; st.t = 0; } st.haelt = true; }
-    function hoch() { st.haelt = false; if (st.ph === "bereit") { const e = P.los(s, a); if (e === "fehlstart") fehlstart(a); } }
+    function hoch() { st.haelt = false; if (st.ph === "kampf") P.lass(s, a); if (st.ph === "bereit") { const e = P.los(s, a); if (e === "fehlstart") fehlstart(a); } }
     function fehlstart(f) { st.ph = "hocke"; st.t = 0; R.ton.schlecht(); R.sag(f === a ? "Fehlstart! Erst nach dem Zeichen los." : `Fehlstart von ${gegner.name}`, 1.6, f === a); st.faecher.w = -0.5; }
     window.__sumo = { st, s };   // Prüfhaken für Tests und Bildproben
     let px = 0, py = 0, unten = false;
     R.stick({ seite: "rechts", text: "Kampf", onDown: runter, onMove: wisch, onUp: hoch });
     R.szene({
       onDown(x, y) { unten = true; px = x; py = y; runter(); }, onMove(x, y) { if (unten) { wisch(x - px, y - py); px = x; py = y; } }, onUp() { unten = false; hoch(); },
-      taste(k, an) { if (st.ph === "kampf") { if (an) eingabe(k === "rechts" ? "schub" : k === "links" ? "weich" : "griff"); } else if (an) runter(); else hoch(); },
+      taste(k, an) { if (st.ph === "kampf") { if (an) { st.haelt = true; eingabe(k === "rechts" ? "schub" : k === "links" ? "weich" : "griff"); } else hoch(); } else if (an) runter(); else hoch(); },
       bot() { st.botAn = true; },
       update(dt0) {
         const dt = dt0 * st.zeit; st.t += dt; st.sperre -= dt0; st.jubel = Math.max(0, st.jubel - dt0 * 0.8); st.beben = Math.max(0, st.beben - dt0 * 3);
@@ -2832,11 +2848,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             for (const e of ev) if (e.art === "aufprall") { st.ph = "kampf"; st.beben = 1; st.jubel = 1; R.ton.klack(); R.ton.wusch(); staub(s.m, 22, 1.4); R.tippWeg(); if (e.text !== "gleich") R.sag(e.wer === "A" ? "Starker Antritt!" : `${gegner.name} war schneller`, 1.1, e.wer !== "A"); } }
         }
         else if (st.ph === "kampf") {
-          R.tipp("kampf", "Wische: nach vorn schieben, zurück ausweichen, hoch greifen. Mit Griff: hoch = Wurf. Lies, was der Gegner ausholt.", 8);
+          R.tipp("kampf", "Wische: nach vorn schieben, zurück ausweichen, hoch greifen. Nach dem Wisch halten lädt den Stoß auf.", 8); if (a.griff) R.tipp("griff", "Du hast den Griff: vorn drängen, hoch ausheben (wenn der Griff fest sitzt), zurück werfen.", 7);
           if (st.botAn) P.ki(s, a); P.ki(s, b); const ev = P.schritt(s, dt); P.nachAkt(a); P.nachAkt(b);
           for (const e of ev) { const ich = e.wer === "A", v = ich ? V[1] : V[0], x = P.ort(s, v.f);
-            if (e.art === "schub" || e.art === "draengen") { R.ton.klack(); staub(x, 7, 0.8); st.beben = 0.35; v.treffer = 0.3; }
-            else if (e.art === "leere") { R.ton.wusch(); R.sag(ich ? "Ins Leere!" : "Ausgewichen!", 0.9, ich); (ich ? V[0] : V[1]).stolper = 0.6; }
+            if (e.art === "schub" || e.art === "draengen") { const voll = e.text === "voll"; R.ton.klack(); staub(x, voll ? 20 : 7, voll ? 1.5 : 0.8); st.beben = voll ? 0.9 : 0.35; v.treffer = voll ? 0.5 : 0.3; if (voll) { st.jubel = 0.8; R.sag(ich ? "Wuchtiger Stoß!" : `${gegner.name} stößt mit voller Wucht`, 0.9, !ich); } }
+            else if (e.art === "haelt") { R.ton.knapp(); R.sag(ich ? `${gegner.name} hält den Griff. Lade den Stoß auf!` : "Dein Griff hält!", 1.1, ich); staub(x, 5, 0.6); }
+            else if (e.art === "gehoben") { R.ton.wusch(); R.sag(ich ? "Ausgehoben!" : `${gegner.name} hebt dich aus`, 1, !ich); v.heb = 0.7; st.jubel = 0.9; }
+            else if (e.art === "zuschwer") { R.ton.schlecht(); R.sag(ich ? "Zu schwer: Der Griff sitzt noch nicht fest" : `${gegner.name} verhebt sich`, 1.1, ich); }
+            else if (e.art === "leere") { R.ton.wusch(); R.sag(ich ? (e.text === "voll" ? "Voll ins Leere!" : "Ins Leere!") : "Ausgewichen!", 0.9, ich); (ich ? V[0] : V[1]).stolper = 0.6; }
             else if (e.art === "gesprengt") { R.ton.klack(); R.sag(ich ? "Griff gesprengt!" : "Dein Griff ist gesprengt", 0.9, !ich); v.treffer = 0.35; st.beben = 0.5; }
             else if (e.art === "griff" || e.art === "gefangen") { R.ton.knapp(); R.sag(ich ? "Griff am Gürtel!" : `${gegner.name} hat dich am Gürtel`, 1, !ich); }
             else if (e.art === "geloest") R.ton.tick();
@@ -2845,7 +2864,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             else if (e.art === "strohballen") { R.ton.raunen(); R.sag(ich ? `${gegner.name} hält sich am Strohballen` : "Am Strohballen! Noch einmal hält er nicht.", 1.2, !ich); st.jubel = 0.7; }
             else if (e.art === "ende") { st.ph = "ende"; st.tEnde = 0; st.zeit = 0.3; st.jubel = 1.4; st.beben = 0.8; st.faecher.seite = ich ? -1 : 1; st.faecher.w = ich ? -1.3 : 1.3; R.tippWeg(); ich ? R.ton.jubel() : R.ton.raunen(); staub(P.ort(s, ich ? b : a), 26, 1.6); st.banner = { titel: e.text, sub: P.KIMARITE[e.text] || "", ich }; } }
         }
-        else if (st.ph === "ende") { st.tEnde += dt0; if (st.tEnde > 0.7) st.zeit = 1; if (st.tEnde > 3.4) return fertig({ sieg: s.sieger === "A", kimarite: s.kimarite, dauer: s.t }); }
+        else if (st.ph === "ende") { st.tEnde += dt0; if (st.tEnde > 0.7) st.zeit = 1; if (st.tEnde > 4.2) return fertig({ sieg: s.sieger === "A", kimarite: s.kimarite, dauer: s.t }); }
         // Zielposen
         V.forEach((v, i) => {
           const f = v.f, o = P.andere(s, f), ak = f.akt, K = ak && P.AKT[ak.art]; let ziel = PO.steh, tempo = 9, turn = 0.42, mund = null;
@@ -2854,10 +2873,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           else if (st.ph === "hocke") ziel = PO.hocke;
           else if (st.ph === "bereit") { ziel = f.start != null ? PO.schubAkt : (i === 0 ? st.haelt || st.botAn : true) ? PO.faust : PO.hocke; tempo = f.start != null ? 26 : 8; }
           else if (st.ph === "kampf" || st.ph === "ende") {
-            if (st.ph === "ende") { const sieger = (s.sieger === "A") === (i === 0); if (sieger) { ziel = st.tEnde > 0.8 ? PO.sieg : PO.kampf; mund = st.tEnde > 0.8 ? "auf" : null; } else { ziel = s.wie === "raus" ? PO.rueck : PO.liegt; tempo = 7; v.fall = Math.min(1, v.fall + dt * 1.6); } }
+            if (st.ph === "ende") { const sieger = (s.sieger === "A") === (i === 0); if (sieger) { ziel = st.tEnde > 0.8 ? PO.sieg : PO.kampf; mund = st.tEnde > 0.8 ? "auf" : null; } else { const T = st.tEnde, vorher = v.fall; v.fall = Math.min(1, v.fall + dt * (s.wie === "raus" ? 0.8 : 1.5)); tempo = 9;
+                if (s.wie === "raus") { ziel = Object.assign({}, PO.rueck, v.fall < 0.5 ? { aF: [-124 + 150 * Math.sin(T * 21), 20], aB: [-150 + 150 * Math.sin(T * 21 + 2), 10], fL: [34 + 30 * Math.sin(T * 16), 64] } : {}); tempo = 20;   // rudert mit den Armen, kippt dann vom Podest
+                  if (vorher < 1 && v.fall >= 1) { for (let k = 0; k < 34; k++) st.teile.push({ x: CX + v.x * PXM + (Math.random() - 0.5) * 70, y: CY + 62, vx: (Math.random() - 0.5) * 260, vy: -80 - Math.random() * 220, g: 380, l: 0.7 + Math.random() * 0.6, r: 3 + Math.random() * 5, c: "rgba(255,255,255,0.95)" }); R.ton.schnee(); st.beben = 0.7; } }
+                else { ziel = Object.assign({}, PO.liegt, v.fall >= 1 && T < 2.6 ? { fL: [84 + 30 * Math.sin(T * 17), 24 + 20 * Math.sin(T * 17)], aB: [146 + 24 * Math.sin(T * 13), 10] } : {});   // schlägt auf, federt nach, strampelt
+                  if (vorher < 0.45 && v.fall >= 0.45) { staub(v.x, 24, 1.5); R.ton.klack(); st.beben = 0.9; } } } }
             else if (v.stolper > 0) { v.stolper -= dt; ziel = PO.stolper; tempo = 16; }
             else if (v.treffer > 0) { v.treffer -= dt; ziel = PO.treffer; tempo = 18; }
-            else if (ak) { const vor = ak.t < K.vor; if (ak.art === "schub") { ziel = vor ? PO.schubVor : PO.schubAkt; tempo = vor ? 9 : 28; } else if (ak.art === "griff") { ziel = vor ? PO.griffVor : PO.griffAkt; tempo = vor ? 8 : 20; } else if (ak.art === "weich") { ziel = PO.weich; turn = 1.25; tempo = 14; } else { ziel = vor ? PO.wurfVor : PO.wurfAkt; turn = vor ? 0.3 : -1.2; tempo = vor ? 9 : 24; } }
+            else if (v.heb > 0) { v.heb -= dt; ziel = PO.gehoben; tempo = 16; }
+            else if (ak) { const vor = ak.t < K.vor; if (ak.art === "schub") { ziel = vor ? misch(PO.schubVor, PO.ladung, P.clamp(ak.lade / P.LADEN, 0, 1)) : PO.schubAkt; tempo = vor ? 9 : 28; } else if (ak.art === "heben") { ziel = vor ? PO.wurfVor : PO.hebenAkt; tempo = vor ? 9 : 16; } else if (ak.art === "griff") { ziel = vor ? PO.griffVor : PO.griffAkt; tempo = vor ? 8 : 20; } else if (ak.art === "weich") { ziel = PO.weich; turn = 1.25; tempo = 14; } else { ziel = vor ? PO.wurfVor : PO.wurfAkt; turn = vor ? 0.3 : -1.2; tempo = vor ? 9 : 24; } }
             else if (f.griff || o.griff) ziel = misch(PO.griffAkt, PO.kampf, 0.25 + 0.12 * Math.sin(st.t * 6 + i * 2));
             else ziel = misch(PO.kampf, PO.schubVor, 0.12 + 0.12 * Math.sin(st.t * 5 + i * 2));
             if (st.ph === "kampf") v.x = P.ort(s, f); else if (s.wie === "raus" && (s.sieger === "A") !== (i === 0)) v.x += f.seite * dt * 1.4;
@@ -2866,8 +2890,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         });
         for (const p of st.teile) { p.l -= dt0; p.x += p.vx * dt0; p.y += p.vy * dt0; p.vy += p.g * dt0; } st.teile = st.teile.filter((p) => p.l > 0);
         // Hinweis über dem Gegner, solange er ausholt (bei den ersten, schwächeren Gegnern)
-        const ba = b.akt; st.hinweis = st.ph === "kampf" && ba && ba.t < P.AKT[ba.art].vor && gegner.st < 0.6 ? ba.art : null;
-        R.chips([[`${von > 1 ? "Kampf " + nr + " von " + von : "Einzelkampf"}`, "dark"], [`Du (links, rot) gegen ${gegner.name}`, "gold"], st.ph === "kampf" ? [a.griff ? "Du hast den Griff" : b.griff ? "Er hat den Griff" : "Offen", a.griff ? "good" : b.griff ? "warn" : ""] : [{ einzug: "Einzug", ritual: "Stampfen und Salz", hocke: "In die Hocke", bereit: "Warten auf das Zeichen", ende: "Entschieden" }[st.ph]]]);
+        const ba = b.akt; st.hinweis = st.ph === "kampf" && ba && ba.t < P.AKT[ba.art].vor && gegner.st < 0.6 ? (ba.art === "schub" && ba.lade > 0.08 ? "lade" : ba.art) : null;
+        R.chips([[`${von > 1 ? "Kampf " + nr + " von " + von : "Einzelkampf"}`, "dark"], [`Du (links, rot) gegen ${gegner.name}`, "gold"], st.ph === "kampf" ? [a.griff ? (P.fest(a) >= 0.55 ? "Dein Griff sitzt fest" : "Du hast den Griff") : b.griff ? (P.fest(b) >= 0.5 ? "Sein Griff sitzt fest" : "Er hat den Griff") : "Offen", a.griff ? "good" : b.griff ? "warn" : ""] : [{ einzug: "Einzug", ritual: "Stampfen und Salz", hocke: "In die Hocke", bereit: "Warten auf das Zeichen", ende: "Entschieden" }[st.ph]]]);
       },
       draw(c, t) {
         c.save(); if (st.beben > 0) c.translate((Math.random() - 0.5) * 9 * st.beben, (Math.random() - 0.5) * 7 * st.beben);
@@ -2877,14 +2901,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           if (st.ph !== "ende" || v.fall < 0.3) { c.strokeStyle = col; c.lineWidth = ich ? 4 : 2.5; c.beginPath(); c.ellipse(x, CY + 4, 66, 15, 0, 0, R.TAU); c.stroke(); const w = Math.max(40, name.length * 8.4 + 18); c.fillStyle = col; c.fillRect(x - w / 2, CY + 24, w, 18); c.strokeStyle = "#141B25"; c.lineWidth = 2; c.strokeRect(x - w / 2, CY + 24, w, 18); R.text(c, name, x, CY + 33.5, 11, "#F7F4EC");
             if (ich && (st.ph === "einzug" || st.ph === "ritual" || st.ph === "hocke")) { const y = CY - 218 + Math.sin(t * 5) * 4; c.fillStyle = col; c.beginPath(); c.moveTo(x, y + 16); c.lineTo(x - 11, y); c.lineTo(x + 11, y); c.closePath(); c.fill(); c.strokeStyle = "#141B25"; c.stroke(); } } }
         const reihe = V.slice().sort((p, q) => (p.f.akt && p.f.akt.art === "weich" ? 1 : 0) - (q.f.akt && q.f.akt.art === "weich" ? 1 : 0));
-        for (const v of reihe) { const raus = st.ph === "ende" && s.wie === "raus" && v.fall > 0, y = CY + (raus ? v.fall * 46 : 0) + (v.f.akt && v.f.akt.art === "weich" ? 12 : 0);
-          yeti(c, CX + v.x * PXM, y, { pose: v.pose, dir: v.dir, turn: v.turn, kipp: raus ? -v.fall * 0.5 : 0, art: Object.assign({}, v.art, { mund: v.mund, auge: st.ph === "ende" && v.fall > 0.5 ? "zu" : null }) }); }
+        for (const v of reihe) { const verl = st.ph === "ende" && v.fall > 0, raus = verl && s.wie === "raus", u = raus ? Math.max(0, (v.fall - 0.45) / 0.55) : 0, lad = v.f.akt && v.f.akt.art === "schub" ? P.clamp(v.f.akt.lade / P.LADEN, 0, 1) : 0;
+          const y = CY + (raus ? u * u * 74 : verl ? -Math.abs(Math.sin(v.fall * Math.PI * 2)) * 16 * (1 - v.fall) : 0) + (v.f.akt && v.f.akt.art === "weich" ? 12 : 0), xs = CX + v.x * PXM + (lad ? (Math.random() - 0.5) * 5 * lad : 0);
+          if (lad > 0.05) { c.strokeStyle = `rgba(221,164,59,${0.4 + 0.6 * lad})`; c.lineWidth = 3 + 5 * lad; c.beginPath(); c.ellipse(xs, CY + 4, 66 + 26 * lad, 15 + 6 * lad, 0, 0, R.TAU); c.stroke(); }
+          yeti(c, xs, y, { pose: v.pose, dir: v.dir, turn: v.turn, lift: v.heb > 0 ? 18 * Math.sin(Math.min(1, (0.7 - v.heb) / 0.25) * Math.PI / 2) : 0, kipp: raus ? -u * 1.25 : 0, art: Object.assign({}, v.art, { mund: v.mund, auge: st.ph === "ende" && v.fall > 0.5 ? "zu" : null }) }); }
         for (const p of st.teile) { c.globalAlpha = Math.min(1, p.l * 2); c.fillStyle = p.c; c.beginPath(); c.arc(p.x, p.y, p.r, 0, R.TAU); c.fill(); } c.globalAlpha = 1;
         // Gleichgewicht beider Ringer
-        if (st.ph === "kampf" || st.ph === "ende") [[a, 196, R.myName(), ICH.belt], [b, R.W - 262, gegner.name, gegner.belt]].forEach(([f, x, name, col]) => { const y = 52; c.fillStyle = "rgba(20,27,37,0.78)"; c.fillRect(x - 92, y, 184, 20); c.fillStyle = f.bal > 0.55 ? "#3F8F5A" : f.bal > 0.3 ? "#DDA43B" : "#C23B2A"; c.fillRect(x - 89, y + 3, 178 * P.clamp(f.bal, 0, 1), 14); R.text(c, name.toUpperCase() + " · STAND", x, y + 10, 10, "#F1E7D2"); c.fillStyle = col; c.fillRect(x - 92, y - 4, 184, 4); });
-        if (st.hinweis) { const x = CX + V[1].x * PXM, tx = { schub: "← SCHUB", griff: "GRIFF", weich: "WEICHT AUS", wurf: "WURF" }[st.hinweis]; R.tafel(c, x - 52, 78, 104, 22, [[tx, 11, "#C23B2A"]]); }
-        if (st.ph === "kampf") { c.fillStyle = "rgba(20,27,37,0.72)"; c.fillRect(CX - 170, R.H - 30, 340, 22); R.text(c, "→ schieben    ← ausweichen    ↑ " + (a.griff ? "Wurf" : "greifen"), CX, R.H - 19, 12, "#F1E7D2"); }
-        if (st.banner && st.tEnde > 0.5) { const b2 = st.banner; R.tafel(c, CX - 170, 78, 340, 70, [[b2.ich ? "SIEG DURCH" : "NIEDERLAGE DURCH", 10, "#8A8F9C"], [b2.titel.toUpperCase(), 30, b2.ich ? "#141B25" : "#C23B2A"], [b2.sub, 12, "#2C6FB3"]]); }
+        if (st.ph === "kampf" || st.ph === "ende") [[a, 196, R.myName(), ICH.belt], [b, R.W - 262, gegner.name, gegner.belt]].forEach(([f, x, name, col]) => { const y = 52; c.fillStyle = "rgba(20,27,37,0.78)"; c.fillRect(x - 92, y, 184, 20); c.fillStyle = f.bal > 0.55 ? "#3F8F5A" : f.bal > 0.3 ? "#DDA43B" : "#C23B2A"; c.fillRect(x - 89, y + 3, 178 * P.clamp(f.bal, 0, 1), 14); R.text(c, name.toUpperCase() + " · STAND", x, y + 10, 10, "#F1E7D2"); c.fillStyle = col; c.fillRect(x - 92, y - 4, 184, 4); if (f.griff) { c.fillStyle = "rgba(20,27,37,0.78)"; c.fillRect(x - 92, y + 20, 184, 9); c.fillStyle = "#DDA43B"; c.fillRect(x - 89, y + 22, 178 * P.fest(f), 5); R.text(c, "GRIFF", x, y + 24.5, 7, "#141B25"); } });
+        if (st.ph === "ende" && s.wie === "boden") { const v = V.find((q) => q.fall >= 1); if (v && st.tEnde < 3.4) for (let k = 0; k < 3; k++) { const w = t * 5 + k * 2.1, sx = CX + v.x * PXM + v.dir * 78 + Math.cos(w) * 22, sy = CY - 44 + Math.sin(w) * 7; c.fillStyle = "#F2C94C"; c.beginPath(); for (let q = 0; q < 10; q++) { const rr = q % 2 ? 2.4 : 6, ww = q * Math.PI / 5 + w; c.lineTo(sx + Math.cos(ww) * rr, sy + Math.sin(ww) * rr); } c.closePath(); c.fill(); } }
+        if (st.hinweis) { const x = CX + V[1].x * PXM, tx = { schub: "← SCHUB", lade: "LÄDT AUF", griff: "GRIFF", weich: "WEICHT AUS", wurf: "WURF", heben: "HEBT AUS" }[st.hinweis]; R.tafel(c, x - 52, 78, 104, 22, [[tx, 11, "#C23B2A"]]); }
+        if (st.ph === "kampf") { c.fillStyle = "rgba(20,27,37,0.72)"; c.fillRect(CX - 215, R.H - 30, 430, 22); R.text(c, a.griff ? "→ drängen     ← werfen     ↑ ausheben" : "→ schieben (halten lädt auf)     ← ausweichen     ↑ greifen", CX, R.H - 19, 12, "#F1E7D2"); }
+        if (st.banner && st.tEnde > 0.5) { const b2 = st.banner; R.tafel(c, CX - 170, R.H - 86, 340, 70, [[b2.ich ? "SIEG DURCH" : "NIEDERLAGE DURCH", 10, "#8A8F9C"], [b2.titel.toUpperCase(), 30, b2.ich ? "#141B25" : "#C23B2A"], [b2.sub, 12, "#2C6FB3"]]); }
         c.restore();
       },
     });
@@ -2915,7 +2942,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       ["Wer bin ich", "Du bist immer der Yeti links mit dem roten Gürtel. Am Boden liegt ein roter Ring um deine Füße, darunter steht „Du“. Der Gegner steht rechts, mit seinem Namen und seiner Gürtelfarbe."],
       ["Start", "Halten: Dein Yeti setzt die Fäuste auf den Boden. Der Schiedsrichter hebt den Fächer. Wenn der Fächer fällt, loslassen: Wer schneller aus der Hocke kommt, gewinnt den Aufprall. Wer vor dem Zeichen loslässt, hat einen Fehlstart."],
       ["Kampf", "Drei Wische. Nach vorn: schieben. Zurück: ausweichen. Hoch: nach dem Gürtel greifen. Schieben sprengt einen Griff, Greifen fängt den Ausweichenden, Ausweichen lässt den Schub ins Leere laufen. Jede Bewegung holt sichtbar aus: Lies den Gegner."],
-      ["Gürtel und Wurf", "Wer den Griff hat, drängt stärker und kann nicht mehr ausmanövriert werden. Hoch wischen wird dann zum Wurf: Er gelingt, wenn der Gegner wackelt, am Rand steht oder gerade selbst angreift. Sonst kostet er dich das Gleichgewicht. Ein Schub löst den Griff des Gegners."],
+      ["Stoß aufladen", "Bleibt der Finger nach dem Wisch nach vorn liegen, lädt dein Yeti den Stoß auf, bis du loslässt. Ein geladener Stoß schiebt viel weiter und sprengt auch einen festen Griff. Weicht der Gegner aber aus, stürzt du mit voller Wucht ins Leere."],
+      ["Am Gürtel", "Wer den Griff hat, kann nicht mehr ausmanövriert werden, und der Griff wird mit der Zeit fester (goldener Balken). Dann gilt: nach vorn drängen, hoch ausheben und zum Rand tragen (nur mit festem Griff), zurück werfen. Der Wurf gelingt, wenn der Gegner wackelt, am Rand steht oder gerade selbst angreift. Wer beim Ausheben in einen Stoß gerät, wird niedergedrückt."],
       ["Noch nicht drin", "Eigene Yetis zur Wahl, Rangliste über mehrere Turniere, Kampf zu zweit per Link, mehr Siegtechniken."]],
     plakat(c, t) { if (!R) return; arena(c, t, dSt); gyoji(c, t, dSt); for (const [x, art, dir, ph] of [[-0.62, ICH, 1, 0], [0.62, YETIS[2], -1, 2]]) { c.fillStyle = "rgba(60,40,24,0.28)"; c.beginPath(); c.ellipse(CX + x * PXM, CY + 4, 62, 13, 0, 0, R.TAU); c.fill(); yeti(c, CX + x * PXM, CY, { pose: misch(PO.kampf, PO.schubVor, 0.3 + 0.3 * Math.sin(t * 2.4 + ph)), dir, art }); } },
   });
