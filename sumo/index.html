@@ -2720,11 +2720,23 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     let sum = 0; for (const k in w) sum += w[k]; let z = r() * sum, wahl = "schub"; for (const k in w) { z -= w[k]; if (z <= 0) { wahl = k; break; } }
     tu(s, f, wahl, wahl === "schub" && r() < 0.18 + 0.3 * f.st ? { lade: 0.25 + r() * 0.6 } : null); f.pause = 0; f.naechste = 0.2 + (1 - f.st) * 0.55 + r() * 0.3;
   }
+  // Für den Kampf in Runden (seit 0.3): Der Rechner legt seinen Zug vor dem Gong fest (waehle) und liest mit Können manchmal den Zug des anderen (kontra).
+  function waehle(s, f) {
+    const o = andere(s, f), r = s.r, w = Object.assign({ wurf: 0, heben: 0 }, TYPEN[f.typ] || TYPEN.schieber);
+    if (f.griff) { w.schub = 5; w.griff = 0; w.wurf = o.bal < 0.55 || zumRand(s, o) < 0.55 ? 5 : 0.6; w.weich = 0; w.heben = fest(f) >= 0.55 && o.bal < 0.8 ? 2.4 : 0; }
+    if (o.griff) { w.schub *= 2.2; w.weich *= 0.15; }
+    if (zumRand(s, f) < 0.6) { w.weich *= 1.9; if (f.griff) w.wurf += 3; }
+    if (o.bal < 0.4) w.weich *= 1.4;
+    let sum = 0; for (const k in w) sum += w[k]; let z = r() * sum, wahl = "schub"; for (const k in w) { z -= w[k]; if (z <= 0) { wahl = k; break; } }
+    return [wahl, wahl === "schub" && r() < 0.14 + 0.26 * f.st ? { lade: 0.25 + r() * 0.5 } : null];
+  }
+  // art: der Wisch des anderen ("schub" | "griff" | "weich"), so wie er ihn gewählt hat
+  function kontra(s, f, art) { const o = andere(s, f); if (o.griff) art = art === "griff" ? "heben" : art === "weich" ? "wurf" : art; return art === "schub" ? (f.griff ? "wurf" : o.griff ? "schub" : "weich") : art === "griff" || art === "heben" ? "schub" : "griff"; }
   function nachAkt(f) { if (!f.akt && f.naechste) { f.pause = f.naechste; f.naechste = 0; } }
   // ganzer Kampf zwischen zwei Rechnern (für Tests und Vorführung)
   function spiele(a, b, seed) { const s = kampf(a, b, seed); for (let i = 0; i < 60 * 120 && s.phase !== "ende"; i++) { ki(s, s.A); ki(s, s.B); schritt(s, 1 / 60); nachAkt(s.A); nachAkt(s.B); } return s; }
   const KIMARITE = { Oshidashi: "Hinausschieben", Yorikiri: "Hinausdrängen am Gürtel", Oshitaoshi: "Niederschieben", Yoritaoshi: "Niederdrängen am Gürtel", Hatakikomi: "Ausweichen und Niederschlagen", Uwatenage: "Wurf am Gürtel", Sukuinage: "Wurf in den Angriff hinein", Utchari: "Wurf vom Rand, rückwärts", Kirikaeshi: "Konter gegen den Wurf", Tsuridashi: "Ausheben und Hinaustragen", Abisetaoshi: "Niederdrücken des Hebenden" };
-  const api = { RING, ABSTAND, AKT, LADEN, GRIFF_FEST, TYPEN, KIMARITE, clamp, rng, ringer, kampf, los, tu, lass, fest, schritt, ki, nachAkt, spiele, ort, zumRand, andere };
+  const api = { RING, ABSTAND, AKT, LADEN, GRIFF_FEST, TYPEN, KIMARITE, clamp, rng, ringer, kampf, los, tu, lass, fest, waehle, kontra, schritt, ki, nachAkt, spiele, ort, zumRand, andere };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.SUPhys = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2732,7 +2744,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Ablauf wie im Sumo: Einzug, Stampfen (Shiko), Salz, Hocke, Fäuste auf den Boden, Aufprall (Tachiai), Kampf, Siegtechnik (Kimarite).
 (function () {
   "use strict";
-  const VERSION = "0.2.0";
+  const VERSION = "0.3.0";
   const P = window.SUPhys, F = window.CMFigur, F3 = window.Figur3D;
   const CX = 422, CY = 294, RX = 300, RY = 58, PXM = RX / P.RING, SC = 1.95;
   const YETIS = [
@@ -2820,9 +2832,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, a = P.ringer({ st: 0.9, name: R.myName() }), b = P.ringer({ st: gegner.st, typ: gegner.typ, kraft: gegner.kraft, masse: gegner.masse, name: gegner.name }), s = P.kampf(a, b, seed);
     // Anzeige je Ringer: aktuelle Pose (gleitet zur Zielpose), Blickdrehung, Zusatzbewegung
     const V = [{ f: a, art: ICH, dir: 1, pose: PO.steh, x: -1.9, turn: 0.42, kipp: 0, fall: 0 }, { f: b, art: gegner, dir: -1, pose: PO.steh, x: 1.9, turn: 0.42, kipp: 0, fall: 0 }];
-    const st = { ph: "einzug", t: 0, faecher: { w: -0.5, seite: 1 }, jubel: 0, beben: 0, zeit: 1, teile: [], banner: null, haelt: false, botAn: false, acc: [0, 0], sperre: 0, tEnde: 0, hinweis: null };
+    const NAMEN = { schub: "Schieben", griff: "Greifen", weich: "Ausweichen", wurf: "Werfen", heben: "Ausheben" }, runde = () => ({ ph: "wahl", t: 0, wahl: null, geg: null, dauer: 1.9 - 0.7 * gegner.st, zug: null });
+    const st = { rd: runde(), ph: "einzug", t: 0, faecher: { w: -0.5, seite: 1 }, jubel: 0, beben: 0, zeit: 1, teile: [], banner: null, haelt: false, botAn: false, acc: [0, 0], sperre: 0, tEnde: 0, hinweis: null };
     const staub = (x, n, kraft, farbe) => { for (let i = 0; i < n; i++) st.teile.push({ x: CX + x * PXM + (Math.random() - 0.5) * 30, y: CY + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 120 * kraft, vy: -Math.random() * 90 * kraft, g: 240, l: 0.5 + Math.random() * 0.5, r: 2 + Math.random() * 3, c: farbe || "rgba(255,255,255,0.85)" }); };
-    function eingabe(art) { if (st.ph !== "kampf" || st.sperre > 0) return; if (P.tu(s, a, art, art === "schub" && st.haelt ? { halten: true } : null)) { st.sperre = 0.12; R.ton.klick(); } }
+    function eingabe(art) { if (st.ph !== "kampf" || st.rd.ph !== "wahl") return; if (st.rd.wahl !== art) R.ton.klick(); st.rd.wahl = art; }
     function wisch(dx, dy) { st.acc[0] += dx; st.acc[1] += dy; const [x, y] = st.acc; if (Math.hypot(x, y) < 26) return; st.acc = [0, 0]; eingabe(-y > Math.abs(x) ? "griff" : x > 0 ? "schub" : "weich"); }
     function runter() { st.acc = [0, 0]; if (st.ph === "ritual") { st.ph = "hocke"; st.t = 0; } st.haelt = true; }
     function hoch() { st.haelt = false; if (st.ph === "kampf") P.lass(s, a); if (st.ph === "bereit") { const e = P.los(s, a); if (e === "fehlstart") fehlstart(a); } }
@@ -2831,7 +2844,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     let px = 0, py = 0, unten = false;
     R.stick({ seite: "rechts", text: "Kampf", onDown: runter, onMove: wisch, onUp: hoch });
     R.szene({
-      onDown(x, y) { unten = true; px = x; py = y; runter(); }, onMove(x, y) { if (unten) { wisch(x - px, y - py); px = x; py = y; } }, onUp() { unten = false; hoch(); },
+      onDown(x, y) { if (st.ph === "kampf" && y > R.H - 50 && Math.abs(x - CX) < 216) { st.haelt = true; return eingabe(x < CX - 72 ? "weich" : x > CX + 72 ? "schub" : "griff"); } unten = true; px = x; py = y; runter(); }, onMove(x, y) { if (unten) { wisch(x - px, y - py); px = x; py = y; } }, onUp() { unten = false; hoch(); },
       taste(k, an) { if (st.ph === "kampf") { if (an) { st.haelt = true; eingabe(k === "rechts" ? "schub" : k === "links" ? "weich" : "griff"); } else hoch(); } else if (an) runter(); else hoch(); },
       bot() { st.botAn = true; },
       update(dt0) {
@@ -2848,8 +2861,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             for (const e of ev) if (e.art === "aufprall") { st.ph = "kampf"; st.beben = 1; st.jubel = 1; R.ton.klack(); R.ton.wusch(); staub(s.m, 22, 1.4); R.tippWeg(); if (e.text !== "gleich") R.sag(e.wer === "A" ? "Starker Antritt!" : `${gegner.name} war schneller`, 1.1, e.wer !== "A"); } }
         }
         else if (st.ph === "kampf") {
-          R.tipp("kampf", "Wische: nach vorn schieben, zurück ausweichen, hoch greifen. Nach dem Wisch halten lädt den Stoß auf.", 8); if (a.griff) R.tipp("griff", "Du hast den Griff: vorn drängen, hoch ausheben (wenn der Griff fest sitzt), zurück werfen.", 7);
-          if (st.botAn) P.ki(s, a); P.ki(s, b); const ev = P.schritt(s, dt); P.nachAkt(a); P.nachAkt(b);
+          if (st.rd.ph === "wahl") { R.tipp("kampf", "Wähle unten deinen Zug, solange der Balken läuft. Beim Gong handeln beide zugleich. Oben steht, was was schlägt.", 7); if (a.griff) R.tipp("griff", "Du hast den Griff: Drängen geht immer. Werfen klappt, wenn er wackelt. Ausheben braucht den festen Griff.", 7); }
+          // Kampf in Runden: Wahlzeit (Balken läuft ab), beim Gong handeln beide im selben Augenblick, dann die nächste Runde
+          const rd = st.rd; rd.t += dt;
+          if (rd.ph === "wahl") { if (!rd.geg) rd.geg = P.waehle(s, b); if (st.botAn && !rd.wahl && rd.t > 0.3) rd.wahl = P.waehle(s, a)[0];
+            if (rd.t >= rd.dauer) { let g2 = rd.geg; if (rd.wahl && s.r() < 0.05 + 0.36 * b.st) g2 = [P.kontra(s, b, rd.wahl), null];   // gute Gegner lesen dich manchmal
+              a.pause = b.pause = 0; if (rd.wahl) P.tu(s, a, rd.wahl, rd.wahl === "schub" && st.haelt && !st.botAn ? { halten: true } : null); P.tu(s, b, g2[0], g2[1]);
+              rd.zug = [a.akt ? a.akt.art : null, b.akt ? b.akt.art : null]; rd.ph = "zug"; rd.t = 0; R.ton.klack(); R.tippWeg(); } }
+          else if ((rd.t > 0.6 && !a.akt && !b.akt) || rd.t > 3) st.rd = runde();
+          const ev = P.schritt(s, dt);
           for (const e of ev) { const ich = e.wer === "A", v = ich ? V[1] : V[0], x = P.ort(s, v.f);
             if (e.art === "schub" || e.art === "draengen") { const voll = e.text === "voll"; R.ton.klack(); staub(x, voll ? 20 : 7, voll ? 1.5 : 0.8); st.beben = voll ? 0.9 : 0.35; v.treffer = voll ? 0.5 : 0.3; if (voll) { st.jubel = 0.8; R.sag(ich ? "Wuchtiger Stoß!" : `${gegner.name} stößt mit voller Wucht`, 0.9, !ich); } }
             else if (e.art === "haelt") { R.ton.knapp(); R.sag(ich ? `${gegner.name} hält den Griff. Lade den Stoß auf!` : "Dein Griff hält!", 1.1, ich); staub(x, 5, 0.6); }
@@ -2890,7 +2910,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         });
         for (const p of st.teile) { p.l -= dt0; p.x += p.vx * dt0; p.y += p.vy * dt0; p.vy += p.g * dt0; } st.teile = st.teile.filter((p) => p.l > 0);
         // Hinweis über dem Gegner, solange er ausholt (bei den ersten, schwächeren Gegnern)
-        const ba = b.akt; st.hinweis = st.ph === "kampf" && ba && ba.t < P.AKT[ba.art].vor && gegner.st < 0.6 ? (ba.art === "schub" && ba.lade > 0.08 ? "lade" : ba.art) : null;
+        { const rd = st.rd, g2 = rd.geg && rd.geg[0]; st.hinweis = st.ph === "kampf" && rd.ph === "wahl" && g2 && gegner.st < 0.6 && rd.t > rd.dauer * 0.4 ? (b.griff ? (g2 === "griff" ? "heben" : g2 === "weich" ? "wurf" : g2) : g2 === "schub" && rd.geg[1] ? "lade" : g2) : null; }
         R.chips([[`${von > 1 ? "Kampf " + nr + " von " + von : "Einzelkampf"}`, "dark"], [`Du (links, rot) gegen ${gegner.name}`, "gold"], st.ph === "kampf" ? [a.griff ? (P.fest(a) >= 0.55 ? "Dein Griff sitzt fest" : "Du hast den Griff") : b.griff ? (P.fest(b) >= 0.5 ? "Sein Griff sitzt fest" : "Er hat den Griff") : "Offen", a.griff ? "good" : b.griff ? "warn" : ""] : [{ einzug: "Einzug", ritual: "Stampfen und Salz", hocke: "In die Hocke", bereit: "Warten auf das Zeichen", ende: "Entschieden" }[st.ph]]]);
       },
       draw(c, t) {
@@ -2898,7 +2918,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         arena(c, t, st); gyoji(c, t, st);
         for (const v of V) { const x = CX + v.x * PXM, ich = v === V[0], col = ich ? ICH.belt : gegner.belt, name = ich ? "DU" : gegner.name.toUpperCase(); c.fillStyle = "rgba(60,40,24,0.28)"; c.beginPath(); c.ellipse(x, CY + 4, 62, 13, 0, 0, R.TAU); c.fill();
           // wer ist wer: farbiger Ring am Boden in der Gürtelfarbe und ein Schild darunter; der eigene Yeti zusätzlich mit Pfeil
-          if (st.ph !== "ende" || v.fall < 0.3) { c.strokeStyle = col; c.lineWidth = ich ? 4 : 2.5; c.beginPath(); c.ellipse(x, CY + 4, 66, 15, 0, 0, R.TAU); c.stroke(); const w = Math.max(40, name.length * 8.4 + 18); c.fillStyle = col; c.fillRect(x - w / 2, CY + 24, w, 18); c.strokeStyle = "#141B25"; c.lineWidth = 2; c.strokeRect(x - w / 2, CY + 24, w, 18); R.text(c, name, x, CY + 33.5, 11, "#F7F4EC");
+          if (st.ph !== "ende" || v.fall < 0.3) { c.strokeStyle = col; c.lineWidth = ich ? 4 : 2.5; c.beginPath(); c.ellipse(x, CY + 4, 66, 15, 0, 0, R.TAU); c.stroke(); const w = Math.max(40, name.length * 8.4 + 18); if (st.ph !== "kampf") { c.fillStyle = col; c.fillRect(x - w / 2, CY + 24, w, 18); c.strokeStyle = "#141B25"; c.lineWidth = 2; c.strokeRect(x - w / 2, CY + 24, w, 18); R.text(c, name, x, CY + 33.5, 11, "#F7F4EC"); }
             if (ich && (st.ph === "einzug" || st.ph === "ritual" || st.ph === "hocke")) { const y = CY - 218 + Math.sin(t * 5) * 4; c.fillStyle = col; c.beginPath(); c.moveTo(x, y + 16); c.lineTo(x - 11, y); c.lineTo(x + 11, y); c.closePath(); c.fill(); c.strokeStyle = "#141B25"; c.stroke(); } } }
         const reihe = V.slice().sort((p, q) => (p.f.akt && p.f.akt.art === "weich" ? 1 : 0) - (q.f.akt && q.f.akt.art === "weich" ? 1 : 0));
         for (const v of reihe) { const verl = st.ph === "ende" && v.fall > 0, raus = verl && s.wie === "raus", u = raus ? Math.max(0, (v.fall - 0.45) / 0.55) : 0, lad = v.f.akt && v.f.akt.art === "schub" ? P.clamp(v.f.akt.lade / P.LADEN, 0, 1) : 0;
@@ -2909,8 +2929,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         // Gleichgewicht beider Ringer
         if (st.ph === "kampf" || st.ph === "ende") [[a, 196, R.myName(), ICH.belt], [b, R.W - 262, gegner.name, gegner.belt]].forEach(([f, x, name, col]) => { const y = 52; c.fillStyle = "rgba(20,27,37,0.78)"; c.fillRect(x - 92, y, 184, 20); c.fillStyle = f.bal > 0.55 ? "#3F8F5A" : f.bal > 0.3 ? "#DDA43B" : "#C23B2A"; c.fillRect(x - 89, y + 3, 178 * P.clamp(f.bal, 0, 1), 14); R.text(c, name.toUpperCase() + " · STAND", x, y + 10, 10, "#F1E7D2"); c.fillStyle = col; c.fillRect(x - 92, y - 4, 184, 4); if (f.griff) { c.fillStyle = "rgba(20,27,37,0.78)"; c.fillRect(x - 92, y + 20, 184, 9); c.fillStyle = "#DDA43B"; c.fillRect(x - 89, y + 22, 178 * P.fest(f), 5); R.text(c, "GRIFF", x, y + 24.5, 7, "#141B25"); } });
         if (st.ph === "ende" && s.wie === "boden") { const v = V.find((q) => q.fall >= 1); if (v && st.tEnde < 3.4) for (let k = 0; k < 3; k++) { const w = t * 5 + k * 2.1, sx = CX + v.x * PXM + v.dir * 78 + Math.cos(w) * 22, sy = CY - 44 + Math.sin(w) * 7; c.fillStyle = "#F2C94C"; c.beginPath(); for (let q = 0; q < 10; q++) { const rr = q % 2 ? 2.4 : 6, ww = q * Math.PI / 5 + w; c.lineTo(sx + Math.cos(ww) * rr, sy + Math.sin(ww) * rr); } c.closePath(); c.fill(); } }
-        if (st.hinweis) { const x = CX + V[1].x * PXM, tx = { schub: "← SCHUB", lade: "LÄDT AUF", griff: "GRIFF", weich: "WEICHT AUS", wurf: "WURF", heben: "HEBT AUS" }[st.hinweis]; R.tafel(c, x - 52, 78, 104, 22, [[tx, 11, "#C23B2A"]]); }
-        if (st.ph === "kampf") { c.fillStyle = "rgba(20,27,37,0.72)"; c.fillRect(CX - 215, R.H - 30, 430, 22); R.text(c, a.griff ? "→ drängen     ← werfen     ↑ ausheben" : "→ schieben (halten lädt auf)     ← ausweichen     ↑ greifen", CX, R.H - 19, 12, "#F1E7D2"); }
+        if (st.hinweis) { const x = CX + V[1].x * PXM, tx = { schub: "WILL SCHIEBEN", lade: "LÄDT AUF", griff: "WILL GREIFEN", weich: "WILL AUSWEICHEN", wurf: "WILL WERFEN", heben: "WILL AUSHEBEN" }[st.hinweis]; R.tafel(c, x - 70, 106, 140, 22, [[tx, 11, "#C23B2A"]]); }
+        if (st.ph === "kampf") { const rd = st.rd, wahl = rd.ph === "wahl", namen = a.griff ? ["Werfen", "Ausheben", "Drängen"] : ["Ausweichen", "Greifen", "Schieben"], arts = ["weich", "griff", "schub"], pfeil = ["←", "↑", "→"];
+          // was schlägt was: steht immer oben
+          c.fillStyle = "rgba(20,27,37,0.8)"; c.fillRect(CX - 196, 80, 392, 22); R.text(c, a.griff ? "Am Gürtel: Drängen geht immer · Werfen, wenn er wackelt · Ausheben mit festem Griff" : "Schieben schlägt Greifen · Greifen schlägt Ausweichen · Ausweichen schlägt Schieben", CX, 91, a.griff ? 9 : 10, "#F1E7D2");
+          // drei Züge zum Antippen (oder wischen); der gewählte leuchtet, der Balken zeigt die Wahlzeit
+          arts.forEach((art, k) => { const bx = CX - 214 + k * 144, gew = rd.wahl === art && wahl, aus = !wahl; c.fillStyle = gew ? "#DDA43B" : aus ? "rgba(20,27,37,0.45)" : "#F1E7D2"; c.fillRect(bx, R.H - 44, 140, 36); c.strokeStyle = "#141B25"; c.lineWidth = gew ? 4 : 2; c.strokeRect(bx, R.H - 44, 140, 36); R.text(c, pfeil[k] + " " + namen[k], bx + 70, R.H - 25, 14, aus ? "rgba(241,231,210,0.6)" : "#141B25"); });
+          if (wahl) { const u = 1 - rd.t / rd.dauer; c.fillStyle = "rgba(20,27,37,0.8)"; c.fillRect(CX - 214, R.H - 56, 428, 8); c.fillStyle = u > 0.35 ? "#3F8F5A" : "#C23B2A"; c.fillRect(CX - 212, R.H - 54, 424 * Math.max(0, u), 4); R.text(c, rd.wahl ? "GEWÄHLT: " + namen[arts.indexOf(rd.wahl)].toUpperCase() + (rd.wahl === "schub" && !a.griff ? " (HALTEN LÄDT AUF)" : "") : "WÄHLE DEINEN ZUG", CX, R.H - 66, 11, "#F1E7D2"); }
+          else if (rd.zug && rd.t < 1.3) { const n = (z, griff) => (z ? (z === "schub" && griff ? "Drängen" : NAMEN[z]) : "nichts"); R.tafel(c, CX - 190, 134, 380, 28, [[`DU: ${n(rd.zug[0], a.griff).toUpperCase()}   ·   ${gegner.name.toUpperCase()}: ${n(rd.zug[1], b.griff).toUpperCase()}`, 13, "#141B25"]]); } }
+        if (st.ph === "hocke" || st.ph === "bereit") { const frei = st.ph === "bereit" && s.tPh >= s.signal, txt = st.ph === "hocke" ? "HALTEN" : frei ? "JETZT LOSLASSEN!" : "WARTEN …"; R.tafel(c, CX - 120, 112, 240, 34, [[txt, 18, frei ? "#C23B2A" : "#141B25"]]); }
         if (st.banner && st.tEnde > 0.5) { const b2 = st.banner; R.tafel(c, CX - 170, R.H - 86, 340, 70, [[b2.ich ? "SIEG DURCH" : "NIEDERLAGE DURCH", 10, "#8A8F9C"], [b2.titel.toUpperCase(), 30, b2.ich ? "#141B25" : "#C23B2A"], [b2.sub, 12, "#2C6FB3"]]); }
         c.restore();
       },
@@ -2941,8 +2968,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     info: [["Regeln", "Wie im Sumo: Verloren hat, wer den Ring aus Strohballen verlässt oder mit etwas anderem als den Fußsohlen den Boden berührt. Der Ring misst 4,55 Meter. Ein Kampf dauert meist nur Sekunden."],
       ["Wer bin ich", "Du bist immer der Yeti links mit dem roten Gürtel. Am Boden liegt ein roter Ring um deine Füße, darunter steht „Du“. Der Gegner steht rechts, mit seinem Namen und seiner Gürtelfarbe."],
       ["Start", "Halten: Dein Yeti setzt die Fäuste auf den Boden. Der Schiedsrichter hebt den Fächer. Wenn der Fächer fällt, loslassen: Wer schneller aus der Hocke kommt, gewinnt den Aufprall. Wer vor dem Zeichen loslässt, hat einen Fehlstart."],
-      ["Kampf", "Drei Wische. Nach vorn: schieben. Zurück: ausweichen. Hoch: nach dem Gürtel greifen. Schieben sprengt einen Griff, Greifen fängt den Ausweichenden, Ausweichen lässt den Schub ins Leere laufen. Jede Bewegung holt sichtbar aus: Lies den Gegner."],
-      ["Stoß aufladen", "Bleibt der Finger nach dem Wisch nach vorn liegen, lädt dein Yeti den Stoß auf, bis du loslässt. Ein geladener Stoß schiebt viel weiter und sprengt auch einen festen Griff. Weicht der Gegner aber aus, stürzt du mit voller Wucht ins Leere."],
+      ["Kampf in Runden", "Der Kampf läuft in kurzen Runden. Solange der Balken läuft, wählst du unten einen von drei Zügen (antippen oder wischen), du kannst bis zuletzt wechseln. Beim Gong handeln beide Yetis im selben Augenblick. Danach kommt die nächste Runde."],
+      ["Was schlägt was", "Schieben schlägt Greifen: Der Stoß sprengt den Griff. Greifen schlägt Ausweichen: Der Ausweichende wird am Gürtel gefangen. Ausweichen schlägt Schieben: Der Stoß geht ins Leere und der Schiebende stolpert. Bei gleichen Zügen prallen beide aufeinander oder nichts passiert. Bei den ersten Gegnern steht über dem Kopf, was sie vorhaben."],
+      ["Stoß aufladen", "Hältst du „Schieben“ beim Gong noch gedrückt, lädt dein Yeti den Stoß auf, bis du loslässt. Ein geladener Stoß schiebt viel weiter und sprengt auch einen festen Griff. Weicht der Gegner aber aus, stürzt du mit voller Wucht ins Leere."],
       ["Am Gürtel", "Wer den Griff hat, kann nicht mehr ausmanövriert werden, und der Griff wird mit der Zeit fester (goldener Balken). Dann gilt: nach vorn drängen, hoch ausheben und zum Rand tragen (nur mit festem Griff), zurück werfen. Der Wurf gelingt, wenn der Gegner wackelt, am Rand steht oder gerade selbst angreift. Wer beim Ausheben in einen Stoß gerät, wird niedergedrückt."],
       ["Noch nicht drin", "Eigene Yetis zur Wahl, Rangliste über mehrere Turniere, Kampf zu zweit per Link, mehr Siegtechniken."]],
     plakat(c, t) { if (!R) return; arena(c, t, dSt); gyoji(c, t, dSt); for (const [x, art, dir, ph] of [[-0.62, ICH, 1, 0], [0.62, YETIS[2], -1, 2]]) { c.fillStyle = "rgba(60,40,24,0.28)"; c.beginPath(); c.ellipse(CX + x * PXM, CY + 4, 62, 13, 0, 0, R.TAU); c.fill(); yeti(c, CX + x * PXM, CY, { pose: misch(PO.kampf, PO.schubVor, 0.3 + 0.3 * Math.sin(t * 2.4 + ph)), dir, art }); } },
