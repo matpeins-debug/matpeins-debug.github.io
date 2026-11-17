@@ -2751,7 +2751,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Ablauf wie im Sumo: Einzug, Stampfen (Shiko), Salz, Hocke, Fäuste auf den Boden, Aufprall (Tachiai), Kampf, Siegtechnik (Kimarite).
 (function () {
   "use strict";
-  const VERSION = "0.6.0";
+  const VERSION = "0.6.1";
   const P = window.SUPhys, F = window.CMFigur, F3 = window.Figur3D;
   const CX = 422, CY = 294, RX = 300, RY = 58, PXM = RX / P.RING, SC = 2.12;
   const YETIS = [
@@ -2892,27 +2892,26 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       bot() { st.botAn = true; },
       update(dt0) {
         const dt = dt0 * st.zeit; st.t += dt; st.sperre -= dt0; st.jubel = Math.max(0, st.jubel - dt0 * 0.8); st.beben = Math.max(0, st.beben - dt0 * 3);
-        if (st.ph === "einzug") { if (stufe === 2) R.tipp("neu2", "Neu ab diesem Gegner: Tippe nach dem Gong, wenn sich der Ring schließt (Volltreffer). „Schieben“ halten lädt den Stoß auf.", 7); if (stufe === 3) R.tipp("neu3", "Neu ab diesem Gegner: Drei gewonnene Runden füllen die Rauten. Dann wird dein nächster Zug ein Kraftakt.", 7); V[0].x += (-0.62 - V[0].x) * Math.min(1, dt * 2.4); V[1].x += (0.62 - V[1].x) * Math.min(1, dt * 2.4); if (st.t > 1.5) { st.ph = "ritual"; st.t = 0; } }
-        else if (st.ph === "ritual") { R.tipp("ritual", "Du bist der Yeti links mit dem roten Gürtel. Stampfen und Salz gehören dazu, Tippen überspringt.", 5);
+        if (st.ph === "einzug") {  V[0].x += (-0.62 - V[0].x) * Math.min(1, dt * 2.4); V[1].x += (0.62 - V[1].x) * Math.min(1, dt * 2.4); if (st.t > 1.5) { st.ph = "ritual"; st.t = 0; } }
+        else if (st.ph === "ritual") { 
           if (st.t > 1.02 && st.t - dt <= 1.02) { R.ton.klack(); st.beben = 0.5; staub(-0.62, 8, 0.6); staub(0.62, 8, 0.6); }
           if (st.t > 2.3 && st.t - dt <= 2.3) for (const v of V) for (let i = 0; i < 16; i++) st.teile.push({ x: CX + v.x * PXM + v.dir * 30, y: CY - 150, vx: v.dir * (60 + Math.random() * 120), vy: -120 - Math.random() * 90, g: 300, l: 0.9 + Math.random() * 0.4, r: 1.6, c: "#FFFFFF" });
           if (st.t > 3.3 || st.botAn) { st.ph = "hocke"; st.t = 0; } }
-        else if (st.ph === "hocke") { R.tipp("start", "Halten = Fäuste auf den Boden. Wenn der Fächer fällt: loslassen = Angriff. Zu früh ist ein Fehlstart.", 7); if ((st.haelt || st.botAn) && st.t > 0.5) { st.ph = "bereit"; s.tPh = 0; a.start = b.start = null; st.faecher.w = -1.1; R.ton.tick(); } }
+        else if (st.ph === "hocke") { if ((st.haelt || st.botAn) && st.t > 0.5) { st.ph = "bereit"; s.tPh = 0; a.start = b.start = null; st.faecher.w = -1.1; R.ton.tick(); } }
         else if (st.ph === "bereit") {
           if (!st.haelt && !st.botAn && a.start == null && s.tPh < s.signal) { const e = P.los(s, a); if (e === "fehlstart") fehlstart(a); }
           if (st.ph === "bereit") { if (s.tPh >= s.signal && st.faecher.w < 0) { st.faecher.w = 0.9; R.ton.glocke(); R.sag("Hakkeyoi!", 0.9); } if (st.botAn) P.ki(s, a); P.ki(s, b); const ev = P.schritt(s, dt);
-            for (const e of ev) if (e.art === "aufprall") { st.ph = "kampf"; st.beben = 1; st.jubel = 1; R.ton.klack(); R.ton.wusch(); staub(s.m, 22, 1.4); R.tippWeg(); if (e.text !== "gleich") R.sag(e.wer === "A" ? "Starker Antritt!" : `${gegner.name} war schneller`, 1.1, e.wer !== "A"); } }
+            for (const e of ev) if (e.art === "aufprall") { st.ph = "kampf"; st.beben = 1; st.jubel = 1; R.ton.klack(); R.ton.wusch(); staub(s.m, 22, 1.4); if (e.text !== "gleich") R.sag(e.wer === "A" ? "Starker Antritt!" : `${gegner.name} war schneller`, 1.1, e.wer !== "A"); } }
         }
         else if (st.ph === "kampf") {
-          if (st.rd.ph === "zug" && stufe >= 2) R.tipp("timing", "Tippe, wenn sich der Ring um deinen Yeti schließt: Volltreffer, oder du stemmst dich gegen seinen Zug.", 6);
-          if (st.rd.ph === "wahl" && !st.rd.lehre) { R.tipp("kampf", "Wähle unten deinen Zug, solange der Balken läuft. Beim Gong handeln beide zugleich. Oben steht, was was schlägt.", 7); if (a.griff) R.tipp("griff", "Du hast den Griff: Drängen geht immer. Werfen klappt, wenn er wackelt. Ausheben braucht den festen Griff.", 7); }
+                    
           // Kampf in Runden: Wahlzeit (Balken läuft ab), beim Gong handeln beide im selben Augenblick, dann die nächste Runde
           const rd = st.rd; rd.t += dt;
           if (rd.ph === "wahl") { if (rd.lehre && rd.wahl && rd.dauer > 1e8) rd.dauer = rd.t + 0.6; if (!rd.geg) rd.geg = P.waehle(s, b, st.verlauf); if (st.botAn && !rd.wahl && rd.t > 0.3) rd.wahl = P.waehle(s, a)[0];
             if (rd.t >= rd.dauer) { const g2 = rd.geg;   // der angezeigte Zug gilt: Die Anzeige über dem Gegner lügt nie
               a.pause = b.pause = 0; rd.stur = !!rd.wahl && st.verlauf[0] === rd.wahl && st.verlauf[1] === rd.wahl; if (rd.wahl) P.tu(s, a, rd.wahl, rd.stur ? { stur: true } : rd.wahl === "schub" && st.haelt && !st.botAn && stufe >= 2 ? { halten: true } : st.botAn && stufe >= 2 && s.r() < 0.5 ? { timed: true } : null); if (rd.lehre) lektion++; P.tu(s, b, g2[0], stufe >= 2 ? g2[1] || (s.r() < 0.1 + 0.5 * b.st ? { timed: true } : null) : null);
               st.verlauf.unshift(rd.wahl || "nichts"); st.verlauf.length = Math.min(3, st.verlauf.length);
-              rd.zug = [a.akt ? a.akt.art : null, b.akt ? b.akt.art : null]; rd.ph = "zug"; rd.t = 0; R.ton.klack(); R.tippWeg(); } }
+              rd.zug = [a.akt ? a.akt.art : null, b.akt ? b.akt.art : null]; rd.ph = "zug"; rd.t = 0; R.ton.klack(); } }
           else if (rd.ph === "zug" && ((rd.t > 0.6 && !a.akt && !b.akt) || rd.t > 3)) { rd.ph = "warum"; rd.t = 0; rd.text = erklaere(rd); }
           else if (rd.ph === "warum" && rd.t > (rd.lehre ? 2.4 : stufe < 2 ? 1.7 : 1.2)) st.rd = runde();
           const ev = P.schritt(s, dt);
@@ -2933,7 +2932,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
             else if (e.art === "prall") { R.ton.klack(); st.beben = 0.7; staub(s.m, 10, 1); }
             else if (e.art === "pariert") { R.ton.schlecht(); R.sag(ich ? "Wurf pariert" : "Wurf abgewehrt!", 0.9, ich); }
             else if (e.art === "strohballen") { R.ton.raunen(); R.sag(ich ? `${gegner.name} hält sich am Strohballen` : "Am Strohballen! Noch einmal hält er nicht.", 1.2, !ich); st.jubel = 0.7; }
-            else if (e.art === "ende") { st.ph = "ende"; st.tEnde = 0; st.zeit = 0.3; st.jubel = 1.4; st.beben = 0.8; st.faecher.seite = ich ? -1 : 1; st.faecher.w = ich ? -1.3 : 1.3; R.tippWeg(); ich ? R.ton.jubel() : R.ton.raunen(); staub(P.ort(s, ich ? b : a), 26, 1.6); st.banner = { titel: e.text, sub: P.KIMARITE[e.text] || "", ich }; } }
+            else if (e.art === "ende") { st.ph = "ende"; st.tEnde = 0; st.zeit = 0.3; st.jubel = 1.4; st.beben = 0.8; st.faecher.seite = ich ? -1 : 1; st.faecher.w = ich ? -1.3 : 1.3; ich ? R.ton.jubel() : R.ton.raunen(); staub(P.ort(s, ich ? b : a), 26, 1.6); st.banner = { titel: e.text, sub: P.KIMARITE[e.text] || "", ich }; } }
         }
         else if (st.ph === "ende") { st.tEnde += dt0; if (st.tEnde > 0.7) st.zeit = 1; if (st.tEnde > 4.2) return fertig({ sieg: s.sieger === "A", kimarite: s.kimarite, dauer: s.t }); }
         // Zielposen
@@ -2997,6 +2996,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         // Rand in Gefahr: Der Strohballen auf der Seite dessen, der kurz vor dem Hinausfallen steht, blinkt
         if (st.ph === "kampf") for (const f of [a, b]) if (P.zumRand(s, f) < 0.6) { const x = CX + f.seite * (RX - 4); if (Math.sin(t * 12) > -0.3) { c.strokeStyle = "#C23B2A"; c.lineWidth = 7; c.beginPath(); c.ellipse(CX, CY, RX, RY, 0, f.seite > 0 ? -0.5 : Math.PI - 0.5, f.seite > 0 ? 0.5 : Math.PI + 0.5); c.stroke(); } R.tafel(c, x - 38 + f.seite * 26, CY - 60, 76, 22, [["RAND!", 12, "#C23B2A"]]); }
         if (stufe >= 3 && (st.ph === "kampf" || st.ph === "ende")) [[a, 196], [b, R.W - 262]].forEach(([f, x]) => { const voll = f.schwung >= P.SCHWUNG; for (let k = 0; k < P.SCHWUNG; k++) { const px2 = x - 80 + k * 16, py2 = 40; c.fillStyle = k < Math.floor(f.schwung) ? (voll && Math.sin(t * 10) > 0 ? "#FFFFFF" : "#F2C94C") : "rgba(20,27,37,0.7)"; c.beginPath(); c.moveTo(px2, py2 - 7); c.lineTo(px2 + 6, py2); c.lineTo(px2, py2 + 7); c.lineTo(px2 - 6, py2); c.closePath(); c.fill(); c.strokeStyle = "#141B25"; c.lineWidth = 1.5; c.stroke(); } if (voll) R.text(c, "KRAFTAKT BEREIT", x + 18, 40, 9, "#F2C94C"); });
+        if (st.ph === "ritual") R.text(c, "Tippen überspringt", CX, R.H - 16, 11, "rgba(20,27,37,0.7)");
         if (st.ph === "hocke" || st.ph === "bereit") { const frei = st.ph === "bereit" && s.tPh >= s.signal, txt = st.ph === "hocke" ? "HALTEN" : frei ? "JETZT LOSLASSEN!" : "WARTEN …"; R.tafel(c, CX - 120, 112, 240, 34, [[txt, 18, frei ? "#C23B2A" : "#141B25"]]); }
         if (st.banner && st.tEnde > 0.5) { const b2 = st.banner; const wer = b2.ich ? gegner.name : "Du", grund = s.wie === "raus" ? `${wer} ${b2.ich ? "ist" : "bist"} aus dem Ring gedrängt` : `${wer} ${b2.ich ? "ist" : "bist"} zu Boden gegangen`; R.tafel(c, CX - 190, R.H - 98, 380, 88, [[b2.ich ? "SIEG DURCH" : "NIEDERLAGE DURCH", 10, "#8A8F9C"], [b2.titel.toUpperCase(), 30, b2.ich ? "#141B25" : "#C23B2A"], [b2.sub, 12, "#2C6FB3"], [grund, 12, "#141B25"]]); }
         c.restore();
@@ -3012,7 +3012,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       if (fertig) { R.medaille(platz); R.rekord("siege", siege); if (platz <= 3) R.ton.jubel(); }
       R.stand({ kicker: "Nozawa · Yeti-Basho", titel: fertig ? (siege === 7 ? "Turniersieg ohne Niederlage!" : siege >= 4 ? `${siege} Siege: Kachi-koshi` : `${siege} Siege: Make-koshi`) : `${siege} : ${erg.length - siege} nach ${erg.length} Kämpfen`,
         kopf: [["", "p"], ["", ""], ["", ""], ["Technik", "n"], ["", "n"]], zeilen: YETIS.map((y, k) => { const e = erg[k]; return { platz: k + 1, name: y.name, nat: "", spalten: [e ? e.kimarite : k === i && !fertig ? "als Nächster" : ""], wert: e ? (e.sieg ? "○" : "●") : "", ich: k === i && !fertig, strich: false }; }),
-        note: fertig ? "○ Sieg, ● Niederlage. Mehr Siege als Niederlagen heißt Kachi-koshi. Sieben Siege sind der Turniersieg." : "Sieben Kämpfe, die Gegner werden stärker. Nach vier Niederlagen ist das Turnier vorbei.",
+        note: fertig ? "○ Sieg, ● Niederlage. Mehr Siege als Niederlagen heißt Kachi-koshi. Sieben Siege sind der Turniersieg." : i === 2 ? "Neu beim nächsten Gegner: Nach dem Gong schließt sich ein Ring um deinen Yeti. Tippst du genau dann, wird es ein Volltreffer. „Schieben“ halten lädt den Stoß auf." : i === 3 ? "Neu beim nächsten Gegner: Jede gewonnene Runde füllt eine Raute. Bei drei Rauten wird dein nächster Zug ein Kraftakt." : i === 1 ? "Merke: Mit Griff am Gürtel wechseln die drei Knöpfe auf Drängen, Werfen und Ausheben." : "Sieben Kämpfe, die Gegner werden stärker. Nach vier Niederlagen ist das Turnier vorbei.",
         knoepfe: fertig ? [{ text: "Menü", fn: R.menu }, { text: "Neues Turnier", rot: true, fn: turnier }] : [{ text: "Weiter", rot: true, fn: naechster }] });
     }
     naechster();
