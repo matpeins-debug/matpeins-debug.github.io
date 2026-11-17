@@ -2389,7 +2389,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // o: { linie 0 … 1 (0 = Pistenmitte, 1 = Ideallinie), mut 0 … 1 (wie nah an die Haftgrenze), hocke: "nie" | "immer", voraus: Sekunden Vorausschau für die Hocke (2,4), bremst: darf bremsen }
   function bot(f, K, o) {
     o = o || {}; const linie = o.linie == null ? 1 : o.linie, mut = o.mut == null ? 0.8 : o.mut;
-    const v = Math.max(3, f.v), L = clamp(v * 0.85, 7, 30), u0 = K.ort(f.x, f.s).u;
+    const v = Math.max(3, f.v), L = clamp(v * (o.blick || 0.85), o.blickMin || 7, 30), u0 = K.ort(f.x, f.s).u;      // o.blick: so weit voraus zielt er (in Sekunden Fahrt); kurz für enge Torfolgen
     const dI = K.ideal ? (u) => linie * K.ideal(u) : (u) => linie * clamp(K.kr(u) * 260, -(K.halbBei(u, -1) - 2.5), K.halbBei(u, 1) - 2.5);                                  // durch die Tore, sonst zur Innenseite der Kurve
     const krI = K.ideal ? (u) => K.kr(u) + linie * (K.ideal(u + 3) - 2 * K.ideal(u) + K.ideal(u - 3)) / 9 : (u) => K.kr(u) * (1 - 0.45 * linie);
     const z = K.punkt(u0 + L, dI(u0 + L)), wunsch = Math.atan2(z[0] - f.x, z[1] - f.s), fahrt = Math.hypot(f.vx, f.vs) > 2 ? Math.atan2(f.vx, f.vs) : f.psi;
@@ -2540,7 +2540,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const fahne = (u, d, farbe) => { const tor = new T.Group(), p = raum(u, d); for (const o of [-0.4, 0.4]) { const st = new T.Mesh(stange, matS); st.position.x = o; tor.add(st); }
       tor.add(new T.Mesh(tuch, new T.MeshBasicMaterial({ color: farbe, side: T.DoubleSide }))); tor.position.set(p[0], p[1], p[2]); tor.rotation.y = -K.th(u); tor.scale.setScalar(K.torGroesse || 1); g.add(tor); };
     // Kurse mit eigenen Toren (K.tore): je Tor zwei Fahnen, dazwischen fährt man durch; sonst eine Fahne an der Innenseite jeder Kurve
-    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
+    // Slalom (K.torArt "stange"): je Tor zwei einzelne Kippstangen in einer Farbe, ohne Tuch
+    const kipp = new T.CylinderGeometry(0.035, 0.035, 1.9, 6).translate(0, 0.95, 0), kippe = (u, d, farbe) => { const p = raum(u, d), st = new T.Mesh(kipp, toon(farbe)); st.position.set(p[0], p[1], p[2]); st.scale.set(1.6, 1.15, 1.6); g.add(st); };
+    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) if (K.torArt === "stange") kippe(t.u, t.d + sd * (t.w + 0.12), K.torFarbe || (i % 2 ? C.blau : C.rot)); else fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
     for (let u = 40; u < K.lang - 15 && !K.tore; u += 2) {
       const k = K.kr(u); if (Math.abs(k) < 0.012 || u - letzte < 16 || Math.abs(K.kr(u - 2)) > Math.abs(k)) continue;
       letzte = u; fahne(u, Math.sign(k) * (HB(u, Math.sign(k)) - 0.9), nr++ % 2 ? C.blau : C.rot);
@@ -2893,6 +2895,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // Disziplinen: Ski (Taillierung), Haltung und Strafe. Nur was von BASIS abweicht.
   const DISZ = {
     abfahrt: { name: "Abfahrt", cfg: { GRIP: 2.0, SIDECUT: 50, CDA_STAND: 0.55, CDA_HOCKE: 0.2, MASSE: 95, GRIP_HOCKE: 0.75, KURVE_ZEIT: 0.4, DRUCK_NACH: 2.5, DRUCK_RATE: 0.2, TOR_STRAFE: 2, RAND: 8 } },
+    riesenslalom: { name: "Riesenslalom", cfg: { GRIP: 2.1, SIDECUT: 30, CDA_STAND: 0.5, CDA_HOCKE: 0.28, MASSE: 95, GRIP_HOCKE: 0.7, KURVE_ZEIT: 0.28, DRUCK_NACH: 1.6, DRUCK_RATE: 0.25, TOR_STRAFE: 3, RAND: 8 } },
+    slalom: { name: "Slalom", cfg: { GRIP: 2.2, SIDECUT: 13, KANTE_MAX: 66, CDA_STAND: 0.5, CDA_HOCKE: 0.35, MASSE: 90, GRIP_HOCKE: 0.6, KURVE_ZEIT: 0.16, DRUCK_NACH: 1.2, DRUCK_RATE: 0.3, TOR_STRAFE: 3, RAND: 8 } },
     superg: { name: "Super-G", cfg: { GRIP: 2.0, SIDECUT: 45, CDA_STAND: 0.55, CDA_HOCKE: 0.21, MASSE: 95, GRIP_HOCKE: 0.7, KURVE_ZEIT: 0.38, DRUCK_NACH: 2.2, DRUCK_RATE: 0.2, TOR_STRAFE: 2, RAND: 8 } },
   };
   function stelleEin(disz) { for (const k of Object.keys(P.CFG)) delete P.CFG[k]; Object.assign(P.CFG, BASIS, DISZ[disz].cfg); }
@@ -2936,10 +2940,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const hM = hS - (st + fl) / 2 * mulde; for (let w = bei + lang + mulde; w <= ende; w += 6) neu.push([w, hM - fl * (w - bei - lang - mulde)]);
     return ho.filter(([w]) => w < a - 4).concat(neu, ho.filter(([w]) => w > ende + 4));
   }
+  // Welcher Teil der Strecke je Disziplin gefahren wird (Höhen über dem Meer) und wie die Tore stehen: ab = Abstand der Tore entlang der Linie, aus = Ausschlag der Linie quer, w = halbe Torbreite.
+  // Riesenslalom und Slalom werden in Kitzbühel nicht auf dieser Strecke gefahren (der Slalom am Nachbarhang): Gelände echt, Kurssetzung erfunden, bis Daten des richtigen Hangs da sind.
+  const KITZ_PLAN = { abfahrt: { ab: null, ziel: 805 }, superg: { ab: 1345, ziel: 805 }, riesenslalom: { ab: 1090, ziel: 805, zusatz: "Hausberg", tor: { ab: 27, aus: 4, w: 3.2, erst: 50 } }, slalom: { ab: 1630, ziel: 1430, zusatz: "Steilhang", tor: { ab: 12, aus: 1.9, w: 2.4, erst: 30 } } };
   function kitz(disz) {
-    const HALB = 20;
-    const D = (root.SADaten || require("./daten.js")).kitz, sg = disz === "superg"; const L = linie(D, sg ? 1345 : null); if (!sg) L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
-    const basis = { punkte: L.punkte, hoehen: L.hoehen, zielHoehe: 805, halb: HALB, rand: 8, glatt: 14 };
+    const HALB = 20, PL = KITZ_PLAN[disz], eng = !!PL.tor;
+    const D = (root.SADaten || require("./daten.js")).kitz, sg = disz === "superg"; const L = linie(D, PL.ab); if (disz === "abfahrt") L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
+    const basis = { punkte: L.punkte, hoehen: L.hoehen, zielHoehe: PL.ziel, halb: HALB, rand: 8, glatt: 14 };
     const roh = P.kursLinie(basis), y0 = L.hoehen[0][1], NB = Math.ceil((roh.uMax - roh.uMin) / 4) + 1, BR = new Float64Array(NB);
     // Breite entlang der Strecke: je Abschnitt ein Wert, über rund 60 m weich ineinander
     { const stufe = (u) => { const h = y0 + roh.hoehe(u); let b = KITZ_ABSCHNITTE[0][2]; for (const [ab, , w] of KITZ_ABSCHNITTE) if (h <= ab) b = w; return b; }, raw = []; for (let i = 0; i < NB; i++) raw.push(stufe(roh.uMin + i * 4));
@@ -2949,22 +2956,29 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const breite = (u, seite) => { const f = P.clamp((u - roh.uMin) / 4, 0, NB - 1.001), i = Math.floor(f), b = BR[i] + (BR[i + 1] - BR[i]) * (f - i), k = (KS[i] + (KS[i + 1] - KS[i]) * (f - i)) * (seite || 0); return k > 0.004 ? Math.min(b, Math.max(6, 0.6 / k)) : b; }; basis.breite = breite;
     const konvex = (u) => { for (let q = u - 30; q <= u + 25; q += 5) if (roh.grad(q + 8) - roh.grad(q - 8) > 9) return true; return false; };   // Kante: hier wird gesprungen
     const schnitt = (u) => P.clamp(roh.kr(u) * 260, -(breite(u, -1) - 2.5), breite(u, 1) - 2.5), tore = []; let ideal = null;        // schnitt: so weit schneidet der Vorläufer die Kurve innen an
-    if (sg) {       // Super-G: alle 62 m abwechselnd links und rechts der Linie; in engen Kurven der Piste folgen die Tore der Kurve
+    if (eng) {      // Riesenslalom und Slalom: Tore in gleichem Abstand abwechselnd links und rechts; die Linie schwingt um die Drehstangen
+      const st = [[-80, 0], [0, 0]], T = PL.tor; let sd = 1;
+      for (let u = T.erst; u < roh.lang - T.ab * 0.8; u += T.ab) { if (Math.max(Math.abs(roh.kr(u - 8)), Math.abs(roh.kr(u)), Math.abs(roh.kr(u + 8))) > 0.05) { st.push([u, 0]); continue; } /* in der engsten Kehre steht kein Tor */ const frei = 1 - 0.8 * P.clamp(Math.abs(roh.kr(u)) * 30, 0, 1); st.push([u, sd * T.aus * frei]); /* wo die Piste selbst eine Kurve macht, stehen die Tore fast in einer Reihe */ tore.push({ u, d: 0, w: T.w, sd }); sd = -sd; }
+      st.push([roh.lang + 30, 0]); const wedel = P.weich(st); ideal = (u) => 0.3 * schnitt(u) + wedel(u);
+      // Die Drehstange steht innen im Bogen, einen Meter neben der Linie; die zweite Stange des Tors weiter außen
+      for (const g of tore) g.d = P.clamp(ideal(g.u) + g.sd * (g.w - 1), -(breite(g.u, -1) - g.w + 2), breite(g.u, 1) - g.w + 2);
+    } else if (sg) {       // Super-G: alle 62 m abwechselnd links und rechts der Linie; in engen Kurven der Piste folgen die Tore der Kurve
       const st = [[-80, 0], [0, 0]]; let sd = 1;
       for (let u = 70; u < roh.lang - 50; u += 62) { if (konvex(u)) continue; const frei = 1 - P.clamp(Math.abs(roh.kr(u)) * 55, 0, 1); st.push([u, sd * 5.2 * frei]); tore.push({ u, d: 0, w: 6 }); sd = -sd; }
       st.push([roh.lang + 60, 0]); const wedel = P.weich(st); ideal = (u) => 0.75 * schnitt(u) + wedel(u); for (const g of tore) { g.w = 6; g.d = P.clamp(ideal(g.u), -(breite(g.u, -1) - g.w + 2), breite(g.u, 1) - g.w + 2); }     // das Tor steht um die Linie des Vorläufers
     } else for (let u = 120; u < roh.lang - 60; u += 85) if (!konvex(u)) { const w = Math.min(10, (breite(u, -1) + breite(u, 1)) / 2 - 1.5); tore.push({ u, d: P.clamp(0.8 * schnitt(u), -(breite(u, -1) - w + 2), breite(u, 1) - w + 2), w }); }
-    const K = P.kursLinie(Object.assign({ name: "Kitzbühel · " + DISZ[disz].name, tore, ideal }, basis));
+    const K = P.kursLinie(Object.assign({ name: "Kitzbühel · " + DISZ[disz].name, tore, ideal }, basis)), tal = PL.ziel <= 810;
     // Zwischenzeiten an vier Stellen; Kulisse am Rand: Zuschauer an den bekannten Stellen (als Höhen über dem Meer), Tribüne im Ziel, Hütte an der Seidlalm
     const uBei = (h) => { for (let u = 0; u < K.lang + 150; u += 2) if (y0 + K.hoehe(u) <= h) return u; return K.lang + 150; };
     K.zwischen = [0.2, 0.4, 0.6, 0.8].map((q) => Math.round(q * K.lang));
     if (disz === "abfahrt") K.torFarbe = "#C23B2A";       // in der Abfahrt sind alle Tore rot, im Super-G wechseln rot und blau
-    K.kulisse = { dorf: true, stadel: true, lift: -1, netze: [[1640, 1560], [1520, 1440], [1080, 1000], [960, 880]].map(([h0, h1]) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; }).filter(([a, b]) => b - a > 12),      // außen an der Kurve starthaus: true, tribuene: 1, fahnen: ["#C8102E", "#FFFFFF", "#C8102E"], huetten: [[uBei(1222), -1]],
-      zuschauer: [[uBei(1628), uBei(1548), 0], [uBei(1500), uBei(1432), 1], [uBei(1256), uBei(1212), 1], [uBei(1052), uBei(986), -1], [uBei(850), K.lang + 70, 0]].filter(([a, b]) => b - a > 12) };
-    K.torGroesse = 1.5;                                                        // Fahnen größer als echt, damit man sie von weitem erkennt
-    K.anschub = 7;                                                             // Abstoßen und Schlittschuhschritte aus dem Starttor, m/s
-    K.disz = disz; K.startHoehe = y0; K.zielHoehe = 805; K.ort_ = "Kitzbühel"; K.hoeheUeberMeer = (u) => y0 + K.hoehe(u);
-    K.abschnitt = (u) => { const h = u <= 2 ? 99999 : K.hoeheUeberMeer(u); let n = sg ? "Start" : KITZ_ABSCHNITTE[0][1]; for (const [ab, name] of KITZ_ABSCHNITTE) if (h <= ab && !(sg && ab > 1345)) n = name; return n; };
+    if (disz === "slalom") K.torArt = "stange";         // Slalom: Kippstangen ohne Tuch
+    K.kulisse = { dorf: tal, stadel: true, lift: -1, netze: [[1640, 1560], [1520, 1440], [1080, 1000], [960, 880]].map(([h0, h1]) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; }).filter(([a, b]) => b - a > 12),      // außen an der Kurve starthaus: true, tribuene: 1, fahnen: ["#C8102E", "#FFFFFF", "#C8102E"], huetten: [[uBei(1222), -1]],
+      zuschauer: [[uBei(1628), uBei(1548), 0], [uBei(1500), uBei(1432), 1], [uBei(1256), uBei(1212), 1], [uBei(1052), uBei(986), -1], [tal ? uBei(850) : K.lang - 70, K.lang + 70, 0]].filter(([a, b]) => b - a > 12 && a < K.lang + 60) };
+    K.torGroesse = eng ? 1.15 : 1.5;                                                        // Fahnen größer als echt, damit man sie von weitem erkennt
+    K.anschub = disz === "slalom" ? 4.5 : 7;                                                             // Abstoßen und Schlittschuhschritte aus dem Starttor, m/s
+    K.disz = disz; K.startHoehe = y0; K.zielHoehe = PL.ziel; K.zusatz = PL.zusatz || ""; K.ort_ = "Kitzbühel"; K.hoeheUeberMeer = (u) => y0 + K.hoehe(u);
+    K.abschnitt = (u) => { const h = u <= 2 ? 99999 : K.hoeheUeberMeer(u); let n = PL.ab ? "Start" : KITZ_ABSCHNITTE[0][1]; for (const [ab, name] of KITZ_ABSCHNITTE) if (h <= ab && !(PL.ab && ab > PL.ab)) n = name; return n; };
     return K;
   }
   // Länge der gefahrenen Mittellinie im Raum (zum Vergleich mit der veröffentlichten Streckenlänge)
@@ -2973,11 +2987,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   const STRECKEN = [
     { id: "kitz-abfahrt", ort: "Kitzbühel", land: "AUT", disz: "abfahrt", baue: () => kitz("abfahrt"), daten: { lang: 3312, start: 1665, ziel: 805 } },
     { id: "kitz-superg", ort: "Kitzbühel", land: "AUT", disz: "superg", baue: () => kitz("superg"), daten: { lang: 2150, start: 1345, ziel: 805 } },
+    // modell: keine veröffentlichte Strecke, die Zahlen sind die des gebauten Kurses
+    { id: "kitz-riesenslalom", ort: "Kitzbühel", land: "AUT", disz: "riesenslalom", baue: () => kitz("riesenslalom"), daten: { lang: 1015, start: 1090, ziel: 805, modell: true } },
+    { id: "kitz-slalom", ort: "Kitzbühel", land: "AUT", disz: "slalom", baue: () => kitz("slalom"), daten: { lang: 552, start: 1630, ziel: 1430, modell: true } },
   ];
   // Fahrer im Starttor mit dem Schwung des Abstoßens
   function amStart(K, o) { const f = P.amStart(K, o), a = K.th(0), v = K.anschub || 0; f.vx = Math.sin(a) * v; f.vs = Math.cos(a) * v; return f; }
   // So fährt der Vorläufer: in der Abfahrt vorsichtiger und nicht ganz innen (die engen Kehren), im Super-G genau durch die Tore
-  const vorlauf = (K) => (K.disz === "superg" ? { mut: 0.8, voraus: 3.4, bremst: true } : { mut: 0.5, linie: 0.8, voraus: 3.4, bremst: true });
+  const vorlauf = (K) => (K.disz === "slalom" ? { mut: 0.6, blick: 0.3, blickMin: 3.5, voraus: 1.6, bremst: true, hocke: "nie" } : K.disz === "riesenslalom" ? { mut: 0.6, blick: 0.42, blickMin: 6, voraus: 2.4, bremst: true } : K.disz === "superg" ? { mut: 0.8, voraus: 3.4, bremst: true } : { mut: 0.5, linie: 0.8, voraus: 3.4, bremst: true });
   // Fahrt des Vorläufers aufzeichnen: seine Spur ist die Ideallinie im Schnee, seine Zeiten sind der Maßstab für die Zwischenzeiten
   function spur(K) {
     const f = amStart(K), o = vorlauf(K), pfad = [{ u: 0, d: 0, t: 0, v: f.v, k: 0, luft: false }]; let i = 0, k = 0;
@@ -3027,18 +3044,20 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.13.0";
+  const VERSION = "0.14.0";
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
   const KIT = { head: "helmet", feet: "skiBoots", torso: "bib", hands: "poles", glove: true };
   const kurse = {}, welten = {}, vorlauf = {};
   const kurs = (st) => kurse[st.id] || (S.stelleEin(st.disz), kurse[st.id] = st.baue());
   const vor = (st) => vorlauf[st.id] || (S.stelleEin(st.disz), vorlauf[st.id] = S.spur(kurs(st)));
   const welt = (st) => { if (!welten[st.id]) { welten[st.id] = WELT.baue(kurs(st)); welten[st.id].ideallinie(vor(st).pfad); } return welten[st.id]; };
-  const SKI = { abfahrt: 2.18, superg: 2.1 }, diff = (s) => (s < 0 ? "−" : "+") + Math.abs(s).toFixed(2).replace(".", ",");
+  const SKI = { abfahrt: 2.18, superg: 2.1, riesenslalom: 1.93, slalom: 1.65 }, diff = (s) => (s < 0 ? "−" : "+") + Math.abs(s).toFixed(2).replace(".", ",");
   const kmh = (v) => Math.round(v * 3.6), tausend = (n) => String(n).replace(/\B(?=(\d{3})+$)/g, ".");
   let R, letztT = 0;
   // Kamera (Mat, 15.11.2026): höher und mit Blick weiter voraus, damit man nach Kanten und Sprüngen sieht, welche Kurve kommt
   const KAMERA = { hinten: 8.8, hoch: 6.5, voraus: 15, kursBlick: 0.55, weit: 22 };
+  // Technische Disziplinen: langsamer und enger, die Kamera geht näher heran
+  const KAMERAS = { riesenslalom: { hinten: 7.6, hoch: 5.4, voraus: 12, kursBlick: 0.5, weit: 20 }, slalom: { hinten: 6.4, hoch: 4.4, voraus: 9, kursBlick: 0.45, weit: 18 } }, kamera = (st) => KAMERAS[st.disz] || KAMERA;
   // Vorschau rechts oben: die nächsten zehn Sekunden der Strecke von oben, Fahrtrichtung nach oben. Rot: steil, goldener Strich: Kante (Sprung), Punkte: Tore.
   function vorschau(c, K, f, pfad) {
     const X = R.W - 124, Y = 50, B = 112, Hh = 114, weit = P.clamp(f.v * 10, 160, 420), ms = (Hh - 20) / weit, a = Math.hypot(f.vx, f.vs) > 2 ? Math.atan2(f.vx, f.vs) : f.psi, sn = Math.sin(a), co = Math.cos(a);
@@ -3104,7 +3123,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         if (WELT.geht() && !f.fertig) welt(st).idealFarbe(f.u, 260, (q) => q.k < 0.2 ? 1 : zuviel > 0.1 * q.v ? 3 : zuviel > 0.035 * q.v ? 2 : 1);
         R.chips([[phase === "tor" ? "Am Start" : R.zeit(f.fertig ? f.zeit : f.t, 1) + " s", "dark"], [kmh(f.v) + " km/h", "gold"]].concat(phase === "tor" || f.fertig ? [] : [["Soll " + kmh(soll), zuviel > 0.1 * soll ? "warn" : zuviel > 0.035 * soll ? "" : "good"]], [[f.fertig ? "Im Ziel" : K.abschnitt(f.u), ""]].concat(f.fertig ? [[diff(f.zeit - V.zeit), f.zeit <= V.zeit ? "good" : "warn"]] : zwChip ? [zwChip] : [])));
       },
-      draw(c, t) { zeichne(c, t, st, f, KAMERA); if (WELT.geht()) vorschau(c, K, f, V.pfad); if (phase === "tor") R.tafel(c, R.W / 2 - 90, 96, 180, 40, [[tPh > 1.5 ? "ACHTUNG" : "FERTIG MACHEN", 16, "#C23B2A"]]); },
+      draw(c, t) { zeichne(c, t, st, f, kamera(st)); if (WELT.geht()) vorschau(c, K, f, V.pfad); if (phase === "tor") R.tafel(c, R.W / 2 - 90, 96, 180, 40, [[tPh > 1.5 ? "ACHTUNG" : "FERTIG MACHEN", 16, "#C23B2A"]]); },
     });
   }
   function ergebnis(st, f, weit, zw) {
@@ -3125,13 +3144,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   R = window.CMRahmen.spiel({
     id: "ski-alpin", name: "Ski Alpin", titel: ["Ski", "Alpin"], band: "Kitzbühel · Österreich", version: VERSION, kit: KIT,
     satz: "Die großen Hänge der Alpen, gebaut nach Karte und Höhenprofil.",
-    modi: S.STRECKEN.map((st) => ({ id: st.id, name: S.DISZ[st.disz].name + " " + st.ort, start: () => fahrt(st),
+    modi: S.STRECKEN.map((st) => ({ id: st.id, name: S.DISZ[st.disz].name + (S.DISZ[st.disz].name.length > 8 ? "" : " " + st.ort), start: () => fahrt(st),
       sub: (R) => (R.S.best && R.S.best["zeit_" + st.id] ? `Bestzeit ${R.zeit(R.S.best["zeit_" + st.id])}` : `${tausend(st.daten.lang)} m, ${st.daten.start - st.daten.ziel} m Höhe`) })),
-    info: [["So geht’s", "Du siehst den Fahrer von hinten. Links und rechts kanten die Ski auf: Je länger du hältst, desto enger wird der Bogen. Die Hocke macht schnell. Fahr zwischen den beiden Fahnen jedes Tors durch; ein verpasstes Tor kostet zwei Sekunden."],
+    info: [["So geht’s", "Du siehst den Fahrer von hinten. Links und rechts kanten die Ski auf: Je länger du hältst, desto enger wird der Bogen. Die Hocke macht schnell. Fahr zwischen den beiden Fahnen jedes Tors durch; ein verpasstes Tor kostet zwei Sekunden, in Riesenslalom und Slalom drei."],
+      ["Riesenslalom und Slalom", "Die Tore stehen eng und abwechselnd links und rechts. Fahr um die innere Stange jedes Tors, die Linie im Schnee zeigt den Weg. Im Slalom zählt der Rhythmus: früh umkanten, kurze Bögen, kaum Hocke."],
       ["Kante", "Der Balken unten zeigt, wie viel die Kante trägt. Ist er voll, rutscht der Ski und du verlierst Tempo. In der Hocke hält die Kante schlechter."],
       ["Bremse", "Der kleine Knopf über der Hocke stemmt die Ski quer und richtet den Fahrer auf. Vor engen Kurven wie der Einfahrt in den Steilhang kurz bremsen, statt im Tiefschnee zu landen."],
       ["Sprünge", "An den Kanten hebt der Fahrer von selbst ab und fliegt eine Wurfparabel. Wer vor der Kante in die Hocke geht, springt flacher und kürzer; wer sich dort streckt, fliegt weiter."],
-      ["Strecken", "Kitzbühel, Abfahrt und Super-G: Verlauf und Höhen folgen der in OpenStreetMap eingetragenen Rennstrecke (Höhenprofil alle 24 m), geprüft gegen die veröffentlichten Daten: Start 1.665 m, Ziel 805 m, 3.312 m; Super-G ab 1.345 m, 2.150 m. Die Kante der Mausefalle ist nach dem veröffentlichten Gefälle von 85 % nachgeschärft. Breite der Piste, Seitenneigung und Tore sind geschätzt. Kartendaten © OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap."],
+      ["Strecken", "Kitzbühel, Abfahrt und Super-G: Verlauf und Höhen folgen der in OpenStreetMap eingetragenen Rennstrecke (Höhenprofil alle 24 m), geprüft gegen die veröffentlichten Daten: Start 1.665 m, Ziel 805 m, 3.312 m; Super-G ab 1.345 m, 2.150 m. Die Kante der Mausefalle ist nach dem veröffentlichten Gefälle von 85 % nachgeschärft. Breite der Piste, Seitenneigung und Tore sind geschätzt. Riesenslalom und Slalom laufen vorerst auf demselben vermessenen Gelände (Hausberg bis Ziel, Mausefalle bis Steilhang); die Kurssetzung ist erfunden, in Wirklichkeit wird der Slalom am Nachbarhang gefahren. Kartendaten © OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap."],
       ["Ideallinie", "Die Linie im Schnee ist die Spur des Vorläufers. Grün heißt: dein Tempo passt. Orange und rot heißt: für die Kurve dort bist du zu schnell, also bremsen oder aus der Hocke. Oben steht neben deinem Tempo das Soll, das Tempo des Vorläufers an dieser Stelle."],
       ["Zwischenzeiten", "An vier Stellen siehst du deinen Abstand zum Vorläufer: grün heißt schneller, rot langsamer."],
       ["Vorschau", "Rechts oben siehst du die nächsten zehn Sekunden der Strecke von oben: rot heißt steil, ein goldener Strich quer ist eine Kante, an der gesprungen wird, die Punkte sind Tore, die goldene Linie ist die Ideallinie."],
