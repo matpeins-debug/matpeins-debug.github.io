@@ -2719,7 +2719,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Ablauf wie im Sumo: Einzug, Stampfen (Shiko), Salz, Hocke, Fäuste auf den Boden, Aufprall (Tachiai), Kampf, Siegtechnik (Kimarite).
 (function () {
   "use strict";
-  const VERSION = "0.1.0";
+  const VERSION = "0.1.1";
   const P = window.SUPhys, F = window.CMFigur, F3 = window.Figur3D;
   const CX = 422, CY = 294, RX = 300, RY = 58, PXM = RX / P.RING, SC = 1.95;
   const YETIS = [
@@ -2821,7 +2821,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       update(dt0) {
         const dt = dt0 * st.zeit; st.t += dt; st.sperre -= dt0; st.jubel = Math.max(0, st.jubel - dt0 * 0.8); st.beben = Math.max(0, st.beben - dt0 * 3);
         if (st.ph === "einzug") { V[0].x += (-0.62 - V[0].x) * Math.min(1, dt * 2.4); V[1].x += (0.62 - V[1].x) * Math.min(1, dt * 2.4); if (st.t > 1.5) { st.ph = "ritual"; st.t = 0; } }
-        else if (st.ph === "ritual") { R.tipp("ritual", "Stampfen vertreibt böse Geister, Salz reinigt den Ring. Tippen überspringt.", 4);
+        else if (st.ph === "ritual") { R.tipp("ritual", "Du bist der Yeti links mit dem roten Gürtel. Stampfen und Salz gehören dazu, Tippen überspringt.", 5);
           if (st.t > 1.02 && st.t - dt <= 1.02) { R.ton.klack(); st.beben = 0.5; staub(-0.62, 8, 0.6); staub(0.62, 8, 0.6); }
           if (st.t > 2.3 && st.t - dt <= 2.3) for (const v of V) for (let i = 0; i < 16; i++) st.teile.push({ x: CX + v.x * PXM + v.dir * 30, y: CY - 150, vx: v.dir * (60 + Math.random() * 120), vy: -120 - Math.random() * 90, g: 300, l: 0.9 + Math.random() * 0.4, r: 1.6, c: "#FFFFFF" });
           if (st.t > 3.3 || st.botAn) { st.ph = "hocke"; st.t = 0; } }
@@ -2867,12 +2867,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         for (const p of st.teile) { p.l -= dt0; p.x += p.vx * dt0; p.y += p.vy * dt0; p.vy += p.g * dt0; } st.teile = st.teile.filter((p) => p.l > 0);
         // Hinweis über dem Gegner, solange er ausholt (bei den ersten, schwächeren Gegnern)
         const ba = b.akt; st.hinweis = st.ph === "kampf" && ba && ba.t < P.AKT[ba.art].vor && gegner.st < 0.6 ? ba.art : null;
-        R.chips([[`${von > 1 ? "Kampf " + nr + " von " + von : "Einzelkampf"}`, "dark"], [`${R.myName()} gegen ${gegner.name}`, "gold"], st.ph === "kampf" ? [a.griff ? "Du hast den Griff" : b.griff ? "Er hat den Griff" : "Offen", a.griff ? "good" : b.griff ? "warn" : ""] : [{ einzug: "Einzug", ritual: "Stampfen und Salz", hocke: "In die Hocke", bereit: "Warten auf das Zeichen", ende: "Entschieden" }[st.ph]]]);
+        R.chips([[`${von > 1 ? "Kampf " + nr + " von " + von : "Einzelkampf"}`, "dark"], [`Du (links, rot) gegen ${gegner.name}`, "gold"], st.ph === "kampf" ? [a.griff ? "Du hast den Griff" : b.griff ? "Er hat den Griff" : "Offen", a.griff ? "good" : b.griff ? "warn" : ""] : [{ einzug: "Einzug", ritual: "Stampfen und Salz", hocke: "In die Hocke", bereit: "Warten auf das Zeichen", ende: "Entschieden" }[st.ph]]]);
       },
       draw(c, t) {
         c.save(); if (st.beben > 0) c.translate((Math.random() - 0.5) * 9 * st.beben, (Math.random() - 0.5) * 7 * st.beben);
         arena(c, t, st); gyoji(c, t, st);
-        for (const v of V) { c.fillStyle = "rgba(60,40,24,0.28)"; c.beginPath(); c.ellipse(CX + v.x * PXM, CY + 4, 62, 13, 0, 0, R.TAU); c.fill(); }
+        for (const v of V) { const x = CX + v.x * PXM, ich = v === V[0], col = ich ? ICH.belt : gegner.belt, name = ich ? "DU" : gegner.name.toUpperCase(); c.fillStyle = "rgba(60,40,24,0.28)"; c.beginPath(); c.ellipse(x, CY + 4, 62, 13, 0, 0, R.TAU); c.fill();
+          // wer ist wer: farbiger Ring am Boden in der Gürtelfarbe und ein Schild darunter; der eigene Yeti zusätzlich mit Pfeil
+          if (st.ph !== "ende" || v.fall < 0.3) { c.strokeStyle = col; c.lineWidth = ich ? 4 : 2.5; c.beginPath(); c.ellipse(x, CY + 4, 66, 15, 0, 0, R.TAU); c.stroke(); const w = Math.max(40, name.length * 8.4 + 18); c.fillStyle = col; c.fillRect(x - w / 2, CY + 24, w, 18); c.strokeStyle = "#141B25"; c.lineWidth = 2; c.strokeRect(x - w / 2, CY + 24, w, 18); R.text(c, name, x, CY + 33.5, 11, "#F7F4EC");
+            if (ich && (st.ph === "einzug" || st.ph === "ritual" || st.ph === "hocke")) { const y = CY - 218 + Math.sin(t * 5) * 4; c.fillStyle = col; c.beginPath(); c.moveTo(x, y + 16); c.lineTo(x - 11, y); c.lineTo(x + 11, y); c.closePath(); c.fill(); c.strokeStyle = "#141B25"; c.stroke(); } } }
         const reihe = V.slice().sort((p, q) => (p.f.akt && p.f.akt.art === "weich" ? 1 : 0) - (q.f.akt && q.f.akt.art === "weich" ? 1 : 0));
         for (const v of reihe) { const raus = st.ph === "ende" && s.wie === "raus" && v.fall > 0, y = CY + (raus ? v.fall * 46 : 0) + (v.f.akt && v.f.akt.art === "weich" ? 12 : 0);
           yeti(c, CX + v.x * PXM, y, { pose: v.pose, dir: v.dir, turn: v.turn, kipp: raus ? -v.fall * 0.5 : 0, art: Object.assign({}, v.art, { mund: v.mund, auge: st.ph === "ende" && v.fall > 0.5 ? "zu" : null }) }); }
@@ -2909,6 +2912,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     modi: [{ id: "turnier", name: "Turnier", sub: (R) => (R.S.best && R.S.best.siege != null ? `Bestes Turnier: ${R.S.best.siege} Siege` : "Sieben Kämpfe, die Gegner werden stärker"), start: turnier },
       { id: "einzel", name: "Einzelkampf", sub: () => "Ein Kampf gegen einen der leichteren Yetis", ohneName: true, start: einzel }],
     info: [["Regeln", "Wie im Sumo: Verloren hat, wer den Ring aus Strohballen verlässt oder mit etwas anderem als den Fußsohlen den Boden berührt. Der Ring misst 4,55 Meter. Ein Kampf dauert meist nur Sekunden."],
+      ["Wer bin ich", "Du bist immer der Yeti links mit dem roten Gürtel. Am Boden liegt ein roter Ring um deine Füße, darunter steht „Du“. Der Gegner steht rechts, mit seinem Namen und seiner Gürtelfarbe."],
       ["Start", "Halten: Dein Yeti setzt die Fäuste auf den Boden. Der Schiedsrichter hebt den Fächer. Wenn der Fächer fällt, loslassen: Wer schneller aus der Hocke kommt, gewinnt den Aufprall. Wer vor dem Zeichen loslässt, hat einen Fehlstart."],
       ["Kampf", "Drei Wische. Nach vorn: schieben. Zurück: ausweichen. Hoch: nach dem Gürtel greifen. Schieben sprengt einen Griff, Greifen fängt den Ausweichenden, Ausweichen lässt den Schub ins Leere laufen. Jede Bewegung holt sichtbar aus: Lies den Gegner."],
       ["Gürtel und Wurf", "Wer den Griff hat, drängt stärker und kann nicht mehr ausmanövriert werden. Hoch wischen wird dann zum Wurf: Er gelingt, wenn der Gegner wackelt, am Rand steht oder gerade selbst angreift. Sonst kostet er dich das Gleichgewicht. Ein Schub löst den Griff des Gegners."],
