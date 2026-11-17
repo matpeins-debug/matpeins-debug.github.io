@@ -2127,6 +2127,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     KURVE_AUF: 0.14,        // Einleiten der Kurve: Zuwachs der Krümmung (1/m) je Sekunde
     KURVE_AB: 0.30,         // Auflösen der Kurve
     KURVE_ZEIT: 0,          // > 0: Einleiten dauert so viele Sekunden bis zum vollen Bogen, bei jedem Tempo (Ski Alpin); 0: feste Raten oben
+    KURVEN_MU: 0,           // Reibung im Bogen: Anteil der Querbeschleunigung, der bremst (kurze Schwünge driften an; Riesenslalom und Slalom)
     TOR_STRAFE: 0,          // Sekunden Zuschlag je verpasstem Tor (Kurse mit K.tore)
     GRIP: 1.6,              // Haftgrenze der Kante: Querbeschleunigung bis GRIP · Auflast
     GRIP_FLACH: 0.3,        // Anteil davon auf dem flachen Ski
@@ -2357,7 +2358,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         let ax = gx + aq * A.rx, ay = gy + aq * A.ry, as = gs + aq * A.rs;
         f.vx += ax * dt; f.vy += ay * dt; f.vs += as * dt;
         let v2 = Math.hypot(f.vx, f.vy, f.vs);
-        const brems = (mu * Math.hypot(N, aq) + C.BREMS_MU * f.bremse * N + kd * v2 * v2 + tief * C.TIEF_ZAEH * v2 + (f.fertig ? C.ZIEL_BREMS : 0)) * dt - pump * dt, k = v2 > 1e-6 ? Math.max(0, 1 - brems / v2) : 0;
+        const brems = (mu * Math.hypot(N, aq) + C.KURVEN_MU * (f.drift == null ? 1 : f.drift) * Math.abs(aq + gq) + C.BREMS_MU * f.bremse * N + kd * v2 * v2 + tief * C.TIEF_ZAEH * v2 + (f.fertig ? C.ZIEL_BREMS : 0)) * dt - pump * dt, k = v2 > 1e-6 ? Math.max(0, 1 - brems / v2) : 0;
         f.vx *= k; f.vy *= k; f.vs *= k; v2 *= k;
         f.x += f.vx * dt; f.s += f.vs * dt;
         // auf der Fläche bleiben: die Fläche lenkt um, sie bremst nicht
@@ -2830,6 +2831,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 .sx-kante b { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #6EAF64; }
 .sx-kante.warn b { background: #DDA43B; } .sx-kante.rutscht b { background: #C23B2A; }
 .cs-knopf.sx-bremse { bottom: 130px; right: 26px; }
+.cs-knopf.sx-oben-l { bottom: 140px; left: 34px; right: auto; }
+.cs-knopf.sx-oben-r { bottom: 140px; right: 34px; }
+.cs-knopf.sx-schwung { width: 124px; height: 124px; }
+.cs-knopf.sx-schwung .cs-txt { font-size: 15px; }
 .sx-kante u { position: absolute; left: 74%; top: -2px; bottom: -2px; width: 2px; background: #141C28; }`;
   const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
   const pfeil = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
@@ -2895,8 +2900,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // Disziplinen: Ski (Taillierung), Haltung und Strafe. Nur was von BASIS abweicht.
   const DISZ = {
     abfahrt: { name: "Abfahrt", cfg: { GRIP: 2.0, SIDECUT: 50, CDA_STAND: 0.55, CDA_HOCKE: 0.2, MASSE: 95, GRIP_HOCKE: 0.75, KURVE_ZEIT: 0.4, DRUCK_NACH: 2.5, DRUCK_RATE: 0.2, TOR_STRAFE: 2, RAND: 8 } },
-    riesenslalom: { name: "Riesenslalom", cfg: { GRIP: 2.1, SIDECUT: 30, CDA_STAND: 0.5, CDA_HOCKE: 0.28, MASSE: 95, GRIP_HOCKE: 0.7, KURVE_ZEIT: 0.28, DRUCK_NACH: 1.6, DRUCK_RATE: 0.25, TOR_STRAFE: 3, RAND: 8 } },
-    slalom: { name: "Slalom", cfg: { GRIP: 2.2, SIDECUT: 13, KANTE_MAX: 66, CDA_STAND: 0.5, CDA_HOCKE: 0.35, MASSE: 90, GRIP_HOCKE: 0.6, KURVE_ZEIT: 0.16, DRUCK_NACH: 1.2, DRUCK_RATE: 0.3, TOR_STRAFE: 3, RAND: 8 } },
+    riesenslalom: { name: "Riesenslalom", cfg: { GRIP: 2.1, SIDECUT: 30, CDA_STAND: 0.5, CDA_HOCKE: 0.28, MASSE: 95, GRIP_HOCKE: 0.7, KURVE_ZEIT: 0.28, KURVEN_MU: 0.22, DRUCK_NACH: 1.6, DRUCK_RATE: 0.25, TOR_STRAFE: 3, RAND: 8 } },
+    slalom: { name: "Slalom", cfg: { GRIP: 2.2, SIDECUT: 13, KANTE_MAX: 66, CDA_STAND: 0.5, CDA_HOCKE: 0.35, MASSE: 90, GRIP_HOCKE: 0.6, KURVE_ZEIT: 0.16, KURVEN_MU: 0.35, DRUCK_NACH: 1.2, DRUCK_RATE: 0.3, TOR_STRAFE: 3, RAND: 8 } },
     superg: { name: "Super-G", cfg: { GRIP: 2.0, SIDECUT: 45, CDA_STAND: 0.55, CDA_HOCKE: 0.21, MASSE: 95, GRIP_HOCKE: 0.7, KURVE_ZEIT: 0.38, DRUCK_NACH: 2.2, DRUCK_RATE: 0.2, TOR_STRAFE: 2, RAND: 8 } },
   };
   function stelleEin(disz) { for (const k of Object.keys(P.CFG)) delete P.CFG[k]; Object.assign(P.CFG, BASIS, DISZ[disz].cfg); }
@@ -2942,7 +2947,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
   // Welcher Teil der Strecke je Disziplin gefahren wird (Höhen über dem Meer) und wie die Tore stehen: ab = Abstand der Tore entlang der Linie, aus = Ausschlag der Linie quer, w = halbe Torbreite.
   // Riesenslalom und Slalom werden in Kitzbühel nicht auf dieser Strecke gefahren (der Slalom am Nachbarhang): Gelände echt, Kurssetzung erfunden, bis Daten des richtigen Hangs da sind.
-  const KITZ_PLAN = { abfahrt: { ab: null, ziel: 805 }, superg: { ab: 1345, ziel: 805 }, riesenslalom: { ab: 1090, ziel: 805, zusatz: "Hausberg", tor: { ab: 27, aus: 4, w: 3.2, erst: 50 } }, slalom: { ab: 1630, ziel: 1430, zusatz: "Steilhang", tor: { ab: 12, aus: 1.9, w: 2.4, erst: 30 } } };
+  const KITZ_PLAN = { abfahrt: { ab: null, ziel: 805 }, superg: { ab: 1345, ziel: 805 }, riesenslalom: { ab: 1050, ziel: 805, zusatz: "Hausberg", tor: { ab: 27, aus: 4, w: 3.2, erst: 50 } }, slalom: { ab: 1630, ziel: 1430, zusatz: "Steilhang", tor: { ab: 12, aus: 1.9, w: 2.4, erst: 30 } } };
   function kitz(disz) {
     const HALB = 20, PL = KITZ_PLAN[disz], eng = !!PL.tor;
     const D = (root.SADaten || require("./daten.js")).kitz, sg = disz === "superg"; const L = linie(D, PL.ab); if (disz === "abfahrt") L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
@@ -2988,7 +2993,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "kitz-abfahrt", ort: "Kitzbühel", land: "AUT", disz: "abfahrt", baue: () => kitz("abfahrt"), daten: { lang: 3312, start: 1665, ziel: 805 } },
     { id: "kitz-superg", ort: "Kitzbühel", land: "AUT", disz: "superg", baue: () => kitz("superg"), daten: { lang: 2150, start: 1345, ziel: 805 } },
     // modell: keine veröffentlichte Strecke, die Zahlen sind die des gebauten Kurses
-    { id: "kitz-riesenslalom", ort: "Kitzbühel", land: "AUT", disz: "riesenslalom", baue: () => kitz("riesenslalom"), daten: { lang: 1015, start: 1090, ziel: 805, modell: true } },
+    { id: "kitz-riesenslalom", ort: "Kitzbühel", land: "AUT", disz: "riesenslalom", baue: () => kitz("riesenslalom"), daten: { lang: 740, start: 1050, ziel: 805, modell: true } },
     { id: "kitz-slalom", ort: "Kitzbühel", land: "AUT", disz: "slalom", baue: () => kitz("slalom"), daten: { lang: 552, start: 1630, ziel: 1430, modell: true } },
   ];
   // Fahrer im Starttor mit dem Schwung des Abstoßens
@@ -3005,7 +3010,23 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const tBei = (u) => { let a = 0, b = pfad.length - 1; if (u >= pfad[b].u) return pfad[b].t; while (b - a > 1) { const m = (a + b) >> 1; if (pfad[m].u <= u) a = m; else b = m; } return pfad[a].t + (pfad[b].t - pfad[a].t) * (u - pfad[a].u) / (pfad[b].u - pfad[a].u); };
     return { zeit: f.zeit, vmax: f.vmax, fehler: f.fehler, tTief: f.tTief, pfad, tBei, vBei };
   }
-  const api = { P, DISZ, STRECKEN, spur, stelleEin, linie, kitz, laenge, amStart, vorlauf, BASIS };
+  // Steuerung in Riesenslalom und Slalom: Der Spieler gibt nur den Takt, der Fahrer zieht den Bogen selbst.
+  // Für jeden Bogen braucht es einen Druck auf die richtige Seite (links, rechts im Wechsel). Kommt er in der Gnadenfrist um den Kantenwechsel
+  // (SCHWUNG.frueh davor bis SCHWUNG.spaet danach), fährt der Fahrer den Bogen voll aus, auch wenn man wieder loslässt. Ohne Druck lässt der Bogen
+  // in der Frist nach und die Ski laufen geradeaus; die falsche Seite gehalten zieht dorthin. seite: −1, 0, 1. Ergebnis: lenk und soll (wohin die Linie will).
+  const SCHWUNG = { frueh: 0.3, voll: 0.22, spaet: 0.45, falsch: 0.5 };      // bis voll Sekunden nach dem Wechsel fährt er ohne Druck noch voll weiter, bis spaet lässt der Bogen nach
+  function schwung(f, K, seite, dt) {
+    const b = P.bot(f, K, vorlauf(K)).lenk, s = Math.abs(b) > 0.12 ? Math.sign(b) : 0, Z = f.sw || (f.sw = { vz: 0, t: 9, ok: false, vor: 0, tVor: 9, war: 0 });
+    Z.t += dt; Z.tVor += dt; if (seite && seite !== Z.war) { Z.vor = seite; Z.tVor = 0; } Z.war = seite;                           // neuer Druck: gemerkt, falls der Wechsel gleich kommt
+    if (s && s !== Z.vz) { Z.vz = s; Z.t = 0; Z.ok = Z.vor === s && Z.tVor < SCHWUNG.frueh; Z.guete = Z.ok ? -Z.tVor : null; }        // Kantenwechsel der Linie
+    if (!Z.ok && seite && seite === Z.vz) { Z.ok = true; Z.guete = Z.t; }                                                            // Bogen bestätigt
+    // Wer den Wechsel genau trifft, schneidet den Bogen sauber (weniger Reibung im Bogen, f.drift); spät oder zu früh driftet der Ski mehr
+    f.drift = Z.ok ? 0.88 + 0.5 * P.clamp(Math.abs(Z.guete) / 0.3, 0, 1) : 1.4;
+    if (Z.ok) return { lenk: b, soll: b, ok: true, guete: Z.guete };
+    if (seite && seite !== Z.vz) return { lenk: seite * SCHWUNG.falsch, soll: b, ok: false };
+    return { lenk: b * P.clamp((SCHWUNG.spaet - Z.t) / (SCHWUNG.spaet - SCHWUNG.voll), 0, 1), soll: b, ok: false };
+  }
+  const api = { P, DISZ, STRECKEN, spur, schwung, SCHWUNG, stelleEin, linie, kitz, laenge, amStart, vorlauf, BASIS };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.SAKurse = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -3044,7 +3065,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.14.0";
+  const VERSION = "0.15.0";
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
   const KIT = { head: "helmet", feet: "skiBoots", torso: "bib", hands: "poles", glove: true };
   const kurse = {}, welten = {}, vorlauf = {};
@@ -3091,9 +3112,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   function fahrt(st) {
     S.stelleEin(st.disz); const K = kurs(st), f = S.amStart(K); const V = vor(st); if (WELT.geht()) welt(st).figur(R.myLook(), WELT.C.rot, { ski: SKI[st.disz], gross: 1.4 });
     let phase = "tor", tPh = 0, acc = 0, tEnd = 0, li = false, re = false, ho = false, br = false, botC = null, rutschte = false, abS = 0, weit = 0, zi = 0, zw = [], zwChip = null;
-    let lw = 0, lt = 0; const wp = B.schieber((w) => { lw = w; }), anz = B.kante(), kl = B.klang(() => R.S.ton && !R.schnell);
-    const kH = R.knopf({ seite: "rechts", text: "Hocke", symbol: "hocke", onDown: () => { ho = true; }, onUp: () => { ho = false; } });
-    const kB = R.knopf({ seite: "rechts", klein: true, text: "Bremse", onDown: () => { br = true; }, onUp: () => { br = false; } }); kB.el.classList.add("sx-bremse");
+    // Riesenslalom und Slalom (eng): kein Schieber, sondern zwei große Knöpfe für den Takt, links und rechts im Wechsel (S.schwung). Sonst Schieber, Hocke, Bremse.
+    const eng = /slalom/.test(st.disz), nichts = { set() {}, el: document.createElement("i") }; let sw = null, kL = nichts, kR = nichts, kH = nichts, kB;
+    let lw = 0, lt = 0; const wp = eng ? { zeige() {}, weg() {} } : B.schieber((w) => { lw = w; }), anz = B.kante(), kl = B.klang(() => R.S.ton && !R.schnell);
+    if (eng) {
+      kL = R.knopf({ seite: "links", text: "Links", onDown: () => { li = true; }, onUp: () => { li = false; } }); kR = R.knopf({ seite: "rechts", text: "Rechts", onDown: () => { re = true; }, onUp: () => { re = false; } }); kL.el.classList.add("sx-schwung"); kR.el.classList.add("sx-schwung");
+      kB = R.knopf({ seite: "links", klein: true, text: "Bremse", onDown: () => { br = true; }, onUp: () => { br = false; } }); kB.el.classList.add("sx-oben-l");
+      if (st.disz === "riesenslalom") { kH = R.knopf({ seite: "rechts", klein: true, text: "Hocke", onDown: () => { ho = true; }, onUp: () => { ho = false; } }); kH.el.classList.add("sx-oben-r"); }
+    } else {
+      kH = R.knopf({ seite: "rechts", text: "Hocke", symbol: "hocke", onDown: () => { ho = true; }, onUp: () => { ho = false; } });
+      kB = R.knopf({ seite: "rechts", klein: true, text: "Bremse", onDown: () => { br = true; }, onUp: () => { br = false; } }); kB.el.classList.add("sx-bremse");
+    }
     B.taste.aktiv = true; B.taste.hocke = B.taste.rechts = B.taste.bremse = false; window.__sx = { f, K, P };
     R.szene({
       taste(k, an) { if (k === "links") li = an; if (k === "rechts") re = an; },
@@ -3102,13 +3131,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       update(dt) {
         tPh += dt;
         const tz = (re || B.taste.rechts ? 1 : 0) - (li ? 1 : 0); lt = tz === 0 || tz * lt < 0 ? 0 : P.clamp(lt + tz * dt * 3.2, -1, 1);      // Tasten: kurz tippen lenkt wenig, halten lenkt voll
-        const lenk = botC ? botC.lenk : lw || lt, hocke = botC ? botC.hocke : ho || B.taste.hocke, bremse = botC ? botC.bremse : br || B.taste.bremse; botC = null;
+        const lenk = botC ? botC.lenk : lw || lt, hocke = botC ? botC.hocke : ho || B.taste.hocke, bremse = botC ? botC.bremse : br || B.taste.bremse, takt = eng && !botC; botC = null;
         if (phase === "tor") {
-          R.tipp("start", "Schieb den Daumen links auf dem Feld nach links oder rechts: wenig für feine Korrekturen, ganz außen für enge Kurven. Hocke macht schnell, Bremse nimmt Tempo vor engen Kurven. Fahr zwischen den Fahnen jedes Tors durch.", 6);
+          if (eng) R.tipp("takt", "Tippe im Takt: links, rechts, links. Jeder Druck löst einen Bogen um die nächste Stange aus; der Knopf, der dran ist, blinkt. Je genauer du den Wechsel triffst, desto schneller bist du.", 7);
+          else R.tipp("start", "Schieb den Daumen links auf dem Feld nach links oder rechts: wenig für feine Korrekturen, ganz außen für enge Kurven. Hocke macht schnell, Bremse nimmt Tempo vor engen Kurven. Fahr zwischen den Fahnen jedes Tors durch.", 6);
           if (tPh >= 2.2) { phase = "lauf"; acc = 0; R.ton.klack(); R.ton.glocke(); }
         } else {
           acc += dt; let n = 0;
-          while (acc >= DT - 1e-9 && n++ < 6) { acc -= DT; const ev = P.schritt(f, K, lenk, hocke, DT, bremse);
+          while (acc >= DT - 1e-9 && n++ < 6) { acc -= DT; const ev = P.schritt(f, K, takt ? (sw = S.schwung(f, K, tz, DT)).lenk : lenk, hocke, DT, bremse);
             if (ev === "ab") abS = f.u; else if (ev === "landung" || ev === "hart") { const m = f.u - abS; weit = Math.max(weit, m); if (ev === "hart") { R.ton.schlecht(); R.sag("Hart gelandet", 1, true); } else { R.ton.wusch(); if (m > 15) R.sag(Math.round(m) + " m Sprung", 1.2); } }
             else if (ev === "verpasst") { R.ton.schlecht(); R.sag("Tor verpasst: +" + P.CFG.TOR_STRAFE + " s", 1.4, true); } else if (ev === "tor") R.ton.tick(); else if (ev === "gestreift") { R.ton.klack(); R.sag("Knapp an der Stange", 0.9); } else if (ev === "zaun") R.ton.klack();
             else if (ev === "ziel") { R.ton.jubel(); R.sag(R.zeit(f.zeit) + " s", 2.2); } }
@@ -3118,10 +3148,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           if (f.tief > 0.6 && f.v > 3) R.tipp("rand", "Neben der Piste liegt Tiefschnee und bremst. Zurück zwischen die blauen Linien.", 4);
           if (f.fertig) { tEnd += dt; if (tEnd > 2.4) return ergebnis(st, f, weit, zw); }
         }
+        if (eng) { const dran = takt && sw && !f.fertig && Math.abs(sw.soll) > 0.12 ? Math.sign(sw.soll) : 0; for (const [k, sd, an] of [[kL, -1, li], [kR, 1, re || B.taste.rechts]]) { k.set({ aktiv: an }); k.el.classList.toggle("cs-puls", dran === sd && !sw.ok); k.el.classList.toggle("cs-ok", dran === sd && sw.ok); } }
         wp.zeige(lenk); kH.set({ aktiv: hocke }); kB.set({ aktiv: bremse }); anz.zeige(f); kl.setze(f.fertig ? { v: f.v * 0.5 } : f);
         const soll = V.vBei(f.u), zuviel = f.v - soll;      // so viel schneller als der Vorläufer an dieser Stelle; die Linie voraus zeigt, wo das zu viel ist
-        if (WELT.geht() && !f.fertig) welt(st).idealFarbe(f.u, 260, (q) => q.k < 0.2 ? 1 : zuviel > 0.1 * q.v ? 3 : zuviel > 0.035 * q.v ? 2 : 1);
-        R.chips([[phase === "tor" ? "Am Start" : R.zeit(f.fertig ? f.zeit : f.t, 1) + " s", "dark"], [kmh(f.v) + " km/h", "gold"]].concat(phase === "tor" || f.fertig ? [] : [["Soll " + kmh(soll), zuviel > 0.1 * soll ? "warn" : zuviel > 0.035 * soll ? "" : "good"]], [[f.fertig ? "Im Ziel" : K.abschnitt(f.u), ""]].concat(f.fertig ? [[diff(f.zeit - V.zeit), f.zeit <= V.zeit ? "good" : "warn"]] : zwChip ? [zwChip] : [])));
+        if (WELT.geht() && !f.fertig) welt(st).idealFarbe(f.u, 260, (q) => eng || q.k < 0.2 ? 1 : zuviel > 0.1 * q.v ? 3 : zuviel > 0.035 * q.v ? 2 : 1);
+        R.chips([[phase === "tor" ? "Am Start" : R.zeit(f.fertig ? f.zeit : f.t, 1) + " s", "dark"], [kmh(f.v) + " km/h", "gold"]].concat(phase === "tor" || f.fertig ? [] : eng ? (takt && sw && sw.ok ? [[Math.abs(sw.guete) < 0.09 ? "Takt genau" : sw.guete < 0 ? "früh" : "spät", Math.abs(sw.guete) < 0.09 ? "good" : "warn"]] : []) : [["Soll " + kmh(soll), zuviel > 0.1 * soll ? "warn" : zuviel > 0.035 * soll ? "" : "good"]], [[f.fertig ? "Im Ziel" : K.abschnitt(f.u), ""]].concat(f.fertig ? [[diff(f.zeit - V.zeit), f.zeit <= V.zeit ? "good" : "warn"]] : zwChip ? [zwChip] : [])));
       },
       draw(c, t) { zeichne(c, t, st, f, kamera(st)); if (WELT.geht()) vorschau(c, K, f, V.pfad); if (phase === "tor") R.tafel(c, R.W / 2 - 90, 96, 180, 40, [[tPh > 1.5 ? "ACHTUNG" : "FERTIG MACHEN", 16, "#C23B2A"]]); },
     });
@@ -3147,7 +3178,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     modi: S.STRECKEN.map((st) => ({ id: st.id, name: S.DISZ[st.disz].name + (S.DISZ[st.disz].name.length > 8 ? "" : " " + st.ort), start: () => fahrt(st),
       sub: (R) => (R.S.best && R.S.best["zeit_" + st.id] ? `Bestzeit ${R.zeit(R.S.best["zeit_" + st.id])}` : `${tausend(st.daten.lang)} m, ${st.daten.start - st.daten.ziel} m Höhe`) })),
     info: [["So geht’s", "Du siehst den Fahrer von hinten. Links und rechts kanten die Ski auf: Je länger du hältst, desto enger wird der Bogen. Die Hocke macht schnell. Fahr zwischen den beiden Fahnen jedes Tors durch; ein verpasstes Tor kostet zwei Sekunden, in Riesenslalom und Slalom drei."],
-      ["Riesenslalom und Slalom", "Die Tore stehen eng und abwechselnd links und rechts. Fahr um die innere Stange jedes Tors, die Linie im Schnee zeigt den Weg. Im Slalom zählt der Rhythmus: früh umkanten, kurze Bögen, kaum Hocke."],
+      ["Riesenslalom und Slalom", "Hier lenkst du nicht mit dem Schieber, sondern gibst den Takt: links, rechts, links. Jeder Druck löst einen Bogen um die nächste Stange aus, den der Fahrer selbst zieht. Der Knopf, der dran ist, blinkt. Triffst du den Wechsel genau, schneidet der Ski sauber und du wirst schneller; zu spät oder zu früh driftet er. Lässt du einen Bogen aus, fährt er geradeaus am Tor vorbei."],
       ["Kante", "Der Balken unten zeigt, wie viel die Kante trägt. Ist er voll, rutscht der Ski und du verlierst Tempo. In der Hocke hält die Kante schlechter."],
       ["Bremse", "Der kleine Knopf über der Hocke stemmt die Ski quer und richtet den Fahrer auf. Vor engen Kurven wie der Einfahrt in den Steilhang kurz bremsen, statt im Tiefschnee zu landen."],
       ["Sprünge", "An den Kanten hebt der Fahrer von selbst ab und fliegt eine Wurfparabel. Wer vor der Kante in die Hocke geht, springt flacher und kürzer; wer sich dort streckt, fliegt weiter."],
