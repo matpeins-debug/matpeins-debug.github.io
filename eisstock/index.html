@@ -2414,15 +2414,15 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         // Leib: Bauch und Brust aus zwei Ballen, Rückenfell, Gürtel mit Knoten und Fransen
         const mid = (t) => lerp(sk.hip, sk.nk, t);
         E(at(mid(0.36), fr, 2.6, up, 0, zs, 0), fr, up, zs, 12.4 * k, 13.2, 12.8 * k, fur);
-        E(at(mid(0.8), fr, 0.8, up, 0, zs, 0), fr, up, zs, 10.4 * k, 10.2, 12.2 * k, fur);
-        E(at(mid(0.62), fr, -7.5 * k, up, 0, zs, 0), fr, up, zs, 5.2, 8.5, 9.5 * k, fur2);
+        E(at(mid(0.8), fr, 1.2, up, 0, zs, 0), fr, up, zs, 11.8 * k, 10.8, 14.6 * k, fur);
+        E(at(mid(0.66), fr, -8.2 * k, up, 0, zs, 0), fr, up, zs, 6.4, 9.6, 11.5 * k, fur2);
         E(at(mid(0.1), fr, 1.8, up, 0, zs, 0), fr, up, zs, 12.9 * k, 3.3, 13.3 * k, belt);
         ball(at(mid(0.1), fr, 13.6 * k, up, 0, zs, 0), 2.5, belt);
         for (const sd of [-2, -1, 0, 1, 2]) cap(at(mid(0.07), fr, 13.2 * k, up, 0, zs, sd * 2.2), at(mid(0.07), fr, 13.6 * k, up, -7.5, zs, sd * 2.4), 0.75, belt);
         // Arme: runde Schulter, dicke Arme, Pranken
         for (const A2 of [sk.AF, sk.AB]) {
-          ball(A2[0], 6.6 * k, fur); limb(A2[0], A2[1], 5.8 * k, 5.0 * k, fur); limb(A2[1], A2[2], 5.0 * k, 4.5 * k, fur);
-          const d = norm(sub(A2[2], A2[1])); ball([A2[2][0] + d[0] * 2.6, A2[2][1] + d[1] * 2.6, A2[2][2] + d[2] * 2.6], 4.9, fur2);
+          ball(A2[0], 8.4 * k, fur); limb(A2[0], A2[1], 7.0 * k, 5.9 * k, fur); limb(A2[1], A2[2], 5.9 * k, 5.2 * k, fur);
+          const d = norm(sub(A2[2], A2[1])); ball([A2[2][0] + d[0] * 2.6, A2[2][1] + d[1] * 2.6, A2[2][2] + d[2] * 2.6], 6.0, fur2);
         }
         // Kopf: groß, Gesicht als hellblaue Maske, Augen, Nase, Maul mit zwei Zähnen, Hörner, Schopf
         const hu = norm(sub(sk.head, sk.nk)), hf = norm(cross(hu, zs)), hc = at(sk.head, hf, 0.5, hu, 1.4, zs, 0);
@@ -2430,9 +2430,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         E(at(hc, hf, 4.9, hu, -0.8, zs, 0), hf, hu, zs, 4.6, 5.6, 6.4, face);
         for (const sd of [-1, 1]) {
           E(at(hc, hf, 8.9, hu, 1.0, zs, sd * 2.7), hf, hu, zs, 0.9, o.auge === "zu" ? 0.35 : 1.15, 1.15, dark, true);
-          E(at(hc, hf, 8.6, hu, o.auge === "zu" ? 2.6 : 3.1, zs, sd * 2.9), hf, hu, zs, 1.0, 0.75, 2.3, fur, true);
-          limb(at(hc, hf, 0, hu, 6.2, zs, sd * 4.6), at(hc, hf, 1.6, hu, 12.2, zs, sd * 7.4), 1.8, 0.5, horn);
-          E(at(hc, hf, 8.6, hu, -4.4, zs, sd * 1.5), hf, hu, zs, 0.6, 1.0, 0.6, hex("#FFFFFF"), true);
+          E(at(hc, hf, 8.9, hu, o.auge === "zu" ? 2.5 : 2.7 - (sd * 0), zs, sd * 2.9), hf, hu, zs, 1.3, 1.0, 2.9, fur, true);
+          limb(at(hc, hf, 0, hu, 5.6, zs, sd * 5.0), at(hc, hf, 1.2, hu, 10.6, zs, sd * 9.2), 2.5, 1.5, horn); limb(at(hc, hf, 1.2, hu, 10.6, zs, sd * 9.2), at(hc, hf, 4.2, hu, 15.2, zs, sd * 8.2), 1.5, 0.3, horn);
+          E(at(hc, hf, 8.8, hu, -4.7, zs, sd * 1.7), hf, hu, zs, 0.7, 1.6, 0.75, hex("#FFFFFF"), true);
         }
         E(at(hc, hf, 9.6, hu, -1.0, zs, 0), hf, hu, zs, 1.2, 1.0, 1.5, dark, true);
         E(at(hc, hf, 8.7, hu, -3.6, zs, 0), hf, hu, zs, 0.8, o.mund === "auf" ? 1.9 : 0.55, 2.7, dark, true);

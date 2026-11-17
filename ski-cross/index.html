@@ -2127,6 +2127,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     KURVE_AUF: 0.14,        // Einleiten der Kurve: Zuwachs der Krümmung (1/m) je Sekunde
     KURVE_AB: 0.30,         // Auflösen der Kurve
     KURVE_ZEIT: 0,          // > 0: Einleiten dauert so viele Sekunden bis zum vollen Bogen, bei jedem Tempo (Ski Alpin); 0: feste Raten oben
+    KURVEN_MU: 0,           // Reibung im Bogen: Anteil der Querbeschleunigung, der bremst (kurze Schwünge driften an; Riesenslalom und Slalom)
     TOR_STRAFE: 0,          // Sekunden Zuschlag je verpasstem Tor (Kurse mit K.tore)
     GRIP: 1.6,              // Haftgrenze der Kante: Querbeschleunigung bis GRIP · Auflast
     GRIP_FLACH: 0.3,        // Anteil davon auf dem flachen Ski
@@ -2357,7 +2358,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         let ax = gx + aq * A.rx, ay = gy + aq * A.ry, as = gs + aq * A.rs;
         f.vx += ax * dt; f.vy += ay * dt; f.vs += as * dt;
         let v2 = Math.hypot(f.vx, f.vy, f.vs);
-        const brems = (mu * Math.hypot(N, aq) + C.BREMS_MU * f.bremse * N + kd * v2 * v2 + tief * C.TIEF_ZAEH * v2 + (f.fertig ? C.ZIEL_BREMS : 0)) * dt - pump * dt, k = v2 > 1e-6 ? Math.max(0, 1 - brems / v2) : 0;
+        const brems = (mu * Math.hypot(N, aq) + C.KURVEN_MU * (f.drift == null ? 1 : f.drift) * Math.abs(aq + gq) + C.BREMS_MU * f.bremse * N + kd * v2 * v2 + tief * C.TIEF_ZAEH * v2 + (f.fertig ? C.ZIEL_BREMS : 0)) * dt - pump * dt, k = v2 > 1e-6 ? Math.max(0, 1 - brems / v2) : 0;
         f.vx *= k; f.vy *= k; f.vs *= k; v2 *= k;
         f.x += f.vx * dt; f.s += f.vs * dt;
         // auf der Fläche bleiben: die Fläche lenkt um, sie bremst nicht
@@ -2830,6 +2831,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 .sx-kante b { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #6EAF64; }
 .sx-kante.warn b { background: #DDA43B; } .sx-kante.rutscht b { background: #C23B2A; }
 .cs-knopf.sx-bremse { bottom: 130px; right: 26px; }
+.cs-knopf.sx-oben-l { bottom: 140px; left: 34px; right: auto; }
+.cs-knopf.sx-oben-r { bottom: 140px; right: 34px; }
+.cs-knopf.sx-schwung { width: 124px; height: 124px; }
+.cs-knopf.sx-schwung .cs-txt { font-size: 15px; }
 .sx-kante u { position: absolute; left: 74%; top: -2px; bottom: -2px; width: 2px; background: #141C28; }`;
   const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
   const pfeil = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
