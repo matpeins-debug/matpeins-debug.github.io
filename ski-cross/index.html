@@ -2389,7 +2389,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // o: { linie 0 … 1 (0 = Pistenmitte, 1 = Ideallinie), mut 0 … 1 (wie nah an die Haftgrenze), hocke: "nie" | "immer", voraus: Sekunden Vorausschau für die Hocke (2,4), bremst: darf bremsen }
   function bot(f, K, o) {
     o = o || {}; const linie = o.linie == null ? 1 : o.linie, mut = o.mut == null ? 0.8 : o.mut;
-    const v = Math.max(3, f.v), L = clamp(v * 0.85, 7, 30), u0 = K.ort(f.x, f.s).u;
+    const v = Math.max(3, f.v), L = clamp(v * (o.blick || 0.85), o.blickMin || 7, 30), u0 = K.ort(f.x, f.s).u;      // o.blick: so weit voraus zielt er (in Sekunden Fahrt); kurz für enge Torfolgen
     const dI = K.ideal ? (u) => linie * K.ideal(u) : (u) => linie * clamp(K.kr(u) * 260, -(K.halbBei(u, -1) - 2.5), K.halbBei(u, 1) - 2.5);                                  // durch die Tore, sonst zur Innenseite der Kurve
     const krI = K.ideal ? (u) => K.kr(u) + linie * (K.ideal(u + 3) - 2 * K.ideal(u) + K.ideal(u - 3)) / 9 : (u) => K.kr(u) * (1 - 0.45 * linie);
     const z = K.punkt(u0 + L, dI(u0 + L)), wunsch = Math.atan2(z[0] - f.x, z[1] - f.s), fahrt = Math.hypot(f.vx, f.vs) > 2 ? Math.atan2(f.vx, f.vs) : f.psi;
@@ -2540,7 +2540,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const fahne = (u, d, farbe) => { const tor = new T.Group(), p = raum(u, d); for (const o of [-0.4, 0.4]) { const st = new T.Mesh(stange, matS); st.position.x = o; tor.add(st); }
       tor.add(new T.Mesh(tuch, new T.MeshBasicMaterial({ color: farbe, side: T.DoubleSide }))); tor.position.set(p[0], p[1], p[2]); tor.rotation.y = -K.th(u); tor.scale.setScalar(K.torGroesse || 1); g.add(tor); };
     // Kurse mit eigenen Toren (K.tore): je Tor zwei Fahnen, dazwischen fährt man durch; sonst eine Fahne an der Innenseite jeder Kurve
-    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
+    // Slalom (K.torArt "stange"): je Tor zwei einzelne Kippstangen in einer Farbe, ohne Tuch
+    const kipp = new T.CylinderGeometry(0.035, 0.035, 1.9, 6).translate(0, 0.95, 0), kippe = (u, d, farbe) => { const p = raum(u, d), st = new T.Mesh(kipp, toon(farbe)); st.position.set(p[0], p[1], p[2]); st.scale.set(1.6, 1.15, 1.6); g.add(st); };
+    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) if (K.torArt === "stange") kippe(t.u, t.d + sd * (t.w + 0.12), K.torFarbe || (i % 2 ? C.blau : C.rot)); else fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
     for (let u = 40; u < K.lang - 15 && !K.tore; u += 2) {
       const k = K.kr(u); if (Math.abs(k) < 0.012 || u - letzte < 16 || Math.abs(K.kr(u - 2)) > Math.abs(k)) continue;
       letzte = u; fahne(u, Math.sign(k) * (HB(u, Math.sign(k)) - 0.9), nr++ % 2 ? C.blau : C.rot);
