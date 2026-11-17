@@ -2444,7 +2444,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   const schrift = (px) => `800 ${px}px "Futura","Avenir Next Condensed","Roboto Condensed","Arial Narrow",sans-serif`;
 
   // ------------------------------------------------------------------ Himmel, Sonne, Berge (wandern mit der Kamera)
-  function himmel() {
+  function himmel(gipfel) {
     const g = new T.Group();
     const tex = leinwand(8, 512, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, C.oben); gr.addColorStop(0.3, C.mitte); gr.addColorStop(0.47, C.horizont); gr.addColorStop(0.5, C.dunst); gr.addColorStop(1, C.dunst); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
     g.add(new T.Mesh(new T.SphereGeometry(2400, 24, 16), new T.MeshBasicMaterial({ map: tex, side: T.BackSide, fog: false, depthWrite: false })));
@@ -2470,6 +2470,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     kette(1700, 520, -40, C.mittel, null, 23, false);
     kette(1300, 330, -110, C.wald, null, 37, false);
     g.children.forEach((k, i) => k.traverse((o) => { o.renderOrder = -20 + i; o.frustumCulled = false; }));
+    // Drei hohe Felsgipfel mit Eis (wie über Wengen): weit weg und fest am Himmel, links der Fahrtrichtung
+    if (gipfel) { const fels = new T.MeshBasicMaterial({ color: "#56677A", fog: false }), eis = new T.MeshBasicMaterial({ color: "#F4F8FA", fog: false }), dunkel = new T.MeshBasicMaterial({ color: "#3F4E60", fog: false });
+      for (const [x, z, r, h, wand] of [[-1250, -1850, 400, 560, true], [-1750, -1400, 380, 600, false], [-2100, -800, 460, 660, false]]) { const b = new T.Mesh(new T.ConeGeometry(r, h, 7), wand ? dunkel : fels), k = new T.Mesh(new T.ConeGeometry(r * 0.46, h * 0.44, 7), eis);
+        b.position.set(x, h / 2 - 120, z); b.rotation.y = x * 0.01; k.position.set(x, h * 0.78 - 120 + 1, z); k.rotation.y = x * 0.01; g.add(b, k); } }
     return g;
   }
 
@@ -2526,7 +2530,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     pf.forEach((p, i) => { M.makeTranslation(p[0], p[1], p[2]); pfosten.setMatrixAt(i, M); }); g.add(pfosten);
     // Wald: Fichten in Stufen mit Schnee auf den Ästen. Mit Kulisse (Ski Alpin) steht er in dichten Stücken mit freien Wiesen dazwischen, sonst locker verstreut.
     const dicht = (u, sd) => (K.kulisse ? P.clamp(0.5 + 0.55 * Math.sin(u * 0.011 + sd * 1.3) + 0.3 * Math.sin(u * 0.029 + sd * 4), 0.04, 0.97) : 0.62);
-    const baeume = []; for (let u = U0 + 10; u < U1 - 10; u += K.kulisse ? 3.2 : 5) for (const sd of [-1, 1]) { const z = rn(), uu = u + rn() * 5, hh = 5 + rn() * rn() * 13, ton = rn(), br = 0.8 + rn() * 0.45; if (z >= dicht(uu, sd)) continue;
+    const baeume = [], waldBei = K.kulisse && K.kulisse.wald; for (let u = U0 + 10; u < U1 - 10; u += K.kulisse ? 3.2 : 5) for (const sd of [-1, 1]) { const z = rn(), uu = u + rn() * 5, hh = 5 + rn() * rn() * 13, ton = rn(), br = 0.8 + rn() * 0.45; if (z >= dicht(uu, sd) || (waldBei && !waldBei(uu))) continue;
       const dd = ZB(uu, sd) + (K.kulisse ? 7 : 3) + z * z * (K.kulisse ? 110 / dicht(uu, sd) : 150); if (dd > 0.9 * innen(uu, sd) || dd > 108) continue; const p = K.punkt(uu, sd * dd), o = K.ort(p[0], p[1]); if (Math.abs(o.d) < K.halbBei(o.u, Math.sign(o.d)) + K.rand + 2) continue;            // nicht auf einen anderen Teil der Strecke pflanzen
       baeume.push([p[0], K.hUD(o.u, o.d) - 0.3, -p[1], K.kulisse ? Math.min(hh, 5 + (dd - ZB(uu, sd)) * 0.45) : hh, ton, br, stk(uu)]); }      // am Rand niedrig, damit kein Baum den Blick verstellt
     const verbund = (teile) => { const po = [], no = []; for (const ge of teile) { const e = ge.toNonIndexed(); po.push(...e.attributes.position.array); no.push(...e.attributes.normal.array); } const o = new T.BufferGeometry(); o.setAttribute("position", new T.Float32BufferAttribute(po, 3)); o.setAttribute("normal", new T.Float32BufferAttribute(no, 3)); return o; };
@@ -2570,7 +2574,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
 
   // ------------------------------------------------------------------ Kulisse am Pistenrand (frei: K.kulisse)
-  // K.kulisse: { zuschauer: [[u von, u bis, seite −1 | 1 | 0]], fahnen: [Farben der Streifen von oben], starthaus, tribuene: seite, huetten: [[u, seite]], netze: [[u von, u bis, seite]] hohe Fangnetze, zielbogen, dorf, stadel, lift: seite } · K.torFarbe: alle Tore in dieser Farbe
+  // K.kulisse: { zuschauer: [[u von, u bis, seite −1 | 1 | 0]], fahnen: [Farben der Streifen von oben], starthaus, tribuene: seite, huetten: [[u, seite]], netze: [[u von, u bis, seite]] hohe Fangnetze, zielbogen, dorf, stadel, lift: seite, wald: (u) => stehen hier Bäume, felsen: [[u von, u bis, seite]], bruecke: [u], gipfel: drei hohe Felsgipfel am Horizont } · K.torFarbe: alle Tore in dieser Farbe
   function randKulisse(K) {
     const g = new T.Group(), Q = K.kulisse, rn = P.rng(31), Z = (u, sd) => K.halbBei(u, sd) + K.rand, M = new T.Matrix4(), q = new T.Quaternion(), v = new T.Vector3(), s1 = new T.Vector3(), farbe = new T.Color();
     const ort = (u, d, hoch) => { const p = K.punkt(u, d); return [p[0], K.hUD(u, d) + (hoch || 0), -p[1]]; };
@@ -2625,6 +2629,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       for (let u = 60; u < K.lang - 40; u += 85) { const d = sd * (Z(u, sd) + 26); if (!frei(u, d)) { letzt = null; continue; } const p = ort(u, d, -0.4), ma = new T.Mesh(mastG, mM2), qu = new T.Mesh(new T.BoxGeometry(3.4, 0.3, 0.3), mM2); ma.position.set(p[0], p[1], p[2]); qu.position.set(p[0], p[1] + 10.8, p[2]); qu.rotation.y = -K.th(u); g.add(ma, qu);
         const oben = new T.Vector3(p[0], p[1] + 10.9, p[2]); if (letzt) { seil.push(letzt.x, letzt.y, letzt.z, oben.x, oben.y, oben.z); for (const w of [0.3, 0.75]) { if (rn() < 0.35) continue; const m = letzt.clone().lerp(oben, w), ga = new T.Group(), k1 = new T.Mesh(kab, kM), k2 = new T.Mesh(new T.BoxGeometry(1.54, 0.6, 1.7), fM), ha = new T.Mesh(new T.BoxGeometry(0.08, 1.3, 0.08), mM2); k1.position.y = -2.2; k2.position.y = -1.95; ha.position.y = -0.7; ga.add(k1, k2, ha); ga.position.copy(m); ga.position.y -= 0.5; ga.rotation.y = -K.th(u); g.add(ga); } } letzt = oben; }
       if (seil.length) { const ge = new T.BufferGeometry(); ge.setAttribute("position", new T.Float32BufferAttribute(seil, 3)); g.add(new T.LineSegments(ge, new T.LineBasicMaterial({ color: C.tinte }))); } }
+    // Felsen am Pistenrand (Hundschopf): graue Brocken mit Schnee obenauf, dicht an der Piste und dahinter höher
+    if (Q.felsen) { const fG = new T.DodecahedronGeometry(1, 0), fM = toon("#6F7A83"), fS = toon("#F4F8FA");
+      for (const [a, b, sd] of Q.felsen) for (let u = a; u < b; u += 2.2) for (let r = 0; r < 3; r++) { const gr = 1.6 + rn() * 2.2 + r * 1.3, d = sd * (K.halbBei(u, sd) + 0.6 + gr * 0.7 + r * 3.2 + rn() * 1.5), p = ort(u + rn() * 2, d, gr * 0.35), fe = new T.Mesh(fG, fM), ka = new T.Mesh(fG, fS);
+          fe.position.set(p[0], p[1], p[2]); fe.scale.set(gr, gr * (0.9 + rn() * 0.9), gr); fe.rotation.set(rn() * 3, rn() * 3, rn() * 3); ka.position.set(p[0], p[1] + gr * 0.75, p[2]); ka.scale.set(gr * 0.72, gr * 0.3, gr * 0.72); ka.rotation.y = rn() * 3; g.add(fe, ka); } }
+    // Bahnbrücke über die Piste (Wasserstation): zwei Widerlager aus Stein, Fahrbahn mit Geländer, darauf ein Zug
+    for (const u of Q.bruecke || []) { const br = new T.Group(), H = K.halbBei(u, 0), p = ort(u, 0), stein = toon("#8B8F8A"), dunkel = toon(C.tinte), lang = 2 * H + 30;
+      for (const sd of [-1, 1]) { const wi = new T.Mesh(new T.BoxGeometry(13, 14, 5), stein); wi.position.set(sd * (H + 7), 4.5, 0); br.add(wi); }
+      const bahn = new T.Mesh(new T.BoxGeometry(lang, 1.1, 5.4), stein), gel = new T.Mesh(new T.BoxGeometry(lang, 0.5, 5.6), dunkel); bahn.position.y = 11; gel.position.y = 11.8; br.add(bahn, gel);
+      for (let i = 0; i < 3; i++) { const wg = new T.Mesh(new T.BoxGeometry(9, 2.7, 2.6), toon(i === 1 ? "#F0C040" : "#2F7A4A")), fe = new T.Mesh(new T.BoxGeometry(8.2, 0.9, 2.7), toon("#22364F")); wg.position.set(-H - 4 + i * 9.6, 13.6, 0); fe.position.set(-H - 4 + i * 9.6, 14.1, 0); br.add(wg, fe); }
+      br.position.set(p[0], Math.min(K.hUD(u, -H), K.hUD(u, H)) - 0.5, p[2]); br.rotation.y = -K.th(u); g.add(br); }
     for (const [u, sd] of Q.huetten || []) haus(u, sd * (Z(u, sd) + 9), 9, 6, 3.4, "#6B4A32", "#F4F8FA", false).rotation.y += sd * 1.2;
     return g;
   }
@@ -2723,7 +2737,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     szene.fog = new T.Fog(C.dunst, 140, 780);
     szene.add(new T.HemisphereLight("#EAF2FB", "#8FA6C4", 1.5));
     const sonne = new T.DirectionalLight("#FFF1D0", 1.7); sonne.position.set(SONNE[0], SONNE[1], SONNE[2]); szene.add(sonne);
-    const sky = himmel(); szene.add(sky); const kul = K.kulisse ? randKulisse(K) : null; let zeit = 0;
+    const sky = himmel(K.kulisse && K.kulisse.gipfel); szene.add(sky); const kul = K.kulisse ? randKulisse(K) : null; let zeit = 0;
     // Stücke: jedes Teil der Welt kommt in die Gruppe seines Streckenstücks (aus userData.u oder aus seinem Ort); sichtbar sind nur die Stücke von 150 m hinter bis 760 m vor dem Fahrer.
     // Was die ganze Strecke entlangläuft (Linien, Zaun, Pfosten, Seil), bleibt immer sichtbar.
     const stuecke = new Map(), stueck = (n) => { if (!stuecke.has(n)) { const gr = new T.Group(); gr.userData.u = uStk(n); stuecke.set(n, gr); szene.add(gr); } return stuecke.get(n); };
@@ -2961,11 +2975,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       plan: { slalom: { ab: null, ziel: 811, tor: { ab: 11, aus: 1.3, w: 2.4, erst: 26 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, lift: -1, fahnen: ["#C8102E", "#FFFFFF", "#C8102E"], zuschauer: [[K.lang * 0.45, K.lang + 70, 0]] }) }),
     chuenis: () => ({ ort: "Adelboden", daten: ausLift(DAT().chuenis), glatt: 30, halb: 20, abschnitte: [[9999, "Starthang", 18], [1700, "Oberer Steilhang", 20], [1560, "Mittelteil", 20], [1400, "Zielhang", 22]],
       plan: { riesenslalom: { ab: 1730, ziel: 1310, tor: { ab: 27, aus: 4, w: 3.2, erst: 45 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, lift: -1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], zuschauer: [[K.lang * 0.72, K.lang + 70, 0]] }) }),
-    // Wengen: echte Pistenlinie mit Höhenprofil. Die Lage der Abschnitte (Höhen) ist aus dem Profil geschätzt; sicher ist nur die Wasserstation (Tunnel bei 1778 m).
-    wengen: () => ({ ort: "Wengen", daten: DAT().wengen, monoton: true, glatt: 14, halb: 18, abschnitte: [[9999, "Starthang", 16], [2262, "Russisprung", 16], [2225, "Traversenschuss", 15], [2190, "Panoramakurve", 15], [2160, "Hundschopf", 10], [2125, "Minschkante", 13], [2060, "Canadian Corner", 14], [1990, "Alpweg", 7], [1880, "Kernen-S", 9], [1800, "Wasserstation", 6], [1770, "Langentrejen", 14], [1610, "Haneggschuss", 14], [1495, "Seilersboden", 16], [1450, "Silberhornsprung", 16], [1400, "Österreicherloch", 16], [1378, "Ziel-S", 14], [1330, "Zielschuss", 18]],
-      plan: { abfahrt: { ab: 2311, ziel: 1287 } }, /* 4 m unter dem veröffentlichten Start: die kartierte Linie macht ganz oben einen Haken (Weg vom Lift zum Starthaus) */ kulisse: (K, uBei) => ({ dorf: true, starthaus: true, tribuene: 1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], huetten: [[uBei(1790), 1]],
-        netze: [[1880, 1800], [1378, 1330]].map(([h0, h1]) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; }).filter(([a, b]) => b - a > 12),
-        zuschauer: [[uBei(2165), uBei(2120), 0], [uBei(1850), uBei(1800), 1], [uBei(1340), K.lang + 70, 0]].filter(([a, b]) => b - a > 12) }) }),
+    // Wengen: echte Pistenlinie mit Höhenprofil. Die Höhen der Schlüsselstellen stammen aus der Streckenbeschreibung (blue News: Russisprung 2180 m, Hundschopf 1975 m, Minschkante 1915 m,
+    // Canadian Corner 1890 m, Kernen-S 1825 m, Wasserstation 1775 m, Haneggschuss 1590 m, Silberhornsprung 1450 m, Österreicherloch 1390 m, Ziel-S 1385 m); die Grenzen dazwischen sind gesetzt.
+    wengen: () => ({ ort: "Wengen", daten: DAT().wengen, monoton: true, glatt: 14, halb: 18, abschnitte: [[9999, "Starthang", 16], [2205, "Russisprung", 16], [2160, "Traversenschuss", 15], [2060, "Panoramakurve", 15], [1995, "Hundschopf", 6.5], [1978, "Hundschopf", 14], [1940, "Minschkante", 12], [1902, "Canadian Corner", 14], [1872, "Alpweg", 4.5], [1838, "Kernen-S", 8], [1790, "Wasserstation", 4.5], [1766, "Langentrejen", 14], [1612, "Haneggschuss", 13], [1500, "Seilersboden", 16], [1462, "Silberhornsprung", 16], [1412, "Österreicherloch", 16], [1388, "Ziel-S", 13], [1335, "Zielschuss", 18]],
+      kanten: [[2180, 45, 50, 25, 180, 60], [1975, 70, 45, 35, 130, 45]],      // Russisprung, Hundschopf, Silberhornsprung: [Höhe der Kante, steil %, Mulde m, danach flach %, Länge m, Anlauf m]
+      plan: { abfahrt: { ab: 2311, ziel: 1287 } }, /* 4 m unter dem veröffentlichten Start: die kartierte Linie macht ganz oben einen Haken (Weg vom Lift zum Starthaus) */ kulisse: (K, uBei) => { const aussen = (h0, h1) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; };
+        return { dorf: true, starthaus: true, tribuene: 1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], gipfel: true,
+          wald: (u) => K.hoeheUeberMeer(u) < 1930,                                       // oben ist die Strecke über der Baumgrenze
+          felsen: [[uBei(1992), uBei(1958), -1]],                                        // Hundschopf: links die Felsen, rechts das Netz
+          bruecke: [uBei(1778)],                                                         // Wasserstation: die Bahn fährt über die Piste
+          netze: [[uBei(1996), uBei(1945), 1], aussen(1902, 1880), aussen(1838, 1800), aussen(1388, 1335)].filter(([a, b]) => b - a > 12),
+          zuschauer: [[uBei(1950), uBei(1925), 1], [uBei(1900), uBei(1880), 0], [uBei(1830), uBei(1800), 1], [uBei(1340), K.lang + 70, 0]].filter(([a, b]) => b - a > 12) }; } }),
     wengenSlalom: () => ({ ort: "Wengen", daten: DAT().wengenSlalom, glatt: 14, halb: 17, abschnitte: [[9999, "Starthang", 15], [1445, "Steilhang", 16], [1350, "Zielhang", 17]],
       plan: { slalom: { ab: 1477, ziel: 1287, tor: { ab: 11, aus: 1.3, w: 2.4, erst: 26 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], zuschauer: [[K.lang * 0.45, K.lang + 70, 0]] }) }),
   };
@@ -2973,6 +2993,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const G = hang ? HAENGE[hang]() : null, ABS = G ? G.abschnitte : KITZ_ABSCHNITTE;
     const HALB = G ? G.halb : 20, PL = G ? G.plan[disz] : KITZ_PLAN[disz], eng = !!PL.tor;
     const D = G ? G.daten : DAT().kitz, sg = disz === "superg"; const L = linie(D, PL.ab); if (G && G.monoton) for (let i = 1; i < L.hoehen.length; i++) L.hoehen[i][1] = Math.min(L.hoehen[i][1], L.hoehen[i - 1][1] - 0.05);      // einzelne Ausreißer nach oben im Höhenprofil würden zu Schanzen
+    if (G && G.kanten) for (const [hK, steil, mulde, flach, weit, anlauf] of G.kanten) { let i = 0; while (i < L.hoehen.length - 2 && L.hoehen[i + 1][1] > hK) i++; const p0 = L.hoehen[i], p1 = L.hoehen[i + 1], bei = p0[0] + (p1[0] - p0[0]) * (p0[1] - hK) / (p0[1] - p1[1]); if (bei > (anlauf || 30) + 5) L.hoehen = kante(L.hoehen, bei, steil, mulde, flach, bei + weit, anlauf); }
     if (disz === "abfahrt" && !G) L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
     const basis = { punkte: L.punkte, hoehen: L.hoehen, zielHoehe: PL.ziel, halb: HALB, rand: 8, glatt: G ? G.glatt : 14 };
     const roh = P.kursLinie(basis), y0 = L.hoehen[0][1], NB = Math.ceil((roh.uMax - roh.uMin) / 4) + 1, BR = new Float64Array(NB);
@@ -3062,10 +3083,14 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   "use strict";
   const SADaten = {
     // Wengen: OpenSkiMap API, Suche „Lauberhorn“, von Mat geschickt am 17.11.2026 (Rohdaten in docs/roh/). Abfahrt: Piste 45 „Lauberhorn Weltcup-Abfahrt“ in drei Stücken
-    // (das mittlere ist der Tunnel an der Wasserstation); der zweite erfasste Weg zwischen 2183 und 1982 m (way/670568317) ist nicht verwendet. Slalom: Piste 47 „Lauberhorn Weltcup Slalom“.
+    // (mit dem Tunnel an der Wasserstation). Zwischen 2183 und 1982 m (Russisprung bis Hundschopf) gibt es zwei erfasste Wege; verwendet ist way/670568317 mit den beiden Wellen und der langen Rechtskurve, nicht das Stück von way/52331677. Slalom: Piste 47 „Lauberhorn Weltcup Slalom“.
     wengen: { quelle: "OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap", teile: [
-      { osm: "way/52331677", res: 24.81591021378556, coords: [[7.9473123,46.5864603,2317.7],[7.9469722,46.5861861,2315.3],[7.946645,46.5860534,2314.5],[7.9466315,46.5860302,2314.1],[7.9467452,46.5858704,2311.4],[7.9469535,46.5853733,2292.3],[7.9472607,46.5846679,2266.5],[7.9475801,46.5842045,2249.3],[7.9479298,46.5838173,2237.4],[7.9480317,46.5834947,2229.4],[7.9479784,46.5833662,2225.4],[7.9477979,46.583284,2220.5],[7.9474282,46.5832624,2213.5],[7.947065,46.5833127,2209.1],[7.9464144,46.5835338,2196.6],[7.9460077,46.583473,2188.4],[7.9454523,46.5832298,2181],[7.9437147,46.5823137,2148],[7.9424144,46.5816141,2111.2],[7.941659,46.5813022,2087.9],[7.9408957,46.580875,2060.5],[7.9404651,46.5805227,2042.3],[7.940149,46.5797963,2021.7],[7.9401173,46.5791604,2008.7],[7.9399719,46.5787827,1999.1],[7.9397005,46.5785958,1992.6],[7.9391241,46.5785106,1981.8],[7.9387915,46.5783784,1975.7],[7.9387245,46.5783277,1974.4],[7.9386871,46.5782872,1972.8],[7.9386839,46.5782061,1967.2],[7.9387084,46.5781115,1963.4],[7.938704,46.5780061,1958.8],[7.9385812,46.577889,1951.5],[7.9382899,46.5777889,1939],[7.9380673,46.5776819,1931.3],[7.9378954,46.5775157,1923.7],[7.9377375,46.5770434,1903.9],[7.9376529,46.5768452,1898.8],[7.937508,46.5767396,1894.7],[7.93725,46.5766458,1886.3],[7.9368933,46.576637,1879.9],[7.936458,46.5767472,1870.1],[7.936116,46.5768997,1865.2],[7.9355385,46.5772888,1849.5],[7.9348409,46.5779459,1836.8],[7.9347333,46.5780828,1834.9],[7.9347132,46.5781728,1833.9],[7.9347363,46.5782432,1832.9],[7.9349541,46.5784763,1827.7],[7.9350126,46.578562,1826.1],[7.9350123,46.5786111,1820.9],[7.9349637,46.5786736,1822.9],[7.9347266,46.5788748,1820.6],[7.9343937,46.5790566,1816.6],[7.9341218,46.5791716,1810.1],[7.9338448,46.5792298,1799.7],[7.9331233,46.5792619,1778.2]],
-        heights: [2317.7,2317.5,2315,2313.9,2310.1,2301,2292.3,2285.3,2276.1,2268.7,2262,2253.1,2247.7,2241.1,2235.9,2230,2224.2,2217.7,2211.8,2208,2202.9,2195.7,2189.2,2186.8,2183.3,2172.5,2164.8,2158.2,2152.2,2151.5,2150.9,2147.9,2141.8,2135.5,2126.2,2117.7,2111.5,2104.4,2096.3,2085,2076.5,2067.4,2058.7,2049.8,2041.7,2035.9,2029.8,2023.3,2018.2,2014.1,2009.3,2003.5,1998.4,1992.9,1987.3,1981.2,1975.9,1966.6,1956.7,1944.4,1933.6,1925.9,1918.8,1908.7,1900.2,1894.6,1885.3,1879.6,1873.3,1867.5,1863.8,1856.7,1850.1,1847.4,1843.6,1839.5,1836.3,1833.7,1829.9,1824,1823,1819,1815.8,1808.9,1797.6,1785.8,1778.2] },
+      { osm: "way/52331677 (oben)", res: 24.81591021378556, coords: [[7.9473123,46.5864603,2317.7],[7.9469722,46.5861861,2315.3],[7.946645,46.5860534,2314.5],[7.9466315,46.5860302,2314.1],[7.9467452,46.5858704,2311.4],[7.9469535,46.5853733,2292.3],[7.9472607,46.5846679,2266.5],[7.9475801,46.5842045,2249.3],[7.9479298,46.5838173,2237.4],[7.9480317,46.5834947,2229.4],[7.9479784,46.5833662,2225.4],[7.9477979,46.583284,2220.5],[7.9474282,46.5832624,2213.5],[7.947065,46.5833127,2209.1],[7.9464144,46.5835338,2196.6],[7.9460077,46.583473,2188.4]],
+        heights: [2317.7,2317.5,2315,2313.9,2310.1,2301,2292.3,2285.3,2276.1,2268.7,2262,2253.1,2247.7,2241.1,2235.9,2230,2224.2,2217.7,2211.8,2208,2202.9,2195.7,2189.2] },
+      { osm: "way/670568317", res: 24.729287048169837, coords: [[7.9461452,46.5831961,2183],[7.9452181,46.5825416,2155.4],[7.9442149,46.5821287,2146.9],[7.9434639,46.5817802,2133.4],[7.9422891,46.5810834,2100.6],[7.9418251,46.5805617,2076.6],[7.9413852,46.5797966,2043.9],[7.9411867,46.5791771,2023.3],[7.9409453,46.5786388,2004.4],[7.9407388,46.5783696,1996.3],[7.9404223,46.5782461,1996.6],[7.9400307,46.5782129,1995.6],[7.939513,46.578329,1989.9],[7.9391241,46.5785106,1981.8]],
+        heights: [2183,2177.8,2171,2162.3,2156,2148.5,2144.4,2145,2146.8,2142.2,2135.2,2131.1,2122.7,2115.6,2110.2,2104.3,2095.5,2086.7,2077.1,2068,2058.5,2049.3,2042.4,2034.9,2027.5,2020.3,2012.9,2005.4,1997.9,1996.6,1996.6,1995.3,1992,1987.7,1981.8] },
+      { osm: "way/52331677 (unten)", res: 24.81591021378556, coords: [[7.9391241,46.5785106,1981.8],[7.9387915,46.5783784,1975.7],[7.9387245,46.5783277,1974.4],[7.9386871,46.5782872,1972.8],[7.9386839,46.5782061,1967.2],[7.9387084,46.5781115,1963.4],[7.938704,46.5780061,1958.8],[7.9385812,46.577889,1951.5],[7.9382899,46.5777889,1939],[7.9380673,46.5776819,1931.3],[7.9378954,46.5775157,1923.7],[7.9377375,46.5770434,1903.9],[7.9376529,46.5768452,1898.8],[7.937508,46.5767396,1894.7],[7.93725,46.5766458,1886.3],[7.9368933,46.576637,1879.9],[7.936458,46.5767472,1870.1],[7.936116,46.5768997,1865.2],[7.9355385,46.5772888,1849.5],[7.9348409,46.5779459,1836.8],[7.9347333,46.5780828,1834.9],[7.9347132,46.5781728,1833.9],[7.9347363,46.5782432,1832.9],[7.9349541,46.5784763,1827.7],[7.9350126,46.578562,1826.1],[7.9350123,46.5786111,1820.9],[7.9349637,46.5786736,1822.9],[7.9347266,46.5788748,1820.6],[7.9343937,46.5790566,1816.6],[7.9341218,46.5791716,1810.1],[7.9338448,46.5792298,1799.7],[7.9331233,46.5792619,1778.2]],
+        heights: [1981.2,1975.9,1966.6,1956.7,1944.4,1933.6,1925.9,1918.8,1908.7,1900.2,1894.6,1885.3,1879.6,1873.3,1867.5,1863.8,1856.7,1850.1,1847.4,1843.6,1839.5,1836.3,1833.7,1829.9,1824,1823,1819,1815.8,1808.9,1797.6,1785.8,1778.2] },
       { osm: "way/670568315", res: 9.593080993756795, coords: [[7.9331233,46.5792619,1778.2],[7.9330009,46.579281,1777.1]],
         heights: [1778.2,1777.1] },
       { osm: "way/670568314", res: 24.938353874862756, coords: [[7.9330009,46.579281,1777.1],[7.9326184,46.579403,1775.9],[7.9322268,46.579572,1769.4],[7.9317239,46.5797505,1760.7],[7.931438,46.5798669,1755.2],[7.9309403,46.5800695,1746.8],[7.9300557,46.5805267,1725.8],[7.9293868,46.5812073,1702.2],[7.9288533,46.5820364,1674.2],[7.9285194,46.5826331,1659.5],[7.9284382,46.5831426,1645.2],[7.9280673,46.5836426,1625.5],[7.9278018,46.5839406,1611.3],[7.9277546,46.5845025,1593.8],[7.9272883,46.5855222,1546.1],[7.9272312,46.586159,1511.3],[7.9272682,46.5864464,1496],[7.9273781,46.5873012,1479.1],[7.9274189,46.5877567,1474.6],[7.9274136,46.5883023,1465.3],[7.9272969,46.5886341,1461.2],[7.9269324,46.5894522,1434],[7.9265967,46.5907766,1393.3],[7.9266089,46.5909934,1389],[7.9266706,46.5911335,1385.1],[7.9267747,46.5913524,1380.7],[7.9267848,46.5915598,1380.4],[7.9266813,46.5917381,1378.1],[7.92628,46.5921569,1365.2],[7.9260537,46.5922984,1357.1],[7.925846,46.5924758,1347.5],[7.9256931,46.592944,1329.1],[7.9255473,46.5932841,1307.6],[7.9252956,46.5935664,1293.9],[7.9247704,46.5937716,1285.5],[7.9238376,46.5939397,1275.2],[7.9236552,46.5940126,1272.9],[7.9236089,46.5940356,1272.7]],
@@ -3110,7 +3135,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.17.0";
+  const VERSION = "0.18.0";
   // Sechs Strecken und mehr: das Programm im Menü steht in zwei Spalten, die Karte ist dafür breiter
   { const s = document.createElement("style"); s.textContent = "#scrMenu .card.menu { width: 500px; } #scrMenu #mModi { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scrMenu #mModi .big { font-size: 14px; padding: 5px 8px; min-width: 0; }"; document.head.appendChild(s); }
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
