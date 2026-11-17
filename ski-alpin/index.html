@@ -1820,7 +1820,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "schneeball", name: "Schneeball", pfad: "/cold-medal-schneeball/", satz: "Schnee lesen und so weit werfen wie keiner im Dorf.", gruppen: false },
     { id: "big-air", name: "Big Air", pfad: "/big-air/", satz: "Anlauf, Absprung, Trick und Landung auf der großen Schanze.", gruppen: false },
     { id: "ski-cross", name: "Ski Cross", pfad: "/ski-cross/", satz: "Vier am Start, zwei kommen weiter: Wellen, Kurven, Zweikämpfe.", gruppen: false },
-    { id: "ski-alpin", name: "Ski Alpin", pfad: "/ski-alpin/", satz: "Kitzbühel, Abfahrt und Super-G: die Strecke nach echten Geländedaten.", gruppen: false },
+    { id: "ski-alpin", name: "Ski Alpin", pfad: "/ski-alpin/", satz: "Kitzbühel, Wengen und Adelboden: Abfahrt, Super-G, Riesenslalom und Slalom nach echten Geländedaten.", gruppen: false },
     { id: "eisschnelllauf", name: "Eisschnelllauf", pfad: "/eisschnelllauf/", satz: "Im Takt über das Oval: Kurven drücken, Kraft einteilen.", gruppen: false },
     { id: "eisstock", name: "Eisstock", pfad: "/eisstock/", satz: "Stock um Stock an die Daube: Maß nehmen oder wegschießen.", gruppen: false },
     { id: "hoernerschlitten", name: "Hörnerschlitten", pfad: "/hoernerschlitten/", satz: "Mit dem Heuschlitten ins Tal: lenken, bremsen, nicht kippen.", gruppen: false },
@@ -2960,12 +2960,20 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     ganslern: () => ({ ort: "Kitzbühel", daten: ausLift(DAT().ganslern, 1004), glatt: 30, halb: 17, abschnitte: [[9999, "Starthang", 15], [975, "Steilhang", 17], [866, "Querfahrt", 17], [852, "Zielhang", 18]],
       plan: { slalom: { ab: null, ziel: 811, tor: { ab: 11, aus: 1.3, w: 2.4, erst: 26 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, lift: -1, fahnen: ["#C8102E", "#FFFFFF", "#C8102E"], zuschauer: [[K.lang * 0.45, K.lang + 70, 0]] }) }),
     chuenis: () => ({ ort: "Adelboden", daten: ausLift(DAT().chuenis), glatt: 30, halb: 20, abschnitte: [[9999, "Starthang", 18], [1700, "Oberer Steilhang", 20], [1560, "Mittelteil", 20], [1400, "Zielhang", 22]],
-      plan: { riesenslalom: { ab: 1730, ziel: 1310, tor: { ab: 27, aus: 4, w: 3.2, erst: 45 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, lift: -1, stadel: true, fahnen: ["#D52B1E", "#FFFFFF", "#D52B1E"], zuschauer: [[K.lang * 0.72, K.lang + 70, 0]] }) }),
+      plan: { riesenslalom: { ab: 1730, ziel: 1310, tor: { ab: 27, aus: 4, w: 3.2, erst: 45 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, lift: -1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], zuschauer: [[K.lang * 0.72, K.lang + 70, 0]] }) }),
+    // Wengen: echte Pistenlinie mit Höhenprofil. Die Lage der Abschnitte (Höhen) ist aus dem Profil geschätzt; sicher ist nur die Wasserstation (Tunnel bei 1778 m).
+    wengen: () => ({ ort: "Wengen", daten: DAT().wengen, monoton: true, glatt: 14, halb: 18, abschnitte: [[9999, "Starthang", 16], [2262, "Russisprung", 16], [2225, "Traversenschuss", 15], [2190, "Panoramakurve", 15], [2160, "Hundschopf", 10], [2125, "Minschkante", 13], [2060, "Canadian Corner", 14], [1990, "Alpweg", 7], [1880, "Kernen-S", 9], [1800, "Wasserstation", 6], [1770, "Langentrejen", 14], [1610, "Haneggschuss", 14], [1495, "Seilersboden", 16], [1450, "Silberhornsprung", 16], [1400, "Österreicherloch", 16], [1378, "Ziel-S", 14], [1330, "Zielschuss", 18]],
+      plan: { abfahrt: { ab: 2311, ziel: 1287 } }, /* 4 m unter dem veröffentlichten Start: die kartierte Linie macht ganz oben einen Haken (Weg vom Lift zum Starthaus) */ kulisse: (K, uBei) => ({ dorf: true, starthaus: true, tribuene: 1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], huetten: [[uBei(1790), 1]],
+        netze: [[1880, 1800], [1378, 1330]].map(([h0, h1]) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; }).filter(([a, b]) => b - a > 12),
+        zuschauer: [[uBei(2165), uBei(2120), 0], [uBei(1850), uBei(1800), 1], [uBei(1340), K.lang + 70, 0]].filter(([a, b]) => b - a > 12) }) }),
+    wengenSlalom: () => ({ ort: "Wengen", daten: DAT().wengenSlalom, glatt: 14, halb: 17, abschnitte: [[9999, "Starthang", 15], [1445, "Steilhang", 16], [1350, "Zielhang", 17]],
+      plan: { slalom: { ab: 1477, ziel: 1287, tor: { ab: 11, aus: 1.3, w: 2.4, erst: 26 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], zuschauer: [[K.lang * 0.45, K.lang + 70, 0]] }) }),
   };
   function kitz(disz, hang) {
     const G = hang ? HAENGE[hang]() : null, ABS = G ? G.abschnitte : KITZ_ABSCHNITTE;
     const HALB = G ? G.halb : 20, PL = G ? G.plan[disz] : KITZ_PLAN[disz], eng = !!PL.tor;
-    const D = G ? G.daten : DAT().kitz, sg = disz === "superg"; const L = linie(D, PL.ab); if (disz === "abfahrt") L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
+    const D = G ? G.daten : DAT().kitz, sg = disz === "superg"; const L = linie(D, PL.ab); if (G && G.monoton) for (let i = 1; i < L.hoehen.length; i++) L.hoehen[i][1] = Math.min(L.hoehen[i][1], L.hoehen[i - 1][1] - 0.05);      // einzelne Ausreißer nach oben im Höhenprofil würden zu Schanzen
+    if (disz === "abfahrt" && !G) L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
     const basis = { punkte: L.punkte, hoehen: L.hoehen, zielHoehe: PL.ziel, halb: HALB, rand: 8, glatt: G ? G.glatt : 14 };
     const roh = P.kursLinie(basis), y0 = L.hoehen[0][1], NB = Math.ceil((roh.uMax - roh.uMin) / 4) + 1, BR = new Float64Array(NB);
     // Breite entlang der Strecke: je Abschnitt ein Wert, über rund 60 m weich ineinander
@@ -2993,7 +3001,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     K.zwischen = [0.2, 0.4, 0.6, 0.8].map((q) => Math.round(q * K.lang));
     if (disz === "abfahrt") K.torFarbe = "#C23B2A";       // in der Abfahrt sind alle Tore rot, im Super-G wechseln rot und blau
     if (disz === "slalom") K.torArt = "stange";         // Slalom: Kippstangen ohne Tuch
-    K.kulisse = G ? G.kulisse(K) : { starthaus: true, tribuene: 1, fahnen: ["#C8102E", "#FFFFFF", "#C8102E"], huetten: [[uBei(1222), -1]], dorf: tal, stadel: true, lift: -1, netze: [[1640, 1560], [1520, 1440], [1080, 1000], [960, 880]].map(([h0, h1]) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; }).filter(([a, b]) => b - a > 12),      // außen an der Kurve
+    K.kulisse = G ? G.kulisse(K, uBei) : { starthaus: true, tribuene: 1, fahnen: ["#C8102E", "#FFFFFF", "#C8102E"], huetten: [[uBei(1222), -1]], dorf: tal, stadel: true, lift: -1, netze: [[1640, 1560], [1520, 1440], [1080, 1000], [960, 880]].map(([h0, h1]) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; }).filter(([a, b]) => b - a > 12),      // außen an der Kurve
       zuschauer: [[uBei(1628), uBei(1548), 0], [uBei(1500), uBei(1432), 1], [uBei(1256), uBei(1212), 1], [uBei(1052), uBei(986), -1], [tal ? uBei(850) : K.lang - 70, K.lang + 70, 0]].filter(([a, b]) => b - a > 12 && a < K.lang + 60) };
     K.torGroesse = eng ? 1.15 : 1.5;                                                        // Fahnen größer als echt, damit man sie von weitem erkennt
     K.anschub = disz === "slalom" ? 4.5 : 7;                                                             // Abstoßen und Schlittschuhschritte aus dem Starttor, m/s
@@ -3009,6 +3017,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "kitz-superg", ort: "Kitzbühel", land: "AUT", disz: "superg", baue: () => kitz("superg"), daten: { lang: 2150, start: 1345, ziel: 805 } },
     // modell: keine veröffentlichte Strecke, die Zahlen sind die des gebauten Kurses
     { id: "kitz-ganslern", ort: "Kitzbühel", land: "AUT", disz: "slalom", baue: () => kitz("slalom", "ganslern"), daten: { lang: 590, start: 1004, ziel: 811, tol: 0.07 } },      // tol: die Liftachse ist 6 % länger als die veröffentlichte Strecke
+    { id: "wengen-abfahrt", ort: "Wengen", land: "SUI", disz: "abfahrt", baue: () => kitz("abfahrt", "wengen"), daten: { lang: 4480, start: 2315, ziel: 1287, tol: 0.12 } },      // tol: die kartierte Linie ist kürzer als die veröffentlichte Strecke
+    { id: "wengen-slalom", ort: "Wengen", land: "SUI", disz: "slalom", baue: () => kitz("slalom", "wengenSlalom"), daten: { lang: 650, start: 1477, ziel: 1287, tol: 0.17 } },
     { id: "adelboden-riesenslalom", ort: "Adelboden", land: "SUI", disz: "riesenslalom", baue: () => kitz("riesenslalom", "chuenis"), daten: { lang: 1250, start: 1730, ziel: 1310, modell: true } },      // Start und Ziel veröffentlicht, Länge die des Modells
   ];
   // Fahrer im Starttor mit dem Schwung des Abstoßens
@@ -3036,7 +3046,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     if (s && s !== Z.vz) { Z.vz = s; Z.t = 0; Z.ok = Z.vor === s && Z.tVor < SCHWUNG.frueh; Z.guete = Z.ok ? -Z.tVor : null; }        // Kantenwechsel der Linie
     if (!Z.ok && seite && seite === Z.vz) { Z.ok = true; Z.guete = Z.t; }                                                            // Bogen bestätigt
     // Wer den Wechsel genau trifft, schneidet den Bogen sauber (weniger Reibung im Bogen, f.drift); spät oder zu früh driftet der Ski mehr
-    f.drift = Z.ok ? 0.88 + 0.5 * P.clamp(Math.abs(Z.guete) / 0.3, 0, 1) : 1.4;
+    f.drift = (Z.ok ? 0.9 + 0.48 * P.clamp(Math.abs(Z.guete) / 0.3, 0, 1) : 1.4) * (1 + 1.3 * P.clamp((Math.tan(K.grad(f.u) * P.RAD) - 0.42) / 0.3, 0, 1));      // im Steilhang driftet er von selbst stärker an (dort bremst der Vorläufer)
     if (Z.ok) return { lenk: b, soll: b, ok: true, guete: Z.guete };
     if (seite && seite !== Z.vz) return { lenk: seite * SCHWUNG.falsch, soll: b, ok: false };
     return { lenk: b * P.clamp((SCHWUNG.spaet - Z.t) / (SCHWUNG.spaet - SCHWUNG.voll), 0, 1), soll: b, ok: false };
@@ -3051,6 +3061,20 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 (function (root) {
   "use strict";
   const SADaten = {
+    // Wengen: OpenSkiMap API, Suche „Lauberhorn“, von Mat geschickt am 17.11.2026 (Rohdaten in docs/roh/). Abfahrt: Piste 45 „Lauberhorn Weltcup-Abfahrt“ in drei Stücken
+    // (das mittlere ist der Tunnel an der Wasserstation); der zweite erfasste Weg zwischen 2183 und 1982 m (way/670568317) ist nicht verwendet. Slalom: Piste 47 „Lauberhorn Weltcup Slalom“.
+    wengen: { quelle: "OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap", teile: [
+      { osm: "way/52331677", res: 24.81591021378556, coords: [[7.9473123,46.5864603,2317.7],[7.9469722,46.5861861,2315.3],[7.946645,46.5860534,2314.5],[7.9466315,46.5860302,2314.1],[7.9467452,46.5858704,2311.4],[7.9469535,46.5853733,2292.3],[7.9472607,46.5846679,2266.5],[7.9475801,46.5842045,2249.3],[7.9479298,46.5838173,2237.4],[7.9480317,46.5834947,2229.4],[7.9479784,46.5833662,2225.4],[7.9477979,46.583284,2220.5],[7.9474282,46.5832624,2213.5],[7.947065,46.5833127,2209.1],[7.9464144,46.5835338,2196.6],[7.9460077,46.583473,2188.4],[7.9454523,46.5832298,2181],[7.9437147,46.5823137,2148],[7.9424144,46.5816141,2111.2],[7.941659,46.5813022,2087.9],[7.9408957,46.580875,2060.5],[7.9404651,46.5805227,2042.3],[7.940149,46.5797963,2021.7],[7.9401173,46.5791604,2008.7],[7.9399719,46.5787827,1999.1],[7.9397005,46.5785958,1992.6],[7.9391241,46.5785106,1981.8],[7.9387915,46.5783784,1975.7],[7.9387245,46.5783277,1974.4],[7.9386871,46.5782872,1972.8],[7.9386839,46.5782061,1967.2],[7.9387084,46.5781115,1963.4],[7.938704,46.5780061,1958.8],[7.9385812,46.577889,1951.5],[7.9382899,46.5777889,1939],[7.9380673,46.5776819,1931.3],[7.9378954,46.5775157,1923.7],[7.9377375,46.5770434,1903.9],[7.9376529,46.5768452,1898.8],[7.937508,46.5767396,1894.7],[7.93725,46.5766458,1886.3],[7.9368933,46.576637,1879.9],[7.936458,46.5767472,1870.1],[7.936116,46.5768997,1865.2],[7.9355385,46.5772888,1849.5],[7.9348409,46.5779459,1836.8],[7.9347333,46.5780828,1834.9],[7.9347132,46.5781728,1833.9],[7.9347363,46.5782432,1832.9],[7.9349541,46.5784763,1827.7],[7.9350126,46.578562,1826.1],[7.9350123,46.5786111,1820.9],[7.9349637,46.5786736,1822.9],[7.9347266,46.5788748,1820.6],[7.9343937,46.5790566,1816.6],[7.9341218,46.5791716,1810.1],[7.9338448,46.5792298,1799.7],[7.9331233,46.5792619,1778.2]],
+        heights: [2317.7,2317.5,2315,2313.9,2310.1,2301,2292.3,2285.3,2276.1,2268.7,2262,2253.1,2247.7,2241.1,2235.9,2230,2224.2,2217.7,2211.8,2208,2202.9,2195.7,2189.2,2186.8,2183.3,2172.5,2164.8,2158.2,2152.2,2151.5,2150.9,2147.9,2141.8,2135.5,2126.2,2117.7,2111.5,2104.4,2096.3,2085,2076.5,2067.4,2058.7,2049.8,2041.7,2035.9,2029.8,2023.3,2018.2,2014.1,2009.3,2003.5,1998.4,1992.9,1987.3,1981.2,1975.9,1966.6,1956.7,1944.4,1933.6,1925.9,1918.8,1908.7,1900.2,1894.6,1885.3,1879.6,1873.3,1867.5,1863.8,1856.7,1850.1,1847.4,1843.6,1839.5,1836.3,1833.7,1829.9,1824,1823,1819,1815.8,1808.9,1797.6,1785.8,1778.2] },
+      { osm: "way/670568315", res: 9.593080993756795, coords: [[7.9331233,46.5792619,1778.2],[7.9330009,46.579281,1777.1]],
+        heights: [1778.2,1777.1] },
+      { osm: "way/670568314", res: 24.938353874862756, coords: [[7.9330009,46.579281,1777.1],[7.9326184,46.579403,1775.9],[7.9322268,46.579572,1769.4],[7.9317239,46.5797505,1760.7],[7.931438,46.5798669,1755.2],[7.9309403,46.5800695,1746.8],[7.9300557,46.5805267,1725.8],[7.9293868,46.5812073,1702.2],[7.9288533,46.5820364,1674.2],[7.9285194,46.5826331,1659.5],[7.9284382,46.5831426,1645.2],[7.9280673,46.5836426,1625.5],[7.9278018,46.5839406,1611.3],[7.9277546,46.5845025,1593.8],[7.9272883,46.5855222,1546.1],[7.9272312,46.586159,1511.3],[7.9272682,46.5864464,1496],[7.9273781,46.5873012,1479.1],[7.9274189,46.5877567,1474.6],[7.9274136,46.5883023,1465.3],[7.9272969,46.5886341,1461.2],[7.9269324,46.5894522,1434],[7.9265967,46.5907766,1393.3],[7.9266089,46.5909934,1389],[7.9266706,46.5911335,1385.1],[7.9267747,46.5913524,1380.7],[7.9267848,46.5915598,1380.4],[7.9266813,46.5917381,1378.1],[7.92628,46.5921569,1365.2],[7.9260537,46.5922984,1357.1],[7.925846,46.5924758,1347.5],[7.9256931,46.592944,1329.1],[7.9255473,46.5932841,1307.6],[7.9252956,46.5935664,1293.9],[7.9247704,46.5937716,1285.5],[7.9238376,46.5939397,1275.2],[7.9236552,46.5940126,1272.9],[7.9236089,46.5940356,1272.7]],
+        heights: [1777.1,1777.1,1772.4,1768.1,1763,1757.6,1752.5,1747.9,1742.5,1736,1729.4,1723.6,1717.3,1710.7,1704.1,1697,1689.3,1682.5,1676.1,1670.5,1665.4,1660.5,1655.2,1648.4,1641.1,1633.4,1625,1616.2,1607.6,1600.9,1594,1586,1573.6,1565.5,1555.3,1543.7,1531.4,1518.6,1507.1,1495.6,1489.1,1485.5,1480.8,1478.7,1476.9,1473.9,1469.6,1466.1,1463.4,1460.3,1457.2,1448.8,1439.4,1430.8,1423.7,1414.4,1405.7,1399.8,1396.4,1391.1,1386.2,1381.2,1380.5,1378.1,1373.5,1366.7,1358.5,1349.1,1341.1,1332.6,1320.6,1306,1296.1,1290.1,1286.2,1282.3,1278.6,1275.8,1272.7] },
+    ] },
+    wengenSlalom: { quelle: "OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap", teile: [
+      { osm: "way/52331694", res: 24.94361871302492, coords: [[7.9306222,46.5936744,1487.9],[7.9296941,46.5946034,1450.2],[7.9294038,46.5948014,1438.1],[7.9290606,46.5948766,1427.6],[7.9284259,46.5947942,1410.3],[7.9280251,46.5948825,1405.1],[7.927664,46.595039,1391.4],[7.9273358,46.5950594,1374.9],[7.9268381,46.5949442,1355.9],[7.9265734,46.5947121,1343.5],[7.9263675,46.5944678,1333.9],[7.9257675,46.5942968,1310.8],[7.9256353,46.5942024,1309.1],[7.9250801,46.5939554,1289.2],[7.9247704,46.5937716,1285.5]],
+        heights: [1487.9,1481.6,1474.5,1466.1,1457.3,1450.4,1440.6,1431.5,1422.3,1412.9,1406.6,1402.7,1390.8,1374.3,1361.7,1351.9,1342.5,1335.9,1322.1,1311.6,1306.9,1294.5,1289,1285.5] },
+    ] },
     // Kitzbühel, Slalomhang: die Piste selbst ist in OpenStreetMap nur im obersten Stück erfasst. Verwendet wird die Achse des Sessellifts, der am Hang entlangführt
     // (way/30860754, sechs Punkte mit Geländehöhe, von oben nach unten). OpenSkiMap API, Suche „Ganslern“, von Mat geschickt am 17.11.2026.
     ganslern: { quelle: "OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap", osm: "way/30860754", lift: [[12.3760133, 47.4422127, 1000.6], [12.3772033, 47.4427187, 971.8], [12.379677, 47.4437704, 862.8], [12.381101, 47.4443759, 853.4], [12.3835287, 47.4454291, 779.4], [12.3840639, 47.4456613, 777.7]] },
@@ -3086,7 +3110,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.16.0";
+  const VERSION = "0.17.0";
+  // Sechs Strecken und mehr: das Programm im Menü steht in zwei Spalten, die Karte ist dafür breiter
+  { const s = document.createElement("style"); s.textContent = "#scrMenu .card.menu { width: 500px; } #scrMenu #mModi { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scrMenu #mModi .big { font-size: 14px; padding: 5px 8px; min-width: 0; }"; document.head.appendChild(s); }
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
   const KIT = { head: "helmet", feet: "skiBoots", torso: "bib", hands: "poles", glove: true };
   const kurse = {}, welten = {}, vorlauf = {};
@@ -3194,16 +3220,16 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   let demo = null, demoAcc = 0;
   const D0 = S.STRECKEN[0];
   R = window.CMRahmen.spiel({
-    id: "ski-alpin", name: "Ski Alpin", titel: ["Ski", "Alpin"], band: "Kitzbühel · Österreich", version: VERSION, kit: KIT,
+    id: "ski-alpin", name: "Ski Alpin", titel: ["Ski", "Alpin"], band: "Kitzbühel · Wengen · Adelboden", version: VERSION, kit: KIT,
     satz: "Die großen Hänge der Alpen, gebaut nach Karte und Höhenprofil.",
-    modi: S.STRECKEN.map((st) => ({ id: st.id, name: S.DISZ[st.disz].name + " " + st.ort, start: () => fahrt(st),
+    modi: S.STRECKEN.map((st) => ({ id: st.id, name: st.ort + " " + S.DISZ[st.disz].name, start: () => fahrt(st),
       sub: (R) => (R.S.best && R.S.best["zeit_" + st.id] ? `Bestzeit ${R.zeit(R.S.best["zeit_" + st.id])}` : `${tausend(st.daten.lang)} m, ${st.daten.start - st.daten.ziel} m Höhe`) })),
     info: [["So geht’s", "Du siehst den Fahrer von hinten. Links und rechts kanten die Ski auf: Je länger du hältst, desto enger wird der Bogen. Die Hocke macht schnell. Fahr zwischen den beiden Fahnen jedes Tors durch; ein verpasstes Tor kostet zwei Sekunden, in Riesenslalom und Slalom drei."],
       ["Riesenslalom und Slalom", "Hier lenkst du nicht mit dem Schieber, sondern gibst den Takt: links, rechts, links. Jeder Druck löst einen Bogen um die nächste Stange aus, den der Fahrer selbst zieht. Der Knopf, der dran ist, blinkt. Triffst du den Wechsel genau, schneidet der Ski sauber und du wirst schneller; zu spät oder zu früh driftet er. Lässt du einen Bogen aus, fährt er geradeaus am Tor vorbei."],
       ["Kante", "Der Balken unten zeigt, wie viel die Kante trägt. Ist er voll, rutscht der Ski und du verlierst Tempo. In der Hocke hält die Kante schlechter."],
       ["Bremse", "Der kleine Knopf über der Hocke stemmt die Ski quer und richtet den Fahrer auf. Vor engen Kurven wie der Einfahrt in den Steilhang kurz bremsen, statt im Tiefschnee zu landen."],
       ["Sprünge", "An den Kanten hebt der Fahrer von selbst ab und fliegt eine Wurfparabel. Wer vor der Kante in die Hocke geht, springt flacher und kürzer; wer sich dort streckt, fliegt weiter."],
-      ["Strecken", "Kitzbühel, Abfahrt und Super-G: Verlauf und Höhen folgen der in OpenStreetMap eingetragenen Rennstrecke (Höhenprofil alle 24 m), geprüft gegen die veröffentlichten Daten: Start 1.665 m, Ziel 805 m, 3.312 m; Super-G ab 1.345 m, 2.150 m. Die Kante der Mausefalle ist nach dem veröffentlichten Gefälle von 85 % nachgeschärft. Breite der Piste, Seitenneigung und Tore sind geschätzt. Der Slalom in Kitzbühel und der Riesenslalom in Adelboden folgen der Achse des Sessellifts am Rennhang, weil die Rennpisten selbst nicht kartiert sind: Start, Ziel und Höhen stimmen, der Hang ist dazwischen gerade verbunden, die Kurssetzung ist erfunden. Kartendaten © OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap."],
+      ["Strecken", "Kitzbühel, Abfahrt und Super-G: Verlauf und Höhen folgen der in OpenStreetMap eingetragenen Rennstrecke (Höhenprofil alle 24 m), geprüft gegen die veröffentlichten Daten: Start 1.665 m, Ziel 805 m, 3.312 m; Super-G ab 1.345 m, 2.150 m. Die Kante der Mausefalle ist nach dem veröffentlichten Gefälle von 85 % nachgeschärft. Breite der Piste, Seitenneigung und Tore sind geschätzt. Abfahrt und Slalom in Wengen folgen den kartierten Rennpisten mit Höhenprofil (die Linie ist rund ein Zehntel kürzer als die veröffentlichte Strecke; wo die bekannten Stellen liegen, ist aus dem Profil geschätzt). Der Slalom in Kitzbühel und der Riesenslalom in Adelboden folgen der Achse des Sessellifts am Rennhang, weil die Rennpisten selbst nicht kartiert sind: Start, Ziel und Höhen stimmen, der Hang ist dazwischen gerade verbunden, die Kurssetzung ist erfunden. Kartendaten © OpenStreetMap-Mitwirkende (ODbL), über OpenSkiMap."],
       ["Ideallinie", "Die Linie im Schnee ist die Spur des Vorläufers. Grün heißt: dein Tempo passt. Orange und rot heißt: für die Kurve dort bist du zu schnell, also bremsen oder aus der Hocke. Oben steht neben deinem Tempo das Soll, das Tempo des Vorläufers an dieser Stelle."],
       ["Zwischenzeiten", "An vier Stellen siehst du deinen Abstand zum Vorläufer: grün heißt schneller, rot langsamer."],
       ["Vorschau", "Rechts oben siehst du die nächsten zehn Sekunden der Strecke von oben: rot heißt steil, ein goldener Strich quer ist eine Kante, an der gesprungen wird, die Punkte sind Tore, die goldene Linie ist die Ideallinie."],

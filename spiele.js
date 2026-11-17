@@ -12,7 +12,7 @@
     { id: "schneeball", name: "Schneeball", pfad: "/cold-medal-schneeball/", satz: "Schnee lesen und so weit werfen wie keiner im Dorf.", gruppen: false },
     { id: "big-air", name: "Big Air", pfad: "/big-air/", satz: "Anlauf, Absprung, Trick und Landung auf der großen Schanze.", gruppen: false },
     { id: "ski-cross", name: "Ski Cross", pfad: "/ski-cross/", satz: "Vier am Start, zwei kommen weiter: Wellen, Kurven, Zweikämpfe.", gruppen: false },
-    { id: "ski-alpin", name: "Ski Alpin", pfad: "/ski-alpin/", satz: "Kitzbühel, Abfahrt und Super-G: die Strecke nach echten Geländedaten.", gruppen: false },
+    { id: "ski-alpin", name: "Ski Alpin", pfad: "/ski-alpin/", satz: "Kitzbühel, Wengen und Adelboden: Abfahrt, Super-G, Riesenslalom und Slalom nach echten Geländedaten.", gruppen: false },
     { id: "eisschnelllauf", name: "Eisschnelllauf", pfad: "/eisschnelllauf/", satz: "Im Takt über das Oval: Kurven drücken, Kraft einteilen.", gruppen: false },
     { id: "eisstock", name: "Eisstock", pfad: "/eisstock/", satz: "Stock um Stock an die Daube: Maß nehmen oder wegschießen.", gruppen: false },
     { id: "hoernerschlitten", name: "Hörnerschlitten", pfad: "/hoernerschlitten/", satz: "Mit dem Heuschlitten ins Tal: lenken, bremsen, nicht kippen.", gruppen: false },
