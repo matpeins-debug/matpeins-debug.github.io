@@ -314,21 +314,6 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 .cs-knopf.cs-puls { animation: cs-puls 0.6s ease-in-out infinite; border-color: var(--red, #C23B2A); background: #FBE3D9; }
 @keyframes cs-puls { 0%, 100% { box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 0 0 0 rgba(194, 59, 42, 0.55); } 50% { box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 0 0 14px rgba(194, 59, 42, 0); } }
 @media (prefers-reduced-motion: reduce) { .cs-knopf.cs-puls { animation: none; } }
-
-/* Cold Medal · Ski Cross: Wippe zum Lenken (ein Daumen, links und rechts nebeneinander) und Anzeige der Kante */
-.sx-wippe { position: absolute; left: 16px; bottom: 14px; width: 216px; height: 104px; display: flex; gap: 8px; pointer-events: auto; touch-action: none;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-.sx-wippe span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 52px; pointer-events: none;
-  background: var(--paper, #F3EEE2); color: var(--ink, #1E2734); border: 3px solid var(--ink-deep, #141C28); box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 8px 18px rgba(0, 0, 0, 0.25);
-  font: 800 12px/1 var(--font-display, Futura, "Avenir Next", sans-serif); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
-.sx-wippe span.an { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink-deep, #141C28), 0 4px 10px rgba(0, 0, 0, 0.25); background: #FFF8E8; }
-.sx-wippe svg { width: 38px; height: 38px; display: block; }
-.sx-kante { position: absolute; left: 50%; bottom: 16px; width: 190px; margin-left: -95px; pointer-events: none; text-align: center;
-  font: 800 10px/1 var(--font-display, Futura, "Avenir Next", sans-serif); letter-spacing: 0.1em; text-transform: uppercase; color: #141C28; }
-.sx-kante i { display: block; position: relative; height: 10px; margin-top: 4px; border-radius: 5px; background: rgba(20, 28, 40, 0.3); border: 2px solid #141C28; overflow: hidden; }
-.sx-kante b { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #6EAF64; }
-.sx-kante.warn b { background: #DDA43B; } .sx-kante.rutscht b { background: #C23B2A; }
-.sx-kante u { position: absolute; left: 74%; top: -2px; bottom: -2px; width: 2px; background: #141C28; }
 </style>
 </head>
 <body>
@@ -365,7 +350,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     idre: { land: "SWE", name: "Idre Fjäll", form: "rund", hoch: 0.5, wald: 0.9, haus: "#A8322A", dach: "#2B2B2B", teile: ["dorf", "flutlicht"] },
     heerenveen: { land: "NED", name: "Heerenveen", form: "flach", hoch: 0.06, wald: 0.25, haus: "#B9573C", dach: "#3B2C26", teile: ["muehle", "kirche", "muehle", "dorf"] },
     friesland: { land: "NED", name: "Friesland", form: "flach", hoch: 0.05, wald: 0.2, haus: "#B9573C", dach: "#3B2C26", teile: ["muehle", "dorf", "kirche"] },
-    lana: { land: "ITA", name: "Lana", form: "alpin", hoch: 0.72, wald: 0.6, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["kirche", "dorf", "burg"] },
+    lana: { land: "ITA", name: "Lana", form: "alpin", hoch: 0.72, wald: 0.6, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["kirche", "dorf", "burg", "zinnen"] },
     schnalstal: { land: "ITA", name: "Schnalstal", form: "alpin", hoch: 0.82, wald: 0.5, haus: "#EFE6D2", dach: "#6B3A2A", teile: ["dorf", "kirche"] },
     garmisch: { land: "GER", name: "Garmisch-Partenkirchen", form: "alpin", hoch: 0.8, wald: 0.75, haus: "#F1E9D6", dach: "#6A4530", teile: ["kirche", "dorf", "huette"] },
     lahti: { land: "FIN", name: "Lahti", form: "flach", hoch: 0.12, wald: 1, haus: "#C9A94F", dach: "#3A3A3A", teile: ["schanzen", "funkmast", "funkmast", "dorf"] },
@@ -435,6 +420,17 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     schanzen(x, px, y, s, O, L) { x.strokeStyle = mix("#E9EEF2", L.mittel, L.licht * 0.35); x.lineCap = "round"; for (const [dx, h] of [[0, 46], [26, 34], [46, 24]]) { x.lineWidth = 3 * s; x.beginPath(); x.moveTo(px + dx * s, y - h * s); x.quadraticCurveTo(px + (dx + 16) * s, y - h * 0.45 * s, px + (dx + 30) * s, y - h * 0.3 * s); x.stroke(); x.lineWidth = 1.5 * s; x.beginPath(); x.moveTo(px + (dx + 2) * s, y - h * s); x.lineTo(px + (dx + 2) * s, y); x.stroke(); } },
     flutlicht(x, px, y, s, O, L) { x.strokeStyle = mix("#59616E", L.mittel, L.licht * 0.3); x.lineWidth = 1.4 * s; for (const dx of [-40, 40]) { x.beginPath(); x.moveTo(px + dx * s, y); x.lineTo(px + dx * s, y - 40 * s); x.stroke(); x.fillStyle = L.licht ? "#FFF3C4" : "#C8CCD2"; x.fillRect(px + (dx - 5) * s, y - 44 * s, 10 * s, 4 * s);
       if (L.licht) { const g = x.createRadialGradient(px + dx * s, y - 42 * s, 1, px + dx * s, y - 42 * s, 46 * s); g.addColorStop(0, "rgba(255,243,196,0.5)"); g.addColorStop(1, "rgba(255,243,196,0)"); x.fillStyle = g; x.fillRect(px + (dx - 46) * s, y - 88 * s, 92 * s, 92 * s); } } },
+    // drei Felstürme der Dolomiten im hellen Dolomit, auf einem Schuttkegel im Schnee (ferne Ebene; Eisstock, seit 15.11.2026)
+    zinnen(x, px, y, s, O, L) {
+      const fels = L.licht ? mix("#F2A074", L.fern, 0.16) : mix("#D8C3AC", L.fern, 0.18), dunkel = L.licht ? mix("#B4604C", L.fern, 0.3) : mix("#A38C78", L.fern, 0.25), y0 = y - 30 * s;   // am Abend glühen die Türme rot (Alpenglühen)
+      x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 190 * s, y); x.quadraticCurveTo(px - 90 * s, y - 52 * s, px, y - 46 * s); x.quadraticCurveTo(px + 100 * s, y - 50 * s, px + 200 * s, y); x.closePath(); x.fill();
+      x.fillStyle = L.schatten; x.beginPath(); x.moveTo(px + 20 * s, y - 46 * s); x.quadraticCurveTo(px + 110 * s, y - 48 * s, px + 200 * s, y); x.lineTo(px + 90 * s, y); x.closePath(); x.fill();
+      const turm = (cx, w, h) => { const P = (a, b) => [px + cx + a * w, y0 - b * h];
+        x.fillStyle = fels; x.beginPath(); [[-0.5, 0], [-0.43, 0.55], [-0.3, 0.9], [-0.12, 1], [0.1, 0.97], [0.26, 0.8], [0.4, 0.45], [0.5, 0]].forEach((q, i) => { const [a, b] = P(q[0], q[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.closePath(); x.fill();
+        x.fillStyle = dunkel; x.beginPath(); [[0.1, 0.97], [0.26, 0.8], [0.4, 0.45], [0.5, 0], [0.16, 0], [0.04, 0.5]].forEach((q, i) => { const [a, b] = P(q[0], q[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.closePath(); x.fill();
+        x.fillStyle = L.schnee; for (const [a, b, l] of [[-0.36, 0.34, 0.3], [-0.2, 0.62, 0.24], [-0.4, 0.12, 0.5]]) { const [qx, qy] = P(a, b); x.fillRect(qx, qy, l * w, Math.max(1, 1.6 * s)); } };
+      turm(96 * s, 26 * s, 58 * s); turm(62 * s, 52 * s, 96 * s); turm(-66 * s, 64 * s, 104 * s); turm(0, 74 * s, 132 * s);
+    },
     dom(x, px, y, s, O, L) { x.fillStyle = L.schnee; x.beginPath(); x.moveTo(px - 90 * s, y); x.quadraticCurveTo(px - 30 * s, y - 120 * s, px + 10 * s, y - 118 * s); x.quadraticCurveTo(px + 60 * s, y - 100 * s, px + 110 * s, y); x.closePath(); x.fill(); x.fillStyle = L.schatten; x.beginPath(); x.moveTo(px + 10 * s, y - 118 * s); x.quadraticCurveTo(px + 60 * s, y - 100 * s, px + 110 * s, y); x.lineTo(px + 40 * s, y); x.closePath(); x.fill(); },
     dampf(x, px, y, s) { x.fillStyle = "rgba(255,255,255,0.35)"; for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(px + i * 3 * s, y - (10 + i * 7) * s, (4 + i * 1.6) * s, 0, TAU); x.fill(); } },
     fahne(x, px, y, s, O, L) { x.strokeStyle = "#E8E2D2"; x.lineWidth = 1.2 * s; x.beginPath(); x.moveTo(px, y); x.lineTo(px, y - 30 * s); x.stroke(); x.fillStyle = mix("#BA2B32", L.mittel, L.licht * 0.3); x.fillRect(px, y - 30 * s, 14 * s, 9 * s); x.fillStyle = "#FFFFFF"; x.fillRect(px + 3.4 * s, y - 30 * s, 3 * s, 9 * s); x.fillRect(px, y - 27 * s, 14 * s, 3 * s); x.fillStyle = "#1F3A7A"; x.fillRect(px + 4.2 * s, y - 30 * s, 1.4 * s, 9 * s); x.fillRect(px, y - 26.2 * s, 14 * s, 1.4 * s); },
@@ -455,12 +451,13 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const yF = berge(xF, Wl, hor + 1, amp, kamm(r, O.form === "alpin" ? 14 : 6, O.form === "alpin" ? 0.9 : 1.5), O.form === "stadt" ? "rund" : O.form, L.fern, O.form === "alpin" ? L.schnee : null, L.schatten);
     if (O.form !== "alpin" && O.form !== "stadt" && O.hoch > 0.2) { xF.fillStyle = mix(L.schnee, L.fern, 0.35); for (let px = 0; px < Wl; px += 2) { const y = yF(px); if (hor - y > amp * 0.6) xF.fillRect(px, y, 2, Math.min(7, (hor - y - amp * 0.6) * 0.6)); } }
     if (O.teile.includes("dom")) TEILE.dom(xF, Wl * 0.3, hor + 1, hor / 200, O, L, r);
+    if (O.teile.includes("zinnen")) TEILE.zinnen(xF, Wl * 0.19, hor + 1, hor / 200, O, L, r);
     // mittel: Vorberge mit Wald, Wahrzeichen im Talgrund
     const mAmp = Math.max(10, amp * 0.34), yM = berge(xM, Wl, hor + 14, mAmp, kamm(r, 7, 1.3), "rund", L.mittel, null, null);
     wald(xM, Wl, r, yM, O.wald * 0.8, L.wald, 13 + hor * 0.03);
     xM.fillStyle = L.schnee; xM.fillRect(0, hor + 8, Wl, 14);
     const sc = Math.max(0.6, hor / 210);
-    O.teile.forEach((tl, i) => { if (tl === "dom" || !TEILE[tl]) return; const px = Wl * ((i + 0.5) / O.teile.length) + (r() - 0.5) * 60; TEILE[tl](xM, px, hor + 9, sc * (tl === "skyline" ? 1 : 0.9), O, L, r); });
+    O.teile.forEach((tl, i) => { if (tl === "dom" || tl === "zinnen" || !TEILE[tl]) return; const px = Wl * ((i + 0.5) / O.teile.length) + (r() - 0.5) * 60; TEILE[tl](xM, px, hor + 9, sc * (tl === "skyline" ? 1 : 0.9), O, L, r); });
     wald(xM, Wl, r, () => hor + 16, O.wald * 0.35, mix(L.wald, "#000000", 0.15), 20 + hor * 0.04);
     function kachel(ctx, cv, off) { const x0 = -(((off % Wl) + Wl) % Wl); ctx.drawImage(cv, x0, 0, Wl, H); if (x0 + Wl < W) ctx.drawImage(cv, x0 + Wl, 0, Wl, H); }
     return { ort: O, licht: L, W, H, hor, nacht: !!L.licht,
@@ -1830,6 +1827,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "schneeball", name: "Schneeball", pfad: "/cold-medal-schneeball/", satz: "Schnee lesen und so weit werfen wie keiner im Dorf.", gruppen: false },
     { id: "big-air", name: "Big Air", pfad: "/big-air/", satz: "Anlauf, Absprung, Trick und Landung auf der großen Schanze.", gruppen: false },
     { id: "ski-cross", name: "Ski Cross", pfad: "/ski-cross/", satz: "Vier am Start, zwei kommen weiter: Wellen, Kurven, Zweikämpfe.", gruppen: false },
+    { id: "ski-alpin", name: "Ski Alpin", pfad: "/ski-alpin/", satz: "Kitzbühel, Abfahrt und Super-G: die Strecke nach echten Geländedaten.", gruppen: false },
     { id: "eisschnelllauf", name: "Eisschnelllauf", pfad: "/eisschnelllauf/", satz: "Im Takt über das Oval: Kurven drücken, Kraft einteilen.", gruppen: false },
     { id: "eisstock", name: "Eisstock", pfad: "/eisstock/", satz: "Stock um Stock an die Daube: Maß nehmen oder wegschießen.", gruppen: false },
     { id: "hoernerschlitten", name: "Hörnerschlitten", pfad: "/hoernerschlitten/", satz: "Mit dem Heuschlitten ins Tal: lenken, bremsen, nicht kippen.", gruppen: false },
@@ -1838,7 +1836,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "wintermehrkampf", name: "Wintermehrkampf", pfad: "/wintermehrkampf/", satz: "Fünf Spiele, eine Wertung.", gruppen: false },
     { id: "schuetzenfest", name: "Schützenfest", pfad: "/schuetzenfest/", satz: "Ruhige Hand am Schießstand: Atem, Zug, Treffer.", gruppen: false },
     { id: "penaltyschiessen", name: "Penaltyschießen", pfad: "/penaltyschiessen/", satz: "Eins gegen eins auf dem Eis: antäuschen, schießen, halten.", gruppen: false },
-    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Fünf Sprünge über der Lippe: Höhe, Drehung, Griff.", gruppen: false },
+    { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Acht Sprünge über der Kante: abspringen, drehen, landen.", gruppen: false },
+    { id: "sumo", name: "Yeti-Sumo", pfad: "/sumo/", satz: "Zwei Yetis, ein Ring aus Stroh: schieben, greifen, ausweichen.", gruppen: false },
   ];
   const live = () => LISTE.filter((s) => s.pfad);
   root.CMSpiele = {
@@ -2127,6 +2126,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     ANGULATION: 22,         // so viel mehr Kante als Körperneigung schafft der Fahrer aus Knie und Hüfte, Grad
     KURVE_AUF: 0.14,        // Einleiten der Kurve: Zuwachs der Krümmung (1/m) je Sekunde
     KURVE_AB: 0.30,         // Auflösen der Kurve
+    KURVE_ZEIT: 0,          // > 0: Einleiten dauert so viele Sekunden bis zum vollen Bogen, bei jedem Tempo (Ski Alpin); 0: feste Raten oben
+    TOR_STRAFE: 0,          // Sekunden Zuschlag je verpasstem Tor (Kurse mit K.tore)
     GRIP: 1.6,              // Haftgrenze der Kante: Querbeschleunigung bis GRIP · Auflast
     GRIP_FLACH: 0.3,        // Anteil davon auf dem flachen Ski
     GRIP_VOLL: 20,          // ab diesem Kantenwinkel volle Haftung, Grad
@@ -2159,6 +2160,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     PISTE_HALB: 9,          // halbe Breite der Piste, m
     RAND: 7,                // Tiefschnee bis zum Zaun, m
     ZIEL_BREMS: 5,          // Abschwingen nach dem Ziel, m/s²
+    BREMS_MU: 0.55,         // Bremsen (Ski quer gestemmt): zusätzliche Reibung mal Auflast
+    BREMS_GRIP: 0.8,        // dabei hält die Kante etwas schlechter
   };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -2190,7 +2193,62 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const form = def.form || null;
     const h = (x, s) => hoehe(s) + rand(Math.abs(x - cx(s)) - halb) + (form ? form(x, s, cx) : 0);
     const kr = (s) => (cx(s + 2) - 2 * cx(s) + cx(s - 2)) / 4;                         // Krümmung der Mittellinie (rechts positiv)
-    return { lang, halb, rand: def.rand != null ? def.rand : CFG.RAND, cx, kr, h, hoehe, grad, name: def.name || "" };
+    // Lage zum Kurs: u = Weg entlang der Mittellinie, d = Abstand quer (rechts positiv), th = Richtung der Mittellinie. Hier ist u = s und d = x − Mitte.
+    const O = { u: 0, d: 0, th: 0 }, ort = (x, s) => { O.u = s; O.d = x - cx(s); return O; }, punkt = (u, d) => [cx(u) + d, u];
+    const tore = def.tore ? def.tore.map((g) => (g.u != null ? g : { u: g.s, d: g.x - cx(g.s), w: g.w })) : null, ideal = def.ideal ? (u) => def.ideal(u) - cx(u) : null;
+    return { lang, halb, halbBei: () => halb, rand: def.rand != null ? def.rand : CFG.RAND, cx, kr, h, hUD: (u, d) => h(cx(u) + d, u), hoehe, grad, ort, punkt, th: () => 0, name: def.name || "", tore, ideal };
+  }
+  // Kurs entlang einer frei verlaufenden Linie (seit Ski Alpin 0.2): vermessene Mittellinie mit Höhen, auch mit Kehren.
+  // def: { punkte: [[x, s]] in Metern vom Start weg, hoehen: [[Weg entlang der Punkte, Höhe]], zielHoehe (Höhe des Ziels, gleiche Einheit),
+  //        halb, breite(u, seite) → halbe Breite der Piste an dieser Stelle, seite −1 links, 1 rechts, 0 beide (frei, sonst überall halb), rand, form(u, d), tore: [{ u, d, w }], ideal(u) → Abstand quer, glatt: Glättung der Linie in Metern }
+  function kursLinie(def) {
+    const halb = def.halb || CFG.PISTE_HALB, R = def.punkte, VOR = 100, NACH = 160, DU = 2;
+    // 1 Rohlinie mit Anlauf und Auslauf, dicht abgetastet (1 m), w = Weg entlang der Rohlinie (0 am Start)
+    const ri = (a, b) => { let x = b[0] - a[0], s = b[1] - a[1]; const l = Math.hypot(x, s) || 1; return [x / l, s / l]; };
+    const r0 = ri(R[0], R[Math.min(R.length - 1, 2)]), r1 = ri(R[Math.max(0, R.length - 3)], R[R.length - 1]);
+    const roh = [[R[0][0] - r0[0] * VOR, R[0][1] - r0[1] * VOR]].concat(R, [[R[R.length - 1][0] + r1[0] * NACH, R[R.length - 1][1] + r1[1] * NACH]]);
+    let dx = [], ds = [], dw = [], w = -VOR;
+    for (let i = 0; i + 1 < roh.length; i++) { const a = roh[i], b = roh[i + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(l)); for (let j = 0; j < n; j++) { const q = j / n; dx.push(a[0] + (b[0] - a[0]) * q); ds.push(a[1] + (b[1] - a[1]) * q); dw.push(w + l * q); } w += l; }
+    // 2 glätten (gleitender Mittelwert, dreimal): Ecken der Rohlinie werden zu Bögen
+    const rad = Math.max(1, Math.round(def.glatt != null ? def.glatt : 8)), mittel = (a) => { const o = new Float64Array(a.length); for (let i = 0; i < a.length; i++) { let z = 0, n = 0; for (let j = Math.max(0, i - rad); j <= Math.min(a.length - 1, i + rad); j++) { z += a[j]; n++; } o[i] = z / n; } return o; };
+    for (let k = 0; k < 3; k++) { dx = mittel(dx); ds = mittel(ds); }
+    // 3 nach Bogenlänge neu abtasten (DU), u = 0 am Start
+    const X = [], S = [], W = []; let rest = 0;
+    for (let i = 0; i + 1 < dx.length; i++) { const l = Math.hypot(dx[i + 1] - dx[i], ds[i + 1] - ds[i]); let p = rest; while (p < l) { const q = p / l; X.push(dx[i] + (dx[i + 1] - dx[i]) * q); S.push(ds[i] + (ds[i + 1] - ds[i]) * q); W.push(dw[i] + (dw[i + 1] - dw[i]) * q); p += DU; } rest = p - l; }
+    const n = X.length; let i0 = 0; while (i0 < n - 1 && W[i0] < 0) i0++;
+    const TH = new Float64Array(n), KR = new Float64Array(n);
+    for (let i = 0; i < n; i++) { const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1); TH[i] = Math.atan2(X[b] - X[a], S[b] - S[a]); }
+    for (let i = 0; i < n; i++) { const a = Math.max(0, i - 2), b = Math.min(n - 1, i + 2); let d = TH[b] - TH[a]; d = Math.atan2(Math.sin(d), Math.cos(d)); KR[i] = d / ((b - a) * DU); }
+    const uMin = -i0 * DU, uMax = (n - 1 - i0) * DU, lin = (A, u) => { const f = clamp((u - uMin) / DU, 0, n - 1 - 1e-9), i = Math.floor(f), q = f - i; return A[i] + (A[i + 1] - A[i]) * q; };
+    const th = (u) => { const f = clamp((u - uMin) / DU, 0, n - 1 - 1e-9), i = Math.floor(f); let d = TH[i + 1] - TH[i]; d = Math.atan2(Math.sin(d), Math.cos(d)); return TH[i] + d * (f - i); };
+    const kr = (u) => lin(KR, u), punkt = (u, d) => { const a = th(u); return [lin(X, u) + d * Math.cos(a), lin(S, u) - d * Math.sin(a)]; };
+    // 4 Höhe über u: Stützwerte über dem Weg der Rohlinie, weich verbunden, davor eben, danach leicht bergauf
+    const HP = def.hoehen, y0 = HP[0][1], hw = (ww) => {
+      if (ww <= 0) return 0; const m = HP.length - 1; if (ww >= HP[m][0]) return HP[m][1] - y0 + (ww - HP[m][0]) * 0.03;
+      let i = 0; while (HP[i + 1][0] < ww) i++; const p0 = HP[Math.max(0, i - 1)], p1 = HP[i], p2 = HP[i + 1], p3 = HP[Math.min(m, i + 2)], l = p2[0] - p1[0], q = (ww - p1[0]) / l;
+      const m1 = (p2[1] - p0[1]) / (p2[0] - p0[0]) * l, m2 = (p3[1] - p1[1]) / (p3[0] - p1[0]) * l, q2 = q * q, q3 = q2 * q;
+      return (2 * q3 - 3 * q2 + 1) * p1[1] + (q3 - 2 * q2 + q) * m1 + (-2 * q3 + 3 * q2) * p2[1] + (q3 - q2) * m2 - y0; };
+    const DY = 0.5, ny = Math.round((uMax - uMin) / DY), Y = new Float64Array(ny + 1), M = new Float64Array(ny + 1);
+    for (let i = 0; i <= ny; i++) Y[i] = hw(lin(W, uMin + i * DY));
+    for (let k = 0; k < 2; k++) { const o = Y.slice(); for (let i = 2; i < ny - 1; i++) Y[i] = (o[i - 2] + 2 * o[i - 1] + 3 * o[i] + 2 * o[i + 1] + o[i + 2]) / 9; }     // Knicke zwischen Anlauf und Profil runden
+    for (let i = 0; i <= ny; i++) M[i] = (Y[Math.min(ny, i + 1)] - Y[Math.max(0, i - 1)]) / ((Math.min(ny, i + 1) - Math.max(0, i - 1)) * DY);
+    const hoehe = (u) => { const f = clamp((u - uMin) / DY, 0, ny - 1e-9), i = Math.floor(f), q = f - i, q2 = q * q, q3 = q2 * q; return (2 * q3 - 3 * q2 + 1) * Y[i] + (q3 - 2 * q2 + q) * DY * M[i] + (-2 * q3 + 3 * q2) * Y[i + 1] + (q3 - q2) * DY * M[i + 1]; };
+    const grad = (u) => -Math.atan((hoehe(u + 1) - hoehe(u - 1)) / 2) / RAD;
+    let lang = uMax - NACH; if (def.zielHoehe != null) { const z = def.zielHoehe - y0; for (let u = 50; u < uMax; u += 0.5) if (hoehe(u) <= z) { lang = u; break; } }
+    // 5 Lage eines Orts zum Kurs: nächster Punkt der Mittellinie, gesucht um die letzte Fundstelle herum
+    const O = { u: 0, d: 0, th: 0 }; let merk = i0;
+    const naechst = (x, s, a, b) => { let bi = a, bd = 1e30; for (let i = a; i <= b; i++) { const q = (X[i] - x) * (X[i] - x) + (S[i] - s) * (S[i] - s); if (q < bd) { bd = q; bi = i; } } return [bi, bd]; };
+    // Danach wird u so verfeinert, dass der Ort genau quer zur (zwischen den Stützpunkten weich gedrehten) Linie liegt: so hat die Fläche keine Stufen.
+    const ort = (x, s) => {
+      let [i, q] = naechst(x, s, Math.max(0, merk - 40), Math.min(n - 1, merk + 40)); if (q > 900 || i === 0 || i === n - 1) [i, q] = naechst(x, s, 0, n - 1);
+      merk = i; let u = uMin + i * DU, a = 0, cx = 0, cs = 0, sn = 0, co = 1;
+      for (let k = 0; k < 4; k++) { a = th(u); sn = Math.sin(a); co = Math.cos(a); cx = lin(X, u); cs = lin(S, u); const vor = (x - cx) * sn + (s - cs) * co, d = (x - cx) * co - (s - cs) * sn; u += vor / Math.max(0.3, 1 - kr(u) * d); }
+      a = th(u); sn = Math.sin(a); co = Math.cos(a); O.u = u; O.d = (x - lin(X, u)) * co - (s - lin(S, u)) * sn; O.th = a; return O;
+    };
+    const randH = (e) => (e <= 0 ? 0 : e < 8 ? 0.02 * e * e : 1.28 + 0.32 * (e - 8)), form = def.form || null, halbBei = def.breite || (() => halb);
+    const hUD = (u, d) => hoehe(u) + randH(Math.abs(d) - halbBei(u, Math.sign(d))) + (form ? form(u, d) : 0), h = (x, s) => { const o = ort(x, s); return hUD(o.u, o.d); };
+    return { frei: true, lang, halb, halbBei, rand: def.rand != null ? def.rand : CFG.RAND, kr, h, hUD, hoehe, grad, ort, punkt, th, uMin, uMax, name: def.name || "", tore: def.tore || null, ideal: def.ideal || null,
+      cx: (u) => punkt(u, 0)[0] };
   }
   // Die Testpiste (Phase 1): 700 m, Gefälle zwischen 8 und 20 Grad, neun Kurven mit Radien von rund 20 bis 40 m
   const TESTPISTE = {
@@ -2203,11 +2261,12 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   function fahrer(o) {
     return Object.assign({
       x: 0, y: 0, s: 0, vx: 0, vy: 0, vs: 0,        // Ort und Geschwindigkeit
+      u: 0, d: 0,                                    // Lage zum Kurs: Weg entlang der Mittellinie, Abstand quer
       psi: 0, phi: 0, kap: 0,                                // Richtung der Ski (0 = Falllinie, rechts positiv), Kantenwinkel (rechts positiv)
       hocke: 0, hc: CFG.H_STAND, hcV: 0,             // Hocke 0 … 1, Höhe des Schwerpunkts und ihre Änderung
-      luft: false, tLuft: 0, wackel: 0, halt: 0, haltDir: 0,
+      luft: false, tLuft: 0, wackel: 0, halt: 0, haltDir: 0, bremse: 0, tBremse: 0,
       v: 0, aq: 0, last: 1, neig: 0, rutsch: 0, tief: 0, lastAnteil: 0,   // Anzeige und Animation: Tempo, Querbeschleunigung, Auflast in g, Körperneigung, Rutschen 0 … 1
-      t: 0, fertig: false, zeit: null, vmax: 0, tRutsch: 0, tTief: 0, tHocke: 0, spruenge: 0, weg: 0, ev: null,
+      tor: 0, fehler: 0, t: 0, fertig: false, zeit: null, vmax: 0, tRutsch: 0, tTief: 0, tHocke: 0, spruenge: 0, weg: 0, ev: null,
     }, o);
   }
   // Höhe, Gefälle und Flächennormale an einem Ort
@@ -2226,10 +2285,11 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   // Kantenwinkel zu einer Querbeschleunigung: Körperneigung (Gleichgewicht) plus Angulation, höchstens phiMax
   const kante = (aq, auflast, phiMax) => Math.min(phiMax, Math.atan(aq / Math.max(1, auflast)) + CFG.ANGULATION * RAD * sstep(0, 3, aq));
 
-  // Ein Zeitschritt. lenk −1 … 1 (links … rechts), hocke: Taste gehalten. Ereignis in f.ev: "ab" | "landung" | "hart" | "zaun" | "ziel" | null
-  function schritt(f, K, lenk, hocke, dt) {
+  // Ein Zeitschritt. lenk −1 … 1 (links … rechts), hocke: Taste gehalten, bremse: Taste gehalten (frei; richtet den Fahrer auf). Ereignis in f.ev: "ab" | "landung" | "hart" | "zaun" | "ziel" | null
+  function schritt(f, K, lenk, hocke, dt, bremse) {
     const C = CFG, G = C.G; dt = dt || 1 / C.HZ; f.ev = null;
-    lenk = clamp(lenk || 0, -1, 1); if (f.fertig) { lenk = 0; hocke = false; }
+    lenk = clamp(lenk || 0, -1, 1); if (f.fertig) { lenk = 0; hocke = false; bremse = false; }
+    if (bremse) hocke = false; f.bremse += ((bremse ? 1 : 0) - f.bremse) * Math.min(1, dt * 8); if (bremse && !f.fertig) f.tBremse += dt;
     if (!f.fertig) f.t += dt;
     // Beine: Hocke und Höhe des Schwerpunkts
     const hAlt = f.hc; f.hocke = hocke ? Math.min(1, f.hocke + C.HOCKE_RUNTER * dt) : Math.max(0, f.hocke - C.HOCKE_HOCH * dt);
@@ -2259,8 +2319,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     } else {
       // ---- auf dem Schnee
       const B = boden(K, f.x, f.s), vh = Math.hypot(f.vx, f.vs);
-      const d = f.x - K.cx(f.s), tief = clamp((Math.abs(d) - K.halb) / 2, 0, 1); f.tief = tief;
-      const mu = lerp(C.MU_GLEIT, C.MU_TIEF, tief), grip = C.GRIP * lerp(1, C.GRIP_TIEF, tief) * lerp(1, C.GRIP_HOCKE, hk) * (f.wackel > 0 ? 0.6 : 1);
+      const Q = K.ort(f.x, f.s), tief = clamp((Math.abs(Q.d) - K.halbBei(Q.u, Math.sign(Q.d))) / 2, 0, 1); f.tief = tief;
+      const mu = lerp(C.MU_GLEIT, C.MU_TIEF, tief), grip = C.GRIP * lerp(1, C.GRIP_TIEF, tief) * lerp(1, C.GRIP_HOCKE, hk) * (f.wackel > 0 ? 0.6 : 1) * lerp(1, C.BREMS_GRIP, f.bremse);
       // Krümmung der Fläche in Fahrtrichtung: Mulde drückt (positiv), Kuppe entlastet
       const dx = vh > 0.5 ? f.vx / vh : Math.sin(f.psi), ds = vh > 0.5 ? f.vs / vh : Math.cos(f.psi), e = 1.2;
       const hd = B.hx * dx + B.hs * ds, kap = (K.h(f.x + dx * e, f.s + ds * e) - 2 * B.h + K.h(f.x - dx * e, f.s - ds * e)) / (e * e) / Math.pow(1 + hd * hd, 1.5);
@@ -2269,7 +2329,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         const pop = C.ABSPRUNG * Math.max(0, f.hcV); f.vx += pop * B.nx; f.vy += pop * B.ny - G * dt; f.vs += pop * B.ns;
         f.x += f.vx * dt; f.y += f.vy * dt; f.s += f.vs * dt; f.last = 0;
         const B2 = boden(K, f.x, f.s);
-        if (f.y > B2.h + 0.003) { f.luft = true; f.tLuft = 0; f.spruenge++; f.ev = "ab"; }
+        if (f.y > B2.h + 0.0004) { f.luft = true; f.tLuft = 0; f.spruenge++; f.ev = "ab"; }
         else { const vn = f.vx * B2.nx + f.vy * B2.ny + f.vs * B2.ns; f.vx -= vn * B2.nx; f.vy -= vn * B2.ny; f.vs -= vn * B2.ns; f.y = B2.h; }   // nur entlastet, noch nicht in der Luft
       } else {
         const N = Math.max(0, auflast); f.last = N / G;
@@ -2280,7 +2340,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         const ziel = Math.abs(lenk) * (C.LAST_SICHER + clamp((f.halt - C.DRUCK_NACH) * C.DRUCK_RATE, 0, C.LAST_MAX - C.LAST_SICHER));
         const phiMax = lerp(C.KANTE_MAX, C.KANTE_MAX_HOCKE, hk) * RAD, vq = Math.max(1, vf * vf);
         const kZiel = Math.sign(lenk) * Math.min(1 / (C.SIDECUT * Math.cos(phiMax)), ziel * grip * Math.max(1, N) / vq);
-        const auf = Math.abs(kZiel) > Math.abs(f.kap) && kZiel * f.kap >= 0, rate = (auf ? C.KURVE_AUF : C.KURVE_AB) * dt;
+        const auf = Math.abs(kZiel) > Math.abs(f.kap) && kZiel * f.kap >= 0, kVoll = Math.min(1 / (C.SIDECUT * Math.cos(phiMax)), C.LAST_SICHER * grip * Math.max(1, N) / vq);
+        const rate = (C.KURVE_ZEIT > 0 ? kVoll / (auf ? C.KURVE_ZEIT : C.KURVE_ZEIT * 0.55) : auf ? C.KURVE_AUF : C.KURVE_AB) * dt;
         f.kap += clamp(kZiel - f.kap, -rate, rate);
         f.phi = Math.sign(f.kap) * kante(Math.abs(f.kap) * vq, N, phiMax);
         // Richtung der Ski: die Kante schneidet ihren Bogen; langsam lässt sich der Ski drehen; flach richtet er sich in die Fahrt aus
@@ -2296,7 +2357,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         let ax = gx + aq * A.rx, ay = gy + aq * A.ry, as = gs + aq * A.rs;
         f.vx += ax * dt; f.vy += ay * dt; f.vs += as * dt;
         let v2 = Math.hypot(f.vx, f.vy, f.vs);
-        const brems = (mu * Math.hypot(N, aq) + kd * v2 * v2 + tief * C.TIEF_ZAEH * v2 + (f.fertig ? C.ZIEL_BREMS : 0)) * dt - pump * dt, k = v2 > 1e-6 ? Math.max(0, 1 - brems / v2) : 0;
+        const brems = (mu * Math.hypot(N, aq) + C.BREMS_MU * f.bremse * N + kd * v2 * v2 + tief * C.TIEF_ZAEH * v2 + (f.fertig ? C.ZIEL_BREMS : 0)) * dt - pump * dt, k = v2 > 1e-6 ? Math.max(0, 1 - brems / v2) : 0;
         f.vx *= k; f.vy *= k; f.vs *= k; v2 *= k;
         f.x += f.vx * dt; f.s += f.vs * dt;
         // auf der Fläche bleiben: die Fläche lenkt um, sie bremst nicht
@@ -2310,39 +2371,50 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         if (!f.fertig) { if (rutscht && v > 3) f.tRutsch += dt; if (tief > 0.5) f.tTief += dt; }
       }
       // Zaun
-      const aus = Math.abs(f.x - K.cx(f.s)) - (K.halb + K.rand);
-      if (aus > 0) { const sg = Math.sign(f.x - K.cx(f.s)); f.x -= sg * aus; if (f.vx * sg > 0) f.vx *= -0.2; f.vx *= 0.9; f.vs *= 0.9; f.vy *= 0.9; f.ev = "zaun"; }
+      const Z = K.ort(f.x, f.s), aus = Math.abs(Z.d) - (K.halbBei(Z.u, Math.sign(Z.d)) + K.rand);
+      if (aus > 0) { const sg = Math.sign(Z.d), nx = Math.cos(Z.th), ns = -Math.sin(Z.th), vq = f.vx * nx + f.vs * ns; f.x -= sg * aus * nx; f.s -= sg * aus * ns; if (vq * sg > 0) { f.vx -= 1.2 * vq * nx; f.vs -= 1.2 * vq * ns; } f.vx *= 0.9; f.vs *= 0.9; f.vy *= 0.9; f.ev = "zaun"; }
     }
     v = Math.hypot(f.vx, f.vy, f.vs); f.weg += v * dt; f.v = v; if (!f.fertig && v > f.vmax) f.vmax = v;
     f.neig += ((f.luft ? 0 : Math.atan2(f.aq, Math.max(2, f.last * G))) - f.neig) * Math.min(1, dt * 9);
-    if (!f.fertig && f.s >= K.lang) { f.fertig = true; f.zeit = f.t - (f.s - K.lang) / Math.max(1, f.vs); f.ev = "ziel"; }
+    // Tore: beim Überfahren der Torlinie zwischen den Stangen sein (g.x Mitte, g.w halbe Öffnung), sonst Fehler
+    { const o = K.ort(f.x, f.s); f.u = o.u; f.d = o.d; }
+    if (K.tore && !f.fertig) while (f.tor < K.tore.length && f.u >= K.tore[f.tor].u) { const g = K.tore[f.tor++], dq = f.uVor != null && f.u > f.uVor && g.u >= f.uVor ? f.dVor + (f.d - f.dVor) * (g.u - f.uVor) / (f.u - f.uVor) : f.d, ab = Math.abs(dq - g.d);      // quer genau auf der Torlinie, nicht einen Schritt danach
+      if (ab > g.w) { f.fehler++; f.ev = "verpasst"; } else if (!f.ev) f.ev = ab > g.w - 0.7 ? "gestreift" : "tor"; }
+    f.uVor = f.u; f.dVor = f.d;
+    if (!f.fertig && f.u >= K.lang) { f.fertig = true; f.zeit = f.t - (f.u - K.lang) / Math.max(1, Math.hypot(f.vx, f.vs)) + f.fehler * CFG.TOR_STRAFE; f.ev = "ziel"; }
     return f.ev;
   }
 
   // ------------------------------------------------------------------ Mitspieler (Prüfungen, Plakat, später die Gegner)
-  // o: { linie 0 … 1 (0 = Pistenmitte, 1 = Ideallinie), mut 0 … 1 (wie nah an die Haftgrenze), hocke: true | false | "nie" | "immer" }
+  // o: { linie 0 … 1 (0 = Pistenmitte, 1 = Ideallinie), mut 0 … 1 (wie nah an die Haftgrenze), hocke: "nie" | "immer", voraus: Sekunden Vorausschau für die Hocke (2,4), bremst: darf bremsen }
   function bot(f, K, o) {
     o = o || {}; const linie = o.linie == null ? 1 : o.linie, mut = o.mut == null ? 0.8 : o.mut;
-    const v = Math.max(3, f.v), L = clamp(v * 0.85, 7, 30), st = f.s + L;
-    const ideal = (s) => K.cx(s) + linie * clamp(K.kr(s) * 260, -(K.halb - 2.5), K.halb - 2.5);     // zur Innenseite der Kurve
-    const zx = ideal(st), wunsch = Math.atan2(zx - f.x, L), fahrt = Math.hypot(f.vx, f.vs) > 2 ? Math.atan2(f.vx, f.vs) : f.psi;
-    const kWunsch = 2 * Math.sin(wunsch - fahrt) / L, aZiel = CFG.LAST_SICHER * CFG.GRIP * CFG.G;
+    const v = Math.max(3, f.v), L = clamp(v * 0.85, 7, 30), u0 = K.ort(f.x, f.s).u;
+    const dI = K.ideal ? (u) => linie * K.ideal(u) : (u) => linie * clamp(K.kr(u) * 260, -(K.halbBei(u, -1) - 2.5), K.halbBei(u, 1) - 2.5);                                  // durch die Tore, sonst zur Innenseite der Kurve
+    const krI = K.ideal ? (u) => K.kr(u) + linie * (K.ideal(u + 3) - 2 * K.ideal(u) + K.ideal(u - 3)) / 9 : (u) => K.kr(u) * (1 - 0.45 * linie);
+    const z = K.punkt(u0 + L, dI(u0 + L)), wunsch = Math.atan2(z[0] - f.x, z[1] - f.s), fahrt = Math.hypot(f.vx, f.vs) > 2 ? Math.atan2(f.vx, f.vs) : f.psi;
+    const kWunsch = 2 * Math.sin(wunsch - fahrt) / Math.max(3, Math.hypot(z[0] - f.x, z[1] - f.s)), aZiel = CFG.LAST_SICHER * CFG.GRIP * CFG.G;
     let lenk = clamp(kWunsch / Math.min(1 / (CFG.SIDECUT * Math.cos(CFG.KANTE_MAX * RAD)), aZiel / (v * v)), -1, 1);
     if (Math.abs(lenk) < 0.04) lenk = 0;
     // Hocke: nur wenn die nächsten Kurven das Tempo vertragen
-    let eng = 0; for (let a = 0; a <= 2.4 * v; a += 6) eng = Math.max(eng, Math.abs(K.kr(f.s + a)));
-    const vSicher = Math.sqrt((0.55 + 0.4 * mut) * aZiel / Math.max(1e-4, eng * (1 - 0.45 * linie)));
+    let eng = 0; for (let a = 0; a <= (o.voraus || 2.4) * v; a += 6) eng = Math.max(eng, Math.abs(krI(u0 + a)));
+    const vSicher = Math.sqrt((0.55 + 0.4 * mut) * aZiel / Math.max(1e-4, eng));
     const hocke = o.hocke === "immer" ? true : o.hocke === "nie" ? false : Math.abs(lenk) < 0.45 && v < vSicher;
-    return { lenk, hocke };
+    // Bremsen (o.bremst): wenn die Kurven der nächsten gut zwei Sekunden das Tempo nicht vertragen
+    let nah = 0; if (o.bremst) for (let a = 0; a <= 2.2 * v; a += 5) nah = Math.max(nah, Math.abs(krI(u0 + a)));
+    const bremse = !!o.bremst && !f.luft && v > 1.1 * Math.sqrt((0.55 + 0.4 * mut) * aZiel / Math.max(1e-4, nah));
+    return { lenk, hocke: hocke && !bremse, bremse };
   }
+  // Fahrer im Starttor: auf der Mittellinie bei u = 0, Ski in Richtung des Kurses
+  function amStart(K, o) { const p = K.punkt(0, 0); return fahrer(Object.assign({ x: p[0], s: p[1], y: K.h(p[0], p[1]), psi: K.th(0) }, o)); }
   // ein ganzer Lauf mit dem Mitspieler oder einer eigenen Steuerung fn(f) → { lenk, hocke }
   function lauf(K, fn, o) {
-    const f = fahrer(Object.assign({ y: K.h(0, 0) }, o)); let i = 0;
-    while (!f.fertig && i++ < CFG.HZ * 240) { const c = fn(f); schritt(f, K, c.lenk, c.hocke, 1 / CFG.HZ); }
+    const f = amStart(K, o); let i = 0;
+    while (!f.fertig && i++ < CFG.HZ * 240) { const c = fn(f); schritt(f, K, c.lenk, c.hocke, 1 / CFG.HZ, c.bremse); }
     return f;
   }
 
-  const api = { CFG, RAD, clamp, lerp, sstep, rng, weich, kurs, TESTPISTE, fahrer, boden, achsen, haftung, kante, schritt, bot, lauf };
+  const api = { CFG, RAD, clamp, lerp, sstep, rng, weich, kurs, kursLinie, TESTPISTE, fahrer, amStart, boden, achsen, haftung, kante, schritt, bot, lauf };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.SXPhys = api;
 })(typeof window !== "undefined" ? window : globalThis);
 
@@ -2401,94 +2473,191 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
 
   // ------------------------------------------------------------------ Gelände und Kulisse am Kurs
+  // Die Welt ist entlang der Strecke in Stücke geteilt; gezeichnet werden nur die Stücke um den Fahrer (siehe baue). stk(u): Nummer des Stücks, uStk: seine Mitte
+  const TL = 140, stk = (u) => Math.floor((u + 280) / TL), uStk = (n) => n * TL - 280 + TL / 2;
   function gelaende(K) {
-    const g = new T.Group(), H = K.halb, Z = H + K.rand, rn = P.rng(7);
-    const quer = [-110, -70, -44, -28, -Z - 1, -Z + 3, -H - 2.5, -H, -H * 0.5, 0, H * 0.5, H, H + 2.5, Z - 3, Z + 1, 28, 44, 70, 110];
-    const S0 = -70, S1 = K.lang + 170, DS = 4, pos = [], nor = [], col = [], ca = new T.Color(), cb = new T.Color();
-    const ecke = (d, s) => { const x = K.cx(s) + d, B = P.boden(K, x, s); return [x, B.h, -s, B.nx, B.ny, -B.ns]; };
-    for (let s = S0; s < S1; s += DS) for (let i = 0; i + 1 < quer.length; i++) {
-      const a = ecke(quer[i], s), b = ecke(quer[i + 1], s), c = ecke(quer[i + 1], s + DS), d = ecke(quer[i], s + DS), mitte = (quer[i] + quer[i + 1]) / 2;
-      if (Math.abs(mitte) < H) ca.set(Math.floor((s + 800) / 8) % 2 ? C.schnee : C.schnee2);                       // Bänder quer zur Piste zeigen das Tempo
-      else { ca.set(C.hang); cb.set(C.hang2); ca.lerp(cb, P.clamp((Math.abs(mitte) - H) / 60, 0, 1) * 0.8 + rn() * 0.2); }
+    const g = new T.Group(), rn = P.rng(7), mitteI = 9, NQ = 19;
+    // Innen in einer engen Kurve ist nur bis kurz vor den Mittelpunkt des Bogens Platz: dort rücken Pistenrand, Zaun und Gelände zusammen
+    const innen = (u, sd) => { if (!K.frei) return Infinity; let km = 0; for (let q = u - 12; q <= u + 12; q += 4) if (K.kr(q) * sd > km) km = K.kr(q) * sd; return km > 0.004 ? 1 / km : Infinity; };
+    const HB = (u, sd) => K.halbBei(u, sd || 0), ZB = (u, sd) => Math.min(K.halbBei(u, sd || 0) + K.rand, 0.86 * innen(u, sd || 0));
+    // Abstände quer zur Piste in einer Reihe; die Spalten 7 bis 11 sind die Piste (ihre Breite kann sich entlang der Strecke ändern)
+    const querBei = (u) => { const seite = (sd) => { const H = HB(u, sd), Z = Math.max(H + 1.2, ZB(u, sd)), in_ = 0.95 * innen(u, sd); return [H * 0.5, H, Math.min(H + 2.5, (H + Z) / 2), Math.max(H + 0.6, Z - 3), Z + 1, Math.max(30, Z + 5), 44, 70, 110].map((d) => Math.min(d, in_)); }, l = seite(-1), r = seite(1); return l.map((d) => -d).reverse().concat([0], r); };
+    const U0 = Math.max(-70, K.uMin != null ? K.uMin + 6 : -70), U1 = Math.min(K.lang + 170, K.uMax != null ? K.uMax - 6 : 1e9), DS = 4, pos = [], nor = [], col = [], ca = new T.Color(), cb = new T.Color();
+    // Ort im Raum zu (u, d): u entlang der Mittellinie, d quer
+    const raum = (u, d, hoch) => { const p = K.punkt(u, d); return [p[0], K.hUD(u, d) + (hoch || 0), -p[1]]; };
+    // Abstände einer Querreihe. Auf freien Linien (Kehren) wird die Fläche innen in der Kurve und vor einem anderen Teil der Strecke zusammengezogen, damit sie sich nicht überlappt.
+    const reihe = (u) => {
+      const quer = querBei(u), out = quer.slice(); if (!K.frei) return out;
+      for (const sd of [-1, 1]) { let grenze = Infinity;
+        for (let i = mitteI + sd; i >= 0 && i < NQ; i += sd) { let d = Math.abs(quer[i]);
+          if (d > grenze) d = grenze; else if (d > 28) { const q = K.punkt(u, sd * d); if (Math.abs(K.ort(q[0], q[1]).u - u) > 60) { grenze = Math.abs(out[i - sd]); d = grenze; } }
+          out[i] = sd * d; } }
+      return out;
+    };
+    const ecke = (u, d) => { const p = raum(u, d), a = K.th(u), gu = (K.hUD(u + 1, d) - K.hUD(u - 1, d)) / 2, gd = K.hUD(u, d + 0.5) - K.hUD(u, d - 0.5), hx = gu * Math.sin(a) + gd * Math.cos(a), hs = gu * Math.cos(a) - gd * Math.sin(a), l = Math.hypot(hx, 1, hs); return [p[0], p[1], p[2], -hx / l, 1 / l, hs / l]; };
+    let r0 = reihe(U0);
+    const gMat = new T.MeshBasicMaterial({ vertexColors: true, side: K.frei ? T.DoubleSide : T.FrontSide }); let stkT = null;
+    const flush = () => { if (!pos.length) return; const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); geo.setAttribute("normal", new T.Float32BufferAttribute(nor, 3)); geo.setAttribute("color", new T.Float32BufferAttribute(col, 3)); const m = new T.Mesh(geo, gMat); m.userData.u = uStk(stkT); g.add(m); pos.length = nor.length = col.length = 0; };
+    for (let u = U0; u < U1; u += DS) { if (stk(u) !== stkT) { flush(); stkT = stk(u); } const r1 = reihe(u + DS), H = HB(u, 0); for (let i = 0; i + 1 < NQ; i++) {
+      const a = ecke(u, r0[i]), b = ecke(u, r0[i + 1]), c = ecke(u + DS, r1[i + 1]), d = ecke(u + DS, r1[i]), mitte = (r0[i] + r0[i + 1]) / 2; if (Math.abs(r0[i + 1] - r0[i]) < 0.02 && Math.abs(r1[i + 1] - r1[i]) < 0.02) continue;
+      if (i >= 7 && i <= 10) { ca.set(C.schnee); cb.set(C.schnee2); const eng = K.frei ? P.clamp(Math.abs(K.kr(u)) * 45, 0, 1) : 0; ca.lerp(cb, Math.floor((u + 800) / 8) % 2 ? 0.5 * eng : 1 - 0.5 * eng); }   // in engen Kurven gleichen sich die Bänder an, sonst entsteht ein Fächer
+                           // Bänder quer zur Piste zeigen das Tempo
+      else { ca.set(C.hang); cb.set(C.hang2); ca.lerp(cb, P.clamp((Math.abs(mitte) - H) / 60, 0, 1) * 0.8 + (K.frei ? 0.1 + 0.1 * Math.sin(u * 0.045 + i * 1.7) : rn() * 0.2)); }
       const sonnig = ((a[3] + c[3]) * SONNE[0] + (a[4] + c[4]) * SONNE[1] + (a[5] + c[5]) * SONNE[2]) / 2 - SONNE[1];       // gegen eine ebene Fläche: Schatten in zwei Stufen
       if (sonnig < -0.035) ca.lerp(cb.set(C.schatten), sonnig < -0.1 ? 0.75 : 0.35);
       for (const p of [a, b, c, a, c, d]) { pos.push(p[0], p[1], p[2]); nor.push(p[3], p[4], p[5]); col.push(ca.r, ca.g, ca.b); }
-    }
-    const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); geo.setAttribute("normal", new T.Float32BufferAttribute(nor, 3)); geo.setAttribute("color", new T.Float32BufferAttribute(col, 3));
-    g.add(new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors: true })));
-    // Band auf oder über dem Schnee entlang der Piste: d(s) quer, von y0 bis y1 über dem Boden
+    } r0 = r1; }
+    flush();
+    // Band auf oder über dem Schnee entlang der Piste: d(u) quer, von y0 bis y1 über dem Boden
     const band = (dFn, y0, y1, breit, mat, a, b) => {
       const p = [], ix = []; let n = 0;
-      for (let s = a; s <= b + 1e-6; s += Math.min(3, b - a), n++) { const d = dFn(s), x0 = K.cx(s) + d, x1 = K.cx(s) + d + breit; p.push(x0, K.h(x0, s) + y0, -s, x1, K.h(x1, s) + y1, -s); if (n) { const k = n * 2; ix.push(k - 2, k - 1, k, k - 1, k + 1, k); } }
+      for (let u = a; u <= b + 1e-6; u += Math.min(3, b - a), n++) { const d = dFn(u), p0 = raum(u, d, y0), p1 = raum(u, d + breit, y1); p.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2]); if (n) { const k = n * 2; ix.push(k - 2, k - 1, k, k - 1, k + 1, k); } }
       const ge = new T.BufferGeometry(); ge.setAttribute("position", new T.Float32BufferAttribute(p, 3)); ge.setIndex(ix); const m = new T.Mesh(ge, mat); g.add(m); return m;
     };
     const linie = new T.MeshBasicMaterial({ color: C.blau, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
-    band(() => -H, 0.03, 0.03, 0.22, linie, -20, K.lang + 60); band(() => H - 0.22, 0.03, 0.03, 0.22, linie, -20, K.lang + 60);
+    band((u) => -HB(u, -1), 0.03, 0.03, 0.22, linie, -20, K.lang + 60); band((u) => HB(u, 1) - 0.22, 0.03, 0.03, 0.22, linie, -20, K.lang + 60);
     const netz = new T.MeshBasicMaterial({ color: C.rot, side: T.DoubleSide, transparent: true, opacity: 0.88 });
-    band(() => -Z, 0.25, 1.25, 0, netz, -30, K.lang + 90); band(() => Z, 0.25, 1.25, 0, netz, -30, K.lang + 90);
+    band((u) => -ZB(u, -1), 0.25, 1.25, 0, netz, -30, K.lang + 90); band((u) => ZB(u, 1), 0.25, 1.25, 0, netz, -30, K.lang + 90);
     // Zaunpfosten, Bäume: je ein Netz für alle
     const M = new T.Matrix4(), q = new T.Quaternion(), sc = new T.Vector3(), pp = new T.Vector3();
-    const pf = []; for (let s = -30; s <= K.lang + 90; s += 9) for (const sd of [-1, 1]) pf.push([K.cx(s) + sd * Z, s]);
+    const pf = []; for (let u = -30; u <= K.lang + 90; u += 9) for (const sd of [-1, 1]) pf.push(raum(u, sd * ZB(u, sd)));
     const pfosten = new T.InstancedMesh(new T.BoxGeometry(0.1, 1.5, 0.1).translate(0, 0.75, 0), toon(C.tinte), pf.length);
-    pf.forEach(([x, s], i) => { M.makeTranslation(x, K.h(x, s), -s); pfosten.setMatrixAt(i, M); }); g.add(pfosten);
-    const baeume = []; for (let s = -60; s < K.lang + 160; s += 5) for (const sd of [-1, 1]) { const z = rn(); if (z < 0.62) baeume.push([K.cx(s) + sd * (Z + 3 + z * z * 150), s + rn() * 5, 6 + rn() * 7, rn()]); }
-    const kegel = new T.ConeGeometry(1, 1, 7).translate(0, 0.5, 0), tanne = new T.InstancedMesh(kegel, toon("#FFFFFF"), baeume.length), haube = new T.InstancedMesh(kegel, toon("#F4F8FA"), baeume.length);
-    baeume.forEach(([x, s, hh, z], i) => { const y = K.h(x, s) - 0.3; q.identity();
-      M.compose(pp.set(x, y, -s), q, sc.set(hh * 0.27, hh, hh * 0.27)); tanne.setMatrixAt(i, M); tanne.setColorAt(i, ca.set(C.wald).lerp(cb.set(C.wald2), z));
-      M.compose(pp.set(x - 0.15, y + hh * 0.6, -s), q, sc.set(hh * 0.125, hh * 0.42, hh * 0.125)); haube.setMatrixAt(i, M); });
-    g.add(tanne, haube);
-    // Tore an der Innenseite jeder Kurve: Tuch zwischen zwei Stangen, abwechselnd rot und blau
+    pf.forEach((p, i) => { M.makeTranslation(p[0], p[1], p[2]); pfosten.setMatrixAt(i, M); }); g.add(pfosten);
+    // Wald: Fichten in Stufen mit Schnee auf den Ästen. Mit Kulisse (Ski Alpin) steht er in dichten Stücken mit freien Wiesen dazwischen, sonst locker verstreut.
+    const dicht = (u, sd) => (K.kulisse ? P.clamp(0.5 + 0.55 * Math.sin(u * 0.011 + sd * 1.3) + 0.3 * Math.sin(u * 0.029 + sd * 4), 0.04, 0.97) : 0.62);
+    const baeume = []; for (let u = U0 + 10; u < U1 - 10; u += K.kulisse ? 3.2 : 5) for (const sd of [-1, 1]) { const z = rn(), uu = u + rn() * 5, hh = 5 + rn() * rn() * 13, ton = rn(), br = 0.8 + rn() * 0.45; if (z >= dicht(uu, sd)) continue;
+      const dd = ZB(uu, sd) + (K.kulisse ? 7 : 3) + z * z * (K.kulisse ? 110 / dicht(uu, sd) : 150); if (dd > 0.9 * innen(uu, sd) || dd > 108) continue; const p = K.punkt(uu, sd * dd), o = K.ort(p[0], p[1]); if (Math.abs(o.d) < K.halbBei(o.u, Math.sign(o.d)) + K.rand + 2) continue;            // nicht auf einen anderen Teil der Strecke pflanzen
+      baeume.push([p[0], K.hUD(o.u, o.d) - 0.3, -p[1], K.kulisse ? Math.min(hh, 5 + (dd - ZB(uu, sd)) * 0.45) : hh, ton, br, stk(uu)]); }      // am Rand niedrig, damit kein Baum den Blick verstellt
+    const verbund = (teile) => { const po = [], no = []; for (const ge of teile) { const e = ge.toNonIndexed(); po.push(...e.attributes.position.array); no.push(...e.attributes.normal.array); } const o = new T.BufferGeometry(); o.setAttribute("position", new T.Float32BufferAttribute(po, 3)); o.setAttribute("normal", new T.Float32BufferAttribute(no, 3)); return o; };
+    const stufen = [[0.3, 0.46, 0.12], [0.23, 0.4, 0.38], [0.15, 0.36, 0.64]], kg = (r, h, y, x) => new T.ConeGeometry(r, h, 6, 1, true).translate(x || 0, y + h / 2, 0);      // offen und sechseckig: wenige Dreiecke je Baum
+    const gruen = verbund([new T.CylinderGeometry(0.03, 0.04, 0.2, 4, 1, true).translate(0, 0.1, 0)].concat(stufen.map(([r, h, y]) => kg(r, h, y)))), weiss = verbund(stufen.map(([r, h, y]) => kg(r * 0.7, h * 0.72, y + h * 0.3, -r * 0.1)));
+    const mTanne = toon("#FFFFFF"), mHaube = toon("#F4F8FA"); mTanne.side = mHaube.side = T.DoubleSide; const jeStk = new Map(); for (const b of baeume) { if (!jeStk.has(b[6])) jeStk.set(b[6], []); jeStk.get(b[6]).push(b); }
+    for (const [n, liste] of jeStk) { const tanne = new T.InstancedMesh(gruen, mTanne, liste.length), haube = new T.InstancedMesh(weiss, mHaube, liste.length);
+      liste.forEach(([x, y, zz, hh, z, br], i) => { q.setFromAxisAngle(YA, z * 6.3); M.compose(pp.set(x, y, zz), q, sc.set(hh * br, hh, hh * br)); tanne.setMatrixAt(i, M); haube.setMatrixAt(i, M); tanne.setColorAt(i, ca.set(C.wald).lerp(cb.set(C.wald2), z)); });
+      tanne.frustumCulled = haube.frustumCulled = false; tanne.userData.u = haube.userData.u = uStk(n); g.add(tanne, haube); }
+    // Tore: Tuch zwischen zwei Stangen, abwechselnd rot und blau, quer zur Fahrt gestellt
     const stange = new T.CylinderGeometry(0.025, 0.025, 1.25, 6).translate(0, 0.625, 0), tuch = new T.PlaneGeometry(0.8, 0.55).translate(0, 0.9, 0), matS = toon(C.tinte); let nr = 0, letzte = -99;
-    for (let s = 40; s < K.lang - 15; s += 2) {
-      const k = K.kr(s); if (Math.abs(k) < 0.012 || s - letzte < 16 || Math.abs(K.kr(s - 2)) > Math.abs(k)) continue;
-      letzte = s; const sd = Math.sign(k), x = K.cx(s) + sd * (H - 0.9), tor = new T.Group(), farbe = nr++ % 2 ? C.blau : C.rot;
-      for (const o of [-0.4, 0.4]) { const st = new T.Mesh(stange, matS); st.position.x = o; tor.add(st); }
-      tor.add(new T.Mesh(tuch, new T.MeshBasicMaterial({ color: farbe, side: T.DoubleSide })));
-      tor.position.set(x, K.h(x, s), -s); g.add(tor);
+    const fahne = (u, d, farbe) => { const tor = new T.Group(), p = raum(u, d); for (const o of [-0.4, 0.4]) { const st = new T.Mesh(stange, matS); st.position.x = o; tor.add(st); }
+      tor.add(new T.Mesh(tuch, new T.MeshBasicMaterial({ color: farbe, side: T.DoubleSide }))); tor.position.set(p[0], p[1], p[2]); tor.rotation.y = -K.th(u); tor.scale.setScalar(K.torGroesse || 1); g.add(tor); };
+    // Kurse mit eigenen Toren (K.tore): je Tor zwei Fahnen, dazwischen fährt man durch; sonst eine Fahne an der Innenseite jeder Kurve
+    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
+    for (let u = 40; u < K.lang - 15 && !K.tore; u += 2) {
+      const k = K.kr(u); if (Math.abs(k) < 0.012 || u - letzte < 16 || Math.abs(K.kr(u - 2)) > Math.abs(k)) continue;
+      letzte = u; fahne(u, Math.sign(k) * (HB(u, Math.sign(k)) - 0.9), nr++ % 2 ? C.blau : C.rot);
     }
     // Start und Ziel
-    const tafel = (text, s, breit, hoch, farbe, oft) => {
-      const tex = leinwand(512, 96, (c, w, h) => { c.fillStyle = farbe; c.fillRect(0, 0, w, h); c.fillStyle = C.papier; c.font = schrift(64); c.textAlign = "center"; c.textBaseline = "middle"; for (const u of oft) c.fillText(text, w * u, h / 2 + 3); });
-      const gr = new T.Group(), x = K.cx(s), y = K.h(x, s), halb = breit / 2;
+    const tafel = (text, u, breit, hoch, farbe, oft) => {
+      const tex = leinwand(512, 96, (c, w, h) => { c.fillStyle = farbe; c.fillRect(0, 0, w, h); c.fillStyle = C.papier; c.font = schrift(64); c.textAlign = "center"; c.textBaseline = "middle"; for (const v of oft) c.fillText(text, w * v, h / 2 + 3); });
+      const gr = new T.Group(), p = raum(u, 0), halb = breit / 2;
       for (const sd of [-1, 1]) { const m = new T.Mesh(new T.BoxGeometry(0.3, hoch + 1.1, 0.3), toon(C.tinte)); m.position.set(sd * halb, (hoch + 1.1) / 2 - 0.4, 0); gr.add(m); }
       const b = new T.Mesh(new T.PlaneGeometry(breit, 1.1), new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide })); b.position.y = hoch; gr.add(b);
-      gr.position.set(x, y, -s); g.add(gr);
+      gr.position.set(p[0], p[1], p[2]); gr.rotation.y = -K.th(u); g.add(gr);
     };
-    tafel("START", 7, 11, 4.6, C.tinte, [0.5]); tafel("ZIEL", K.lang, H * 2 + 2, 4.2, C.rot, [0.17, 0.5, 0.83]);
-    band(() => -H, 0.035, 0.035, H * 2, new T.MeshBasicMaterial({ color: C.rot, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), K.lang - 0.4, K.lang + 0.4);
+    tafel("START", 7, 11, 4.6, C.tinte, [0.5]); tafel("ZIEL", K.lang, HB(K.lang, 0) * 2 + 2, 4.2, C.rot, [0.17, 0.5, 0.83]);
+    band(() => -HB(K.lang, 0), 0.035, 0.035, HB(K.lang, 0) * 2, new T.MeshBasicMaterial({ color: C.rot, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }), K.lang - 0.4, K.lang + 0.4);
     // zwei rote Hütten im Zielraum
-    for (const [sd, s] of [[-1, K.lang + 30], [1, K.lang + 55]]) {
-      const x = K.cx(s) + sd * (Z + 8), y = K.h(x, s) - 0.4, hu = new T.Group();
+    for (const [sd, u] of [[-1, K.lang + 30], [1, K.lang + 55]]) {
+      const p = raum(u, sd * (ZB(u, sd) + 8), -0.4), hu = new T.Group();
       const w = new T.Mesh(new T.BoxGeometry(7, 3.2, 5), toon(C.huette)); w.position.y = 1.6; hu.add(w);
       const d = new T.Mesh(new T.ConeGeometry(5.2, 2.4, 4), toon("#F4F8FA")); d.position.y = 4.4; d.rotation.y = Math.PI / 4; d.scale.z = 0.8; hu.add(d);
       const t = new T.Mesh(new T.BoxGeometry(1.1, 1.9, 0.1), toon(C.papier)); t.position.set(0, 0.95, 2.52); hu.add(t);
-      hu.position.set(x, y, -s); hu.rotation.y = sd * -0.5 + Math.PI; g.add(hu);
+      hu.position.set(p[0], p[1], p[2]); hu.rotation.y = sd * -0.5 + Math.PI - K.th(u); g.add(hu);
     }
+    return g;
+  }
+
+  // ------------------------------------------------------------------ Kulisse am Pistenrand (frei: K.kulisse)
+  // K.kulisse: { zuschauer: [[u von, u bis, seite −1 | 1 | 0]], fahnen: [Farben der Streifen von oben], starthaus, tribuene: seite, huetten: [[u, seite]], netze: [[u von, u bis, seite]] hohe Fangnetze, zielbogen, dorf, stadel, lift: seite } · K.torFarbe: alle Tore in dieser Farbe
+  function randKulisse(K) {
+    const g = new T.Group(), Q = K.kulisse, rn = P.rng(31), Z = (u, sd) => K.halbBei(u, sd) + K.rand, M = new T.Matrix4(), q = new T.Quaternion(), v = new T.Vector3(), s1 = new T.Vector3(), farbe = new T.Color();
+    const ort = (u, d, hoch) => { const p = K.punkt(u, d); return [p[0], K.hUD(u, d) + (hoch || 0), -p[1]]; };
+    const bunt = [C.rot, C.blau, C.gold, C.papier, "#3F6B55", "#23466B", "#7A4A22", "#C98E66", C.tinte];
+    // Zuschauer: Körper und Kopf, dicht hinter dem Zaun, in ein paar Reihen
+    const leute = [];
+    for (const [a, b, seite] of Q.zuschauer || []) for (const sd of seite ? [seite] : [-1, 1]) for (let u = a; u < b; u += 0.55 + rn() * 0.5) { const d = sd * (Z(u, sd) + 0.9 + rn() * rn() * 5.5); if (K.frei && Math.abs(K.ort(...K.punkt(u, d)).u - u) > 40) continue; leute.push([ort(u, d), 0.85 + rn() * 0.3, Math.floor(rn() * bunt.length), Math.floor(rn() * 4)]); }
+    if (Q.tribuene) { const sd = Q.tribuene, u0 = K.lang - 10, stufen = 6;
+      for (let i = 0; i < stufen; i++) { const d = sd * (Z(u0, sd) + 4 + i * 1.5), tr = new T.Mesh(new T.BoxGeometry(1.5, 1 + i * 0.75, 46), toon(i % 2 ? "#8A6A4A" : "#74583C")), p = ort(u0 + 20, d); tr.position.set(p[0], p[1] + (1 + i * 0.75) / 2 - 0.4, p[2]); tr.rotation.y = -K.th(u0 + 20); g.add(tr);
+        for (let w = -22; w < 22; w += 0.6 + rn() * 0.3) { const pp = K.punkt(u0 + 20 + w, d); leute.push([[pp[0], K.hUD(u0 + 20, d) + 0.6 + i * 0.75, -pp[1]], 0.85 + rn() * 0.3, Math.floor(rn() * bunt.length), Math.floor(rn() * 4)]); } } }
+    // Die Zuschauer stehen in drei Gruppen, die versetzt hüpfen; die Fahnentücher wehen (belebt, siehe baue)
+    const belebt = { leute: [], tuch: [] }; g.userData.belebt = belebt;
+    const gK = new T.CylinderGeometry(0.17, 0.22, 1.12, 6, 1, true).translate(0, 0.56, 0), gP = new T.SphereGeometry(0.135, 6, 4).translate(0, 1.25, 0), haut = ["#F2D3B8", "#E2B48F", "#C98E66", "#9C6644"];
+    const mLeib = toon("#FFFFFF"), mKopf = toon("#FFFFFF"), lStk = new Map(); leute.forEach((x, i) => { const n = stk(K.ort(x[0][0], -x[0][2]).u) * 3 + i % 3; if (!lStk.has(n)) lStk.set(n, []); lStk.get(n).push(x); });
+    for (const [n, teil] of lStk) { const koerper = new T.InstancedMesh(gK, mLeib, teil.length), kopf = new T.InstancedMesh(gP, mKopf, teil.length), gr3 = new T.Group();
+      teil.forEach(([p, gr, f, h], i) => { M.compose(v.set(p[0], p[1], p[2]), q, s1.set(gr, gr, gr)); koerper.setMatrixAt(i, M); kopf.setMatrixAt(i, M); koerper.setColorAt(i, farbe.set(bunt[f])); kopf.setColorAt(i, farbe.set(haut[h])); }); koerper.frustumCulled = kopf.frustumCulled = false; gr3.userData.u = uStk(Math.floor(n / 3)); gr3.userData.takt = n % 3; gr3.add(koerper, kopf); g.add(gr3); belebt.leute.push(gr3); }
+    // Fahnenmasten abwechselnd links und rechts, Werbebanden ohne Schrift in den Zuschauerzonen
+    if (Q.fahnen) { const tex = leinwand(8, 3 * Q.fahnen.length, (c, w, h) => Q.fahnen.forEach((f, i) => { c.fillStyle = f; c.fillRect(0, i * 3, w, 3); })); tex.magFilter = T.NearestFilter; const mast = new T.CylinderGeometry(0.05, 0.06, 6.5, 6).translate(0, 3.25, 0), tuch = new T.PlaneGeometry(1.9, 1.2).translate(1.0, 5.8, 0), mF = new T.MeshBasicMaterial({ map: tex, side: T.DoubleSide }), mM = toon("#E9E2D0"); let sd = 1;
+      for (let u = 30; u < K.lang + 40; u += 75) { sd = -sd; const p = ort(u, sd * (Z(u, sd) + 1.6)), f = new T.Group(); const tu = new T.Mesh(tuch, mF); belebt.tuch.push(tu); f.add(new T.Mesh(mast, mM), tu); f.position.set(p[0], p[1], p[2]); f.rotation.y = -K.th(u) + 0.5; g.add(f); } }
+    const bande = new T.PlaneGeometry(3.2, 0.95), mBande = new T.MeshBasicMaterial({ color: "#FFFFFF", side: T.DoubleSide }), fB = [C.blau, C.papier, C.gold, C.papier]; let nb = 0;
+    for (const [a, b, seite] of Q.zuschauer || []) for (const sd of seite ? [seite] : [-1, 1]) { const orte = []; for (let u = a + 2; u < b - 2; u += 3.4) orte.push(u); if (!orte.length) continue; const im = new T.InstancedMesh(bande, mBande, orte.length);      // alle Banden einer Zone in einem Zug
+      orte.forEach((u, i) => { const p = ort(u, sd * (Z(u, sd) - 0.25), 0.72); q.setFromAxisAngle(YA, -K.th(u) + Math.PI / 2); M.compose(v.set(p[0], p[1], p[2]), q, s1.set(1, 1, 1)); im.setMatrixAt(i, M); im.setColorAt(i, farbe.set(fB[nb++ % 4])); }); q.identity(); im.frustumCulled = false; im.userData.u = (a + b) / 2; g.add(im); }
+    // Starthaus: zwei Wände und ein Dach, durch das man hinausfährt
+    const haus = (u, d, breit, tief, hoch, wand, dach, offen) => { const h = new T.Group(), p = ort(u, d, -0.3);
+      if (offen) for (const sd of [-1, 1]) { const w = new T.Mesh(new T.BoxGeometry(0.3, hoch, tief), toon(wand)); w.position.set(sd * breit / 2, hoch / 2, 0); h.add(w); } else { const w = new T.Mesh(new T.BoxGeometry(breit, hoch, tief), toon(wand)); w.position.y = hoch / 2; h.add(w); const tuer = new T.Mesh(new T.BoxGeometry(1.1, 1.9, 0.1), toon(C.papier)); tuer.position.set(0, 0.95, tief / 2 + 0.02); h.add(tuer); }
+      const d1 = new T.Mesh(new T.ConeGeometry(Math.hypot(breit, tief) * 0.62, hoch * 0.6, 4), toon(dach)); d1.position.y = hoch + hoch * 0.3; d1.rotation.y = Math.PI / 4; d1.scale.set(1, 1, tief / breit); h.add(d1);
+      h.position.set(p[0], p[1], p[2]); h.rotation.y = -K.th(u); g.add(h); return h; };
+    if (Q.starthaus) haus(-7, 0, 11, 5, 4.3, "#7A5236", "#F4F8FA", true);
+    // Hohe rote Fangnetze an den Außenseiten der schnellen Kurven
+    const netzM = new T.MeshBasicMaterial({ color: C.rot, side: T.DoubleSide, transparent: true, opacity: 0.55 }), stM = toon(C.tinte), stG = new T.CylinderGeometry(0.06, 0.06, 4, 5).translate(0, 2, 0);
+    for (const [a, b, sd] of Q.netze || []) { const p = [], ix = []; let n = 0;
+      for (let u = a; u <= b; u += 3, n++) { const d = sd * (Z(u, sd) + 0.5), p0 = ort(u, d, 0.2), p1 = ort(u, d, 3.9); p.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2]); if (n) { const k = n * 2; ix.push(k - 2, k - 1, k, k - 1, k + 1, k); } if (n % 3 === 0) { const s = new T.Mesh(stG, stM); s.position.set(p0[0], p0[1] - 0.2, p0[2]); g.add(s); } }
+      const ge = new T.BufferGeometry(); ge.setAttribute("position", new T.Float32BufferAttribute(p, 3)); ge.setIndex(ix); g.add(new T.Mesh(ge, netzM)); }
+    // Zielbogen über der Ziellinie
+    if (Q.zielbogen) { const H = K.halbBei(K.lang, 0) + 1.5, bo = new T.Group(), p = ort(K.lang, 0), tex = leinwand(256, 32, (c, w, h) => { c.fillStyle = C.rot; c.fillRect(0, 0, w, h); c.fillStyle = "#FFFFFF"; c.font = "800 24px Futura, sans-serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("Z I E L", w / 2, h / 2 + 1); });
+      for (const sd of [-1, 1]) { const s = new T.Mesh(new T.BoxGeometry(0.9, 7.5, 0.9), toon(C.rot)); s.position.set(sd * H, 3.4, 0); bo.add(s); }
+      const balken = new T.Mesh(new T.BoxGeometry(2 * H + 0.9, 1.7, 0.7), [toon(C.rot), toon(C.rot), toon(C.rot), toon(C.rot), new T.MeshBasicMaterial({ map: tex }), new T.MeshBasicMaterial({ map: tex })]); balken.position.y = 7.2; bo.add(balken);
+      bo.position.set(p[0], Math.min(K.hUD(K.lang, -H), K.hUD(K.lang, H)), p[2]); bo.rotation.y = -K.th(K.lang); g.add(bo); }
+    // Ort im Tal hinter dem Ziel: Häuser mit Schneedächern und eine Kirche mit spitzem Turm
+    if (Q.dorf) { const wand = ["#EFE6D2", "#E3D3B4", "#8A6444", "#F4EEDF", "#C9B490"], uD = (K.uMax != null ? Math.min(K.lang + 150, K.uMax - 12) : K.lang + 150);
+      for (let i = 0; i < 46; i++) { const sd = i % 2 ? 1 : -1, u = K.lang + 35 + rn() * (uD - K.lang - 35), d = sd * (Z(u, sd) + 22 + rn() * 70), b = 7 + rn() * 5, t = 6 + rn() * 4, h = 4 + rn() * 3, hs = new T.Group(), p = ort(u, d, -0.4);
+        const w = new T.Mesh(new T.BoxGeometry(b, h, t), toon(wand[i % wand.length])); w.position.y = h / 2; const da = new T.Mesh(new T.ConeGeometry(Math.hypot(b, t) * 0.56, h * 0.55, 4), toon("#F4F8FA")); da.position.y = h * 1.27; da.rotation.y = Math.PI / 4; da.scale.set(1, 1, t / b); hs.add(w, da);
+        hs.position.set(p[0], p[1], p[2]); hs.rotation.y = -K.th(u) + rn() * 1.2; g.add(hs); }
+      const ki = new T.Group(), u = Math.min(uD, K.lang + 120), sd = -(Q.tribuene || 1), p = ort(u, sd * (Z(u, sd) + 40), -0.4), schiff = new T.Mesh(new T.BoxGeometry(9, 8, 18), toon("#F4EEDF")), turm = new T.Mesh(new T.BoxGeometry(5, 20, 5), toon("#F4EEDF")), spitze = new T.Mesh(new T.ConeGeometry(3.8, 13, 4), toon("#5E6B63")), sdach = new T.Mesh(new T.ConeGeometry(9.5, 5, 4), toon("#F4F8FA"));
+      schiff.position.y = 4; turm.position.set(0, 10, -11); spitze.position.set(0, 26.5, -11); spitze.rotation.y = Math.PI / 4; sdach.position.y = 10.4; sdach.rotation.y = Math.PI / 4; sdach.scale.set(0.68, 1, 1.36); ki.add(schiff, turm, spitze, sdach); ki.position.set(p[0], p[1], p[2]); ki.rotation.y = -K.th(u) + 0.4; g.add(ki); }
+    // Heustadel auf den Wiesen, Kameratürme an den Zuschauerzonen, Seilbahn mit roten Gondeln neben der Strecke
+    const frei = (u, d) => !K.frei || Math.abs(K.ort(...K.punkt(u, d)).u - u) < 40;
+    if (Q.stadel) { let sd = 1; for (let u = 170; u < K.lang - 80; u += 190 + rn() * 90) { sd = -sd; const d = sd * (Z(u, sd) + 13 + rn() * 22); if (frei(u, d)) haus(u, d, 5.5, 4.5, 2.4, "#4E3A2A", "#F4F8FA", false).rotation.y += rn() * 3; } }
+    for (const [a, , seite] of Q.zuschauer || []) { const sd = seite || 1, tu = new T.Group(), p = ort(a + 4, sd * (Z(a + 4, sd) + 2.2)); for (const [x, z] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]]) { const st = new T.Mesh(new T.BoxGeometry(0.12, 5, 0.12), toon(C.tinte)); st.position.set(x, 2.5, z); tu.add(st); }
+      const pl = new T.Mesh(new T.BoxGeometry(2.3, 0.18, 2.3), toon("#8A6A4A")), gel = new T.Mesh(new T.BoxGeometry(2.3, 0.9, 2.3), new T.MeshBasicMaterial({ color: C.blau, transparent: true, opacity: 0.85 })), ka = new T.Mesh(new T.BoxGeometry(0.4, 0.35, 0.8), toon(C.tinte)); pl.position.y = 5; gel.position.y = 5.55; ka.position.set(0, 6.3, 0); tu.add(pl, gel, ka); tu.position.set(p[0], p[1] - 0.3, p[2]); tu.rotation.y = -K.th(a); g.add(tu); }
+    if (Q.lift) { const sd = Q.lift, mastG = new T.CylinderGeometry(0.22, 0.32, 11, 6).translate(0, 5.5, 0), mM2 = toon("#5E6B73"), seil = [], kab = new T.BoxGeometry(1.5, 1.7, 2), kM = toon(C.rot), fM = toon("#22364F"); let letzt = null;
+      for (let u = 60; u < K.lang - 40; u += 85) { const d = sd * (Z(u, sd) + 26); if (!frei(u, d)) { letzt = null; continue; } const p = ort(u, d, -0.4), ma = new T.Mesh(mastG, mM2), qu = new T.Mesh(new T.BoxGeometry(3.4, 0.3, 0.3), mM2); ma.position.set(p[0], p[1], p[2]); qu.position.set(p[0], p[1] + 10.8, p[2]); qu.rotation.y = -K.th(u); g.add(ma, qu);
+        const oben = new T.Vector3(p[0], p[1] + 10.9, p[2]); if (letzt) { seil.push(letzt.x, letzt.y, letzt.z, oben.x, oben.y, oben.z); for (const w of [0.3, 0.75]) { if (rn() < 0.35) continue; const m = letzt.clone().lerp(oben, w), ga = new T.Group(), k1 = new T.Mesh(kab, kM), k2 = new T.Mesh(new T.BoxGeometry(1.54, 0.6, 1.7), fM), ha = new T.Mesh(new T.BoxGeometry(0.08, 1.3, 0.08), mM2); k1.position.y = -2.2; k2.position.y = -1.95; ha.position.y = -0.7; ga.add(k1, k2, ha); ga.position.copy(m); ga.position.y -= 0.5; ga.rotation.y = -K.th(u); g.add(ga); } } letzt = oben; }
+      if (seil.length) { const ge = new T.BufferGeometry(); ge.setAttribute("position", new T.Float32BufferAttribute(seil, 3)); g.add(new T.LineSegments(ge, new T.LineBasicMaterial({ color: C.tinte }))); } }
+    for (const [u, sd] of Q.huetten || []) haus(u, sd * (Z(u, sd) + 9), 9, 6, 3.4, "#6B4A32", "#F4F8FA", false).rotation.y += sd * 1.2;
     return g;
   }
 
   // ------------------------------------------------------------------ Fahrer: Gelenke aus der Physik, Glieder dazwischen
   const YA = new T.Vector3(0, 1, 0);
-  function figur(look, leibchen) {
+  function figur(look, leibchen, opt) {
     const F = root.CMFigur || {}, pal = (v, liste, d) => (typeof v === "string" ? v : (liste && liste[v]) || d);
     const anzug = pal(look && look.suit, F.SUIT, "#23466B"), akzent = pal(look && look.accent, F.SUIT, "#DDA43B"), haut = pal(look && look.skin, F.SKIN, "#E2B48F");
-    const g = new T.Group(), zyl = new T.CylinderGeometry(1, 1, 1, 10, 1).translate(0, 0.5, 0), kugel = new T.SphereGeometry(1, 14, 10);
-    const mA = toon(anzug), mD = toon(new T.Color(anzug).multiplyScalar(0.7)), mL = toon(leibchen || C.rot), mK = toon(akzent), mT = toon(C.tinte), mH = toon(haut), mS = toon("#E9E2D0");
-    const glied = (mat) => { const m = new T.Mesh(zyl, mat); g.add(m); return m; }, ball = (mat, r) => { const m = new T.Mesh(kugel, mat); m.scale.setScalar(r); g.add(m); return m; };
-    const kasten = (mat, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(x, y, z), mat); g.add(m); return m; };
-    const T_ = { rumpf: new T.Mesh(new T.CapsuleGeometry(0.15, 0.27, 4, 12), mL), becken: ball(mA, 0.145), kopf: ball(mK, 0.118), kinn: ball(mH, 0.075), brille: kasten(mT, 0.17, 0.06, 0.07), bein: [], arm: [] };
+    // Glieder verjüngen sich zum Gelenk hin, der Rumpf ist ein Drehkörper mit Taille und Schultern; jedes Teil trägt einen dunklen Umriss wie im Plakat
+    const g = new T.Group(), zyl = new T.CylinderGeometry(0.74, 1, 1, 12, 1).translate(0, 0.5, 0), stab = new T.CylinderGeometry(1, 1, 1, 8, 1).translate(0, 0.5, 0), kugel = new T.SphereGeometry(1, 16, 12);
+    const mA = toon(anzug), mD = toon(new T.Color(anzug).multiplyScalar(0.72)), mL = toon(leibchen || C.rot), mK = toon(akzent), mT = toon(C.tinte), mH = toon(haut), mS = toon("#E9E2D0"), mG = toon("#22364F"), mW = toon("#F4F0E4");
+    const mU = new T.MeshBasicMaterial({ color: C.tinte, side: T.BackSide });
+    const umriss = (m, sx, sy, sz) => { const o = new T.Mesh(m.geometry, mU); o.scale.set(sx, sy == null ? sx : sy, sz == null ? sx : sz); m.add(o); return m; };
+    const glied = (mat, geo) => { const m = umriss(new T.Mesh(geo || zyl, mat), 1.32, 1, 1.32); g.add(m); return m; }, ball = (mat, r, ohne) => { const m = new T.Mesh(kugel, mat); if (!ohne) umriss(m, 1.2); m.scale.setScalar(r); g.add(m); return m; };
+    const kasten = (mat, x, y, z) => { const m = umriss(new T.Mesh(new T.BoxGeometry(x, y, z), mat), 1.25, 1.25, 1.06); g.add(m); return m; };
+    const drehteil = (pts) => new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(r, y)), 18).translate(0, -0.27, 0);
+    const rumpf = umriss(new T.Mesh(drehteil([[0.001, -0.03], [0.1, -0.02], [0.142, 0.03], [0.148, 0.1], [0.132, 0.2], [0.146, 0.31], [0.168, 0.4], [0.16, 0.46], [0.1, 0.51], [0.05, 0.545], [0.001, 0.55]]), mA), 1.1, 1.02, 1.1);
+    rumpf.add(new T.Mesh(drehteil([[0.136, 0.17], [0.139, 0.2], [0.153, 0.31], [0.175, 0.4], [0.167, 0.455]]), mL));                                   // Startleibchen
+    const brille = new T.Mesh(new T.CylinderGeometry(0.124, 0.124, 0.062, 18, 1, true, Math.PI - 1.05, 2.1), new T.MeshBasicMaterial({ color: "#22364F", side: T.DoubleSide })); g.add(brille);
+    const T_ = { rumpf, becken: ball(mA, 0.14), kopf: ball(mK, 0.12), kinn: ball(mH, 0.076, true), brille, bein: [], arm: [] };
     g.add(T_.rumpf);
+    const SL = (opt && opt.ski) || 1.72;
     for (let i = 0; i < 2; i++) {
-      const ski = new T.Group(), latte = new T.Mesh(new T.BoxGeometry(0.09, 0.022, 1.72), mS), spitze = new T.Mesh(new T.BoxGeometry(0.09, 0.02, 0.24), mS), bind = new T.Mesh(new T.BoxGeometry(0.075, 0.03, 0.34), mT);
-      latte.position.z = -0.12; spitze.position.set(0, 0.045, -1.08); spitze.rotation.x = 0.42; bind.position.y = 0.025; ski.add(latte, spitze, bind); g.add(ski);
-      T_.bein.push({ ober: glied(mA), unter: glied(mD), knie: ball(mA, 0.078), schuh: kasten(mT, 0.1, 0.13, 0.27), ski });
-      T_.arm.push({ ober: glied(mA), unter: glied(mA), ellbogen: ball(mA, 0.052), hand: ball(mT, 0.055), stock: glied(mT), teller: ball(mT, 0.035) });
+      const ski = new T.Group(), latte = umriss(new T.Mesh(new T.BoxGeometry(0.092, 0.02, SL), mS), 1.3, 2.2, 1.01), streif = new T.Mesh(new T.BoxGeometry(0.05, 0.006, SL * 0.72), mK), bind = new T.Mesh(new T.BoxGeometry(0.078, 0.035, 0.36), mT);
+      latte.position.z = -0.12; streif.position.set(0, 0.012, -0.12 - SL * 0.08); bind.position.y = 0.027; ski.add(latte, streif, bind);
+      let z = -0.12 - SL / 2, y = 0, w = 0; for (const dw of [0.22, 0.34, 0.42]) { w += dw; const st = umriss(new T.Mesh(new T.BoxGeometry(0.092, 0.02, 0.1), mS), 1.3, 2.2, 1.05); st.position.set(0, y + Math.sin(w) * 0.05, z - Math.cos(w) * 0.05); st.rotation.x = w; ski.add(st); y += Math.sin(w) * 0.1; z -= Math.cos(w) * 0.1; }   // aufgebogene Schaufel
+      g.add(ski);
+      T_.bein.push({ ober: glied(mA), unter: glied(mD), knie: ball(mA, 0.08), schuh: kasten(mT, 0.105, 0.1, 0.3), schaft: glied(mK, stab), ski });
+      T_.arm.push({ ober: glied(mA), unter: glied(mA), schulter: ball(mA, 0.074), ellbogen: ball(mA, 0.054), hand: ball(mW, 0.058), stock: glied(mT, stab), teller: ball(mT, 0.032, true) });
     }
     const zw = (mesh, a, b, r) => { const d = b.clone().sub(a), l = d.length() || 1e-4; mesh.position.copy(a); mesh.quaternion.setFromUnitVectors(YA, d.multiplyScalar(1 / l)); mesh.scale.set(r, l, r); };
     const basis = (obj, x, y, z, ort) => { obj.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x, y, z)); obj.position.copy(ort); };
     const ik = (a, b, l1, l2, bieg) => { const d = b.clone().sub(a), L = P.clamp(d.length(), 0.05, l1 + l2 - 0.002); d.normalize(); const x = (l1 * l1 - l2 * l2 + L * L) / (2 * L), h = Math.sqrt(Math.max(0, l1 * l1 - x * x)), q = bieg.clone().addScaledVector(d, -bieg.dot(d)).normalize(); return a.clone().addScaledVector(d, x).addScaledVector(q, h); };
     const mix = (a, b, t) => a.clone().lerp(b, t);
-    const Z = { up: new T.Vector3(0, 1, 0), hocke: 0, luft: 0, beuge: 0, neu: true };
+    const Z = { up: new T.Vector3(0, 1, 0), hocke: 0, luft: 0, beuge: 0, neu: true, t: 0, jubel: 0, streck: 0, lande: 0, warLuft: false };
     // Haltung aus dem Zustand der Physik. dt glättet nur, was sonst springen würde (Übergang Boden und Luft).
     function stelle(f, K, dt) {
       let B = P.boden(K, f.x, f.s);
@@ -2496,64 +2665,100 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const k = Z.neu ? 1 : Math.min(1, dt * 14); Z.neu = false;
       Z.up.lerp(V(B.nx, B.ny, B.ns), k).normalize(); Z.luft += ((f.luft ? 1 : 0) - Z.luft) * Math.min(1, dt * 10 + (k === 1 ? 1 : 0));
       const A = P.achsen({ hx: -Z.up.x / Z.up.y, hs: Z.up.z / Z.up.y }, f.psi), Fw = V(A.fx, A.fy, A.fs), Rt = V(A.rx, A.ry, A.rs), Up = Z.up;
-      const hk = f.hocke * f.hocke * (3 - 2 * f.hocke), beuge = P.clamp(hk * 0.9 + (f.last - 1) * 0.16 + Z.luft * 0.3, 0, 1); Z.beuge += (beuge - Z.beuge) * Math.min(1, dt * 12 + (k === 1 ? 1 : 0));
-      const th = P.clamp(f.neig, -1.1, 1.1), phi = f.phi, sth = Math.sin(th), cth = Math.cos(th);
+      Z.t += dt; Z.jubel += ((f.fertig ? 1 : 0) - Z.jubel) * Math.min(1, dt * 4 + (k === 1 ? 1 : 0));
+      const tempo = P.clamp(Math.hypot(f.vx, f.vs) / 28, 0, 1), schlag = f.luft ? 0 : (Math.sin(Z.t * 27) * 0.6 + Math.sin(Z.t * 41 + 1) * 0.4) * 0.045 * tempo;      // die Piste schlägt: die Knie arbeiten
+      const hk = f.hocke * f.hocke * (3 - 2 * f.hocke) * (1 - Z.jubel), th0 = P.clamp(f.neig, -1.1, 1.1);
+      // Bewegungslehre (docs/BEWEGUNG.md): im Flug kompakt mit angezogenen Beinen, kurz vor dem Aufsetzen leicht strecken und in der Landung abfedern; über Kuppen schlucken, in Mulden drücken; beim Kantenwechsel tiefer, im Bogen das Außenbein lang
+      const ueber = f.luft ? f.y - K.h(f.x, f.s) : 0; Z.streck += ((f.luft && f.vy < 0 && ueber < 1.6 ? 1 : 0) - Z.streck) * Math.min(1, dt * 9); if (Z.warLuft && !f.luft) Z.lande = 0.4; Z.warLuft = f.luft; Z.lande *= Math.exp(-dt * 5);
+      const welle = f.luft ? 0 : P.clamp((K.grad(f.u + 5) - K.grad(f.u - 1)) * 0.012, -0.1, 0.2) * tempo, wechsel = f.luft ? 0 : 0.1 * (1 - hk) * (1 - P.clamp(Math.abs(th0) / 0.45, 0, 1)) * tempo;
+      const beuge = P.clamp(hk * 0.9 + (f.last - 1) * 0.16 + Z.luft * (0.6 - 0.42 * Z.streck) * (1 - hk * 0.6) + Z.lande + welle + wechsel + schlag, 0, 1); Z.beuge += (beuge - Z.beuge) * Math.min(1, dt * 12 + (k === 1 ? 1 : 0));
+      const th = th0, phi = f.phi, sth = Math.sin(th), cth = Math.cos(th);
       const base = V(f.x, f.y, f.s), lehn = Up.clone().multiplyScalar(cth).addScaledVector(Rt, sth);
       const skiUp = Up.clone().multiplyScalar(Math.cos(phi)).addScaledVector(Rt, Math.sin(phi)), skiRt = Rt.clone().multiplyScalar(Math.cos(phi)).addScaledVector(Up, -Math.sin(phi));
       const pR = Rt.clone().multiplyScalar(Math.cos(th * 0.5)).addScaledVector(Up, -Math.sin(th * 0.5));
       const hueft = base.clone().addScaledVector(lehn, P.lerp(0.84, 0.5, Z.beuge)).addScaledVector(Fw, -0.03 - 0.13 * Z.beuge);
-      const fuss = [-1, 1].map((sd) => base.clone().addScaledVector(Rt, sd * 0.19).addScaledVector(Fw, sd * sth > 0 ? 0.14 * Math.abs(sth) : 0)), knoechel = fuss.map((p) => p.clone().addScaledVector(skiUp, 0.12));
+      const fuss = [-1, 1].map((sd) => base.clone().addScaledVector(Rt, sd * 0.19).addScaledVector(Fw, sd * sth > 0 ? 0.14 * Math.abs(sth) * (1 - hk) : 0.1 * Math.abs(sth) * hk)), knoechel = fuss.map((p) => p.clone().addScaledVector(skiUp, 0.12));
       for (let n = 0; n < 2; n++) { let zu = 0; for (let i = 0; i < 2; i++) zu = Math.max(zu, knoechel[i].distanceTo(hueft.clone().addScaledVector(pR, (i ? 1 : -1) * 0.1)) - 0.85); if (zu > 0) hueft.addScaledVector(lehn, -zu); }   // das Außenbein ist höchstens gestreckt
       for (let i = 0; i < 2; i++) {
         const sd = i ? 1 : -1, b = T_.bein[i], hj = hueft.clone().addScaledVector(pR, sd * 0.1);
         const knie = ik(hj, knoechel[i], 0.44, 0.44, Fw.clone().addScaledVector(Rt, sth * 0.55 + sd * 0.06).addScaledVector(Up, 0.1));
-        zw(b.ober, hj, knie, 0.082); zw(b.unter, knie, knoechel[i], 0.064); b.knie.position.copy(knie);
+        zw(b.ober, hj, knie, 0.09); zw(b.unter, knie, knoechel[i], 0.07); b.knie.position.copy(knie);
+        zw(b.schaft, knoechel[i].clone().addScaledVector(skiUp, -0.03), knoechel[i].clone().lerp(knie, 0.5), 0.066);
         basis(b.schuh, skiRt, skiUp, Fw.clone().negate(), knoechel[i].clone().addScaledVector(skiUp, -0.04).addScaledVector(Fw, 0.03));
-        basis(b.ski, skiRt, skiUp, Fw.clone().negate(), fuss[i].clone().addScaledVector(skiUp, 0.012));
+        const pfl = -sd * 0.42 * (f.bremse || 0), sFw = Fw.clone().multiplyScalar(Math.cos(pfl)).addScaledVector(skiRt, Math.sin(pfl)), sRt = skiRt.clone().multiplyScalar(Math.cos(pfl)).addScaledVector(Fw, -Math.sin(pfl));   // Bremsen: Skienden auseinander
+        basis(b.ski, sRt, skiUp, sFw.negate(), fuss[i].clone().addScaledVector(skiUp, 0.012).addScaledVector(Rt, sd * 0.1 * (f.bremse || 0)));
       }
       // Rumpf: weniger geneigt als die Beine (Angulation), in der Hocke flach nach vorn
-      const tUp = Up.clone().multiplyScalar(Math.cos(th * 0.45)).addScaledVector(Rt, Math.sin(th * 0.45)), tRt = Rt.clone().multiplyScalar(Math.cos(th * 0.45)).addScaledVector(Up, -Math.sin(th * 0.45));
-      const pitch = P.lerp(0.5, 1.22, hk) - Z.luft * 0.15, wirbel = tUp.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(Fw, Math.sin(pitch)), brust = Fw.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(tUp, -Math.sin(pitch));
+      const kn = th * P.lerp(0.45, 0.85, hk), tUp = Up.clone().multiplyScalar(Math.cos(kn)).addScaledVector(Rt, Math.sin(kn)), tRt = Rt.clone().multiplyScalar(Math.cos(kn)).addScaledVector(Up, -Math.sin(kn));      // in der Hocke kein Hüftknick: der Rumpf legt sich mit in die Kurve
+      const pitch = P.lerp(0.5, 1.22, hk) + Z.luft * 0.42 * (1 - hk), wirbel = tUp.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(Fw, Math.sin(pitch)), brust = Fw.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(tUp, -Math.sin(pitch));
       basis(T_.rumpf, tRt, wirbel, brust.clone().negate(), hueft.clone().addScaledVector(wirbel, 0.27)); T_.rumpf.scale.set(1.12, 1, 0.82);
       T_.becken.position.copy(hueft);
-      const hals = hueft.clone().addScaledVector(wirbel, 0.52), blick = wirbel.clone().multiplyScalar(0.35).addScaledVector(Up, 0.8).addScaledVector(Fw, 0.25).normalize(), kopf = hals.clone().addScaledVector(blick, 0.15);
+      const hals = hueft.clone().addScaledVector(wirbel, 0.52), blick = wirbel.clone().multiplyScalar(0.35).addScaledVector(Up, 0.8).addScaledVector(Fw, 0.25).addScaledVector(Rt, sth * 0.22).normalize(), kopf = hals.clone().addScaledVector(blick, 0.15);
       T_.kopf.position.copy(kopf); T_.kinn.position.copy(kopf).addScaledVector(Fw, 0.055).addScaledVector(Up, -0.055);
-      basis(T_.brille, Rt, Up, Fw.clone().negate(), kopf.clone().addScaledVector(Fw, 0.075).addScaledVector(Up, 0.012));
+      basis(T_.brille, Rt, Up, Fw.clone().negate(), kopf.clone().addScaledVector(Up, 0.012));
       for (let i = 0; i < 2; i++) {
         const sd = i ? 1 : -1, a = T_.arm[i], sch = hueft.clone().addScaledVector(wirbel, 0.45).addScaledVector(tRt, sd * 0.2);
-        const steh = sch.clone().addScaledVector(Fw, 0.36).addScaledVector(Up, -0.2 + sd * sth * 0.1).addScaledVector(tRt, sd * 0.13);
+        // in der Kurve: Innenhand tief zum Schnee, Außenarm weit hinaus; beim Anschieben am Start stoßen beide Arme
+        const inn = Math.max(0, sd * sth), aus = Math.max(0, -sd * sth), schub = !f.luft && f.t < 1.7 && !f.fertig ? Math.sin(Z.t * 9) * (1 - f.t / 1.7) : 0;
+        const steh = sch.clone().addScaledVector(Fw, 0.36 - 0.3 * schub).addScaledVector(Up, -0.2 - inn * 0.3 + aus * 0.1 + 0.1 * Math.abs(schub)).addScaledVector(tRt, sd * (0.13 + aus * 0.2 + inn * 0.1));
         const tief = kopf.clone().addScaledVector(Fw, 0.27).addScaledVector(Up, -0.1).addScaledVector(Rt, sd * 0.07);
-        const flug = sch.clone().addScaledVector(tRt, sd * 0.4).addScaledVector(Fw, 0.16).addScaledVector(Up, 0.02);
-        const hand = mix(mix(steh, tief, hk), flug, Z.luft * 0.8), ell = ik(sch, hand, 0.29, 0.28, Up.clone().negate().addScaledVector(tRt, sd * 0.7).addScaledVector(Fw, -0.2));
-        zw(a.ober, sch, ell, 0.055); zw(a.unter, ell, hand, 0.047); a.ellbogen.position.copy(ell); a.hand.position.copy(hand);
-        const spitze = mix(hand.clone().addScaledVector(Fw, -0.98).addScaledVector(Up, -0.28).addScaledVector(Rt, sd * 0.2), hand.clone().addScaledVector(Fw, -1.12).addScaledVector(Up, 0.14).addScaledVector(Rt, sd * 0.12), hk);
+        const flug = sch.clone().addScaledVector(tRt, sd * 0.1).addScaledVector(Fw, 0.36).addScaledVector(Up, -0.16);      // im Flug: Hände ruhig vorn unten, keine Streckung, kein Rudern
+        const hoch = sch.clone().addScaledVector(Up, 0.5 + Math.sin(Z.t * 10) * 0.05).addScaledVector(tRt, sd * 0.24).addScaledVector(Fw, 0.05);                                                      // im Ziel: Arme hoch
+        const hand = mix(mix(mix(steh, tief, hk), flug, Z.luft * 0.8), hoch, Z.jubel), ell = ik(sch, hand, 0.29, 0.28, Up.clone().negate().addScaledVector(tRt, sd * P.lerp(0.7, 0.12, hk)).addScaledVector(Fw, -0.2 * (1 - hk)));      // Hocke: Ellbogen unten vor den Knien
+        zw(a.ober, sch, ell, 0.062); zw(a.unter, ell, hand, 0.052); a.ellbogen.position.copy(ell); a.hand.position.copy(hand); a.schulter.position.copy(sch);
+        const spitze = mix(hand.clone().addScaledVector(Fw, -0.98).addScaledVector(Up, -0.28).addScaledVector(Rt, sd * 0.2), hand.clone().addScaledVector(Fw, -1.12).addScaledVector(Up, 0.14).addScaledVector(Rt, sd * 0.12), hk).lerp(hand.clone().addScaledVector(Up, 1.05).addScaledVector(Rt, sd * 0.35), Z.jubel);
         zw(a.stock, hand, spitze, 0.012); a.teller.position.copy(spitze);
       }
       return { Fw, Rt, Up, skiRt, fuss, base };
     }
-    return { gruppe: g, stelle, neu() { Z.neu = true; } };
+    return { gruppe: g, stelle, gross: (opt && opt.gross) || 1, neu() { Z.neu = true; } };
   }
 
   // ------------------------------------------------------------------ eine Welt je Kurs
   function baue(K) {
     const szene = new T.Scene(), kam = new T.PerspectiveCamera(60, 844 / 390, 0.3, 5000);
-    szene.fog = new T.Fog(C.dunst, 120, 1100);
+    szene.fog = new T.Fog(C.dunst, 140, 780);
     szene.add(new T.HemisphereLight("#EAF2FB", "#8FA6C4", 1.5));
     const sonne = new T.DirectionalLight("#FFF1D0", 1.7); sonne.position.set(SONNE[0], SONNE[1], SONNE[2]); szene.add(sonne);
-    const sky = himmel(); szene.add(sky); szene.add(gelaende(K));
+    const sky = himmel(); szene.add(sky); const kul = K.kulisse ? randKulisse(K) : null; let zeit = 0;
+    // Stücke: jedes Teil der Welt kommt in die Gruppe seines Streckenstücks (aus userData.u oder aus seinem Ort); sichtbar sind nur die Stücke von 150 m hinter bis 760 m vor dem Fahrer.
+    // Was die ganze Strecke entlangläuft (Linien, Zaun, Pfosten, Seil), bleibt immer sichtbar.
+    const stuecke = new Map(), stueck = (n) => { if (!stuecke.has(n)) { const gr = new T.Group(); gr.userData.u = uStk(n); stuecke.set(n, gr); szene.add(gr); } return stuecke.get(n); };
+    for (const gruppe of [gelaende(K), kul]) { if (!gruppe) continue; szene.add(gruppe);
+      for (const o of gruppe.children.slice()) { let u = o.userData.u; if (u == null) { if (o.isInstancedMesh || o.isLineSegments) continue; let c = o.position; if (o.geometry && o.position.lengthSq() < 1e-6) { o.geometry.computeBoundingSphere(); const bs = o.geometry.boundingSphere; if (!bs || bs.radius > 260) continue; c = bs.center; } u = K.ort(c.x, -c.z).u; }
+        stueck(stk(u)).add(o); } }
+    let stkJetzt = null; const sichtbar = (u) => { const n = stk(u); if (n === stkJetzt) return; stkJetzt = n; for (const gr of stuecke.values()) gr.visible = gr.userData.u > u - 150 - TL / 2 && gr.userData.u < u + 760 + TL / 2; };
+    // Schneekristalle in der Luft: sie stehen fast still, der Fahrer zieht an ihnen vorbei (Gefühl für das Tempo)
+    const NF = 150, fp = new Float32Array(NF * 3).fill(-9999), fl = new Float32Array(NF * 6).fill(-9999), fg = new T.BufferGeometry(); fg.setAttribute("position", new T.BufferAttribute(fl, 3));      // fp: Ort je Kristall, fl: Strich von dort gegen die Fahrt, umso länger, je schneller
+    const flocken = new T.LineSegments(fg, new T.LineBasicMaterial({ color: "#FFFFFF", transparent: true, opacity: 0.75, depthWrite: false })); flocken.frustumCulled = false; szene.add(flocken);
+    // Ideallinie: Band im Schnee entlang der Spur des Vorläufers (pfad: [{ u, d, luft }]); in der Luft unterbrochen
+    let ideal = null, idealQ = [], idealAb = 0; const FARBEN = [C.gold, "#3E9B4F", "#E8922B", C.rot].map((h) => new T.Color(h));
+    function ideallinie(pfad) { if (ideal) szene.remove(ideal); const p = [], ix = []; let n = 0, offen = false; idealQ = []; idealAb = 0;
+      for (const q of pfad) { if (q.luft) { offen = false; continue; } const a = K.punkt(q.u, q.d - 0.17), b = K.punkt(q.u, q.d + 0.17); p.push(a[0], K.hUD(q.u, q.d - 0.17) + 0.045, -a[1], b[0], K.hUD(q.u, q.d + 0.17) + 0.045, -b[1]); if (offen) { const k = n * 2; ix.push(k - 2, k - 1, k, k - 1, k + 1, k); } offen = true; n++; idealQ.push(q); }
+      const ge = new T.BufferGeometry(), fa = new Float32Array(n * 6); for (let i = 0; i < n * 2; i++) FARBEN[0].toArray(fa, i * 3); ge.setAttribute("position", new T.Float32BufferAttribute(p, 3)); ge.setAttribute("color", new T.BufferAttribute(fa, 3)); ge.setIndex(ix);
+      ideal = new T.Mesh(ge, new T.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.62, side: T.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); ideal.frustumCulled = false; szene.add(ideal); }
+    // Ideallinie voraus färben: stufe(q) gibt 1 grün, 2 orange, 3 rot (0 gold) für jede Stelle der Spur in den nächsten weit Metern
+    function idealFarbe(u, weit, stufe) { if (!ideal) return; const a = ideal.geometry.attributes.color; while (idealAb > 0 && idealQ[idealAb].u > u - 8) idealAb--; while (idealAb + 1 < idealQ.length && idealQ[idealAb + 1].u < u - 8) idealAb++;
+      for (let i = idealAb; i < idealQ.length && idealQ[i].u < u + weit; i++) { const c = FARBEN[stufe(idealQ[i]) | 0]; c.toArray(a.array, i * 6); c.toArray(a.array, i * 6 + 3); } a.needsUpdate = true; }
     const schatten = new T.Mesh(new T.CircleGeometry(0.6, 18), new T.MeshBasicMaterial({ color: "#4F74A0", transparent: true, opacity: 0.4, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 })); szene.add(schatten);
     // Spuren im Schnee: zwei Bänder, die hinter den Ski liegen bleiben; im Rutschen werden sie breit
     const NS = 260, spur = [0, 1].map(() => { const ge = new T.BufferGeometry(), p = new Float32Array(NS * 6), ix = []; for (let i = 0; i + 1 < NS; i++) { const k = i * 2; ix.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
       ge.setAttribute("position", new T.BufferAttribute(p, 3)); ge.setIndex(ix); const m = new T.Mesh(ge, new T.MeshBasicMaterial({ color: "#B4C8DC", side: T.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })); m.frustumCulled = false; szene.add(m); return { p, ge, letzt: null, n: 0 }; });
     // Schneestaub an der Kante
-    const NP = 140, pp = new Float32Array(NP * 3).fill(-9999), pv = new Float32Array(NP * 3), pl = new Float32Array(NP), pg = new T.BufferGeometry(); pg.setAttribute("position", new T.BufferAttribute(pp, 3));
-    const staub = new T.Points(pg, new T.PointsMaterial({ color: "#FFFFFF", size: 0.17, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false })); staub.frustumCulled = false; szene.add(staub); let pi = 0;
+    const NP = 320, pp = new Float32Array(NP * 3).fill(-9999), pv = new Float32Array(NP * 3), pl = new Float32Array(NP), pg = new T.BufferGeometry(); pg.setAttribute("position", new T.BufferAttribute(pp, 3));
+    const staub = new T.Points(pg, new T.PointsMaterial({ color: "#FFFFFF", size: 0.3, map: leinwand(32, 32, (c) => { c.fillStyle = "#FFFFFF"; c.beginPath(); c.arc(16, 16, 14, 0, 7); c.fill(); }), alphaTest: 0.3, sizeAttenuation: true, transparent: true, opacity: 0.9, depthWrite: false })); staub.frustumCulled = false; szene.add(staub); let pi = 0;
     let fig = null, lage = null; const kz = { ort: new T.Vector3(), ziel: new T.Vector3(), gier: 0, neu: true };
 
-    function setzeFigur(look, leibchen) { if (fig) szene.remove(fig.gruppe); fig = figur(look, leibchen); szene.add(fig.gruppe); for (const s of spur) { s.p.fill(0); s.letzt = null; s.n = 0; s.ge.attributes.position.needsUpdate = true; } pp.fill(-9999); kz.neu = true; }
+    function setzeFigur(look, leibchen, opt) { if (fig) szene.remove(fig.gruppe); fig = figur(look, leibchen, opt); szene.add(fig.gruppe); for (const s of spur) { s.p.fill(0); s.letzt = null; s.n = 0; s.ge.attributes.position.needsUpdate = true; } pp.fill(-9999); kz.neu = true; }
     function stelle(f, dt) {
       if (!fig) setzeFigur(null);
-      lage = fig.stelle(f, K, dt);
+      lage = fig.stelle(f, K, dt); zeit += dt;
+      if (fig.gross !== 1) { const s = fig.gross; fig.gruppe.scale.setScalar(s); fig.gruppe.position.set(f.x * (1 - s), f.y * (1 - s), -f.s * (1 - s)); }      // größer gezeichnet als echt, um den Fuß herum
+      sichtbar(f.u != null ? f.u : f.s);
+      if (kul) { const b = kul.userData.belebt; b.leute.forEach((gr) => { if (gr.parent.visible) gr.position.y = Math.max(0, Math.sin(zeit * 7 + gr.userData.takt * 2.1)) * 0.16; }); b.tuch.forEach((tu, i) => { tu.rotation.y = Math.sin(zeit * 3.1 + i) * 0.28 + Math.sin(zeit * 7.3 + i * 2) * 0.08; }); }
+      { const sx = Math.sin(f.psi), ss = Math.cos(f.psi); for (let i = 0; i < NF; i++) { const dx = fp[i * 3] - f.x, ds = -fp[i * 3 + 2] - f.s, vor = dx * sx + ds * ss; fp[i * 3 + 1] -= 0.35 * dt; fp[i * 3] += 0.5 * dt;
+          if (vor < -8 || vor > 75 || fp[i * 3 + 1] < f.y - 2.5) { const w = 20 + Math.random() * 50, q = (Math.random() - 0.5) * 30; fp[i * 3] = f.x + sx * w + ss * q; fp[i * 3 + 2] = -(f.s + ss * w - sx * q); fp[i * 3 + 1] = f.y + 0.2 + Math.random() * Math.random() * 6 - w * Math.tan(Math.max(0, K.grad(f.u + w * 0.5)) * P.RAD); }
+          const lg = 0.03 + Math.max(0, f.v - 8) * 0.03; fl[i * 6] = fp[i * 3]; fl[i * 6 + 1] = fp[i * 3 + 1]; fl[i * 6 + 2] = fp[i * 3 + 2]; fl[i * 6 + 3] = fp[i * 3] + f.vx / Math.max(1, f.v) * lg; fl[i * 6 + 4] = fp[i * 3 + 1] + (f.vy || 0) / Math.max(1, f.v) * lg; fl[i * 6 + 5] = fp[i * 3 + 2] - f.vs / Math.max(1, f.v) * lg; } fg.attributes.position.needsUpdate = true; }
       const hB = K.h(f.x, f.s); schatten.position.set(f.x, hB + 0.03, -f.s); schatten.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), f.luft ? new T.Vector3(0, 1, 0) : lage.Up); schatten.scale.setScalar(1 / (1 + Math.max(0, f.y - hB) * 0.5));
       // Spuren
       if (!f.luft && f.v > 0.5) for (let i = 0; i < 2; i++) {
@@ -2565,35 +2770,117 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         s.n++; s.letzt = m.clone(); s.ge.attributes.position.needsUpdate = true;
       } else if (f.luft) for (const s of spur) s.letzt = null;
       // Staub: beim Rutschen viel, beim Schneiden unter Last ein wenig
-      const menge = f.luft ? 0 : f.rutsch * 9 + Math.max(0, Math.abs(f.aq) - 5) * 0.12 * Math.min(1, f.v / 8) + f.tief * Math.min(1, f.v / 6) * 2;
+      const menge = f.luft ? 0 : (f.bremse || 0) * Math.min(1, f.v / 6) * 9 + f.rutsch * 12 + Math.max(0, Math.abs(f.aq) - 3) * 0.45 * Math.min(1, f.v / 8) + f.tief * Math.min(1, f.v / 6) * 3 + P.clamp((f.v - 10) / 20, 0, 1) * 1.6;      // bei Tempo stiebt es immer ein wenig hinter den Ski
       for (let n = Math.floor(menge + Math.random()); n > 0; n--) {
-        const i = pi++ % NP, au = Math.sign(f.neig || 1), q = lage.fuss[au > 0 ? 0 : 1];
+        const i = pi++ % NP, au = Math.sign(f.neig || 1), q = lage.fuss[Math.abs(f.neig) < 0.12 ? pi % 2 : au > 0 ? 0 : 1];
         pp[i * 3] = q.x + (Math.random() - 0.5) * 0.5; pp[i * 3 + 1] = q.y + 0.05; pp[i * 3 + 2] = q.z + (Math.random() - 0.5) * 0.8;
-        const w = 1.5 + Math.random() * 3 + f.rutsch * 3; pv[i * 3] = f.vx * 0.5 - lage.Rt.x * au * w; pv[i * 3 + 1] = 1 + Math.random() * 2.5; pv[i * 3 + 2] = -f.vs * 0.5 - lage.Rt.z * au * w; pl[i] = 0.5 + Math.random() * 0.4;
+        const w = (Math.abs(f.neig) < 0.12 ? (Math.random() - 0.5) * 2 : 1.5 + Math.random() * 3.5 + f.rutsch * 3 + Math.abs(f.aq) * 0.15); pv[i * 3] = f.vx * 0.72 - lage.Rt.x * au * w; pv[i * 3 + 1] = 1 + Math.random() * (2.5 + Math.abs(f.aq) * 0.2); pv[i * 3 + 2] = -f.vs * 0.72 - lage.Rt.z * au * w; pl[i] = 0.28 + Math.random() * 0.3;
       }
       for (let i = 0; i < NP; i++) if (pl[i] > 0) { pl[i] -= dt; pv[i * 3 + 1] -= 9.81 * dt; pp[i * 3] += pv[i * 3] * dt; pp[i * 3 + 1] += pv[i * 3 + 1] * dt; pp[i * 3 + 2] += pv[i * 3 + 2] * dt; if (pl[i] <= 0) pp[i * 3 + 1] = -9999; }
       pg.attributes.position.needsUpdate = true;
     }
-    // Kamera: hinter und über dem Fahrer, in Fahrtrichtung (nicht in Skirichtung), weich nachgeführt
+    // Kamera: hinter und über dem Fahrer, in Fahrtrichtung (nicht in Skirichtung), weich nachgeführt.
+    // o: hinten, hoch (Meter), dreh; voraus (frei, Ski Alpin): Blick auf den Boden so viele Meter voraus, kursBlick 0 … 1: wie stark der Blick dem Kurs statt der Fahrtrichtung folgt
     function kamera(f, dt, o) {
       o = o || {}; const vh = Math.hypot(f.vx, f.vs), gier = vh > 2 ? Math.atan2(f.vx, f.vs) : f.psi, hinten = o.hinten || 4.8, hoch = o.hoch || 2.1;
       if (kz.neu) kz.gier = gier; else { let d = gier - kz.gier; d = Math.atan2(Math.sin(d), Math.cos(d)); kz.gier += d * Math.min(1, dt * 3.2); }
       const sx = Math.sin(kz.gier + (o.dreh || 0)), ss = Math.cos(kz.gier + (o.dreh || 0)), cx = f.x - sx * hinten, cs = f.s - ss * hinten;
-      const ort = V(cx, Math.max(f.y + hoch + (f.y - K.h(f.x, f.s)) * 0.2, K.h(cx, cs) + 1.3), cs), ziel = V(f.x + sx * 7, f.y + 0.9 - 7 * Math.tan(Math.max(0, K.grad(f.s + 6)) * P.RAD) * 0.6, f.s + ss * 7);
-      if (kz.neu) { kz.ort.copy(ort); kz.ziel.copy(ziel); kz.neu = false; } else { const y = kz.ort.y + (ort.y - kz.ort.y) * Math.min(1, dt * 10), zy = kz.ziel.y + (ziel.y - kz.ziel.y) * Math.min(1, dt * 10); kz.ort.copy(ort).setY(y); kz.ziel.copy(ziel).setY(zy); }   // fester Abstand, nur Richtung und Höhe weich
-      kam.position.copy(kz.ort); kam.up.set(Math.sin(f.neig) * -0.06, 1, 0).normalize(); kam.lookAt(kz.ziel);
-      kam.fov = 56 + 12 * P.clamp(f.v / 30, 0, 1); sky.position.copy(kam.position);
+      const ort = V(cx, Math.max(f.y + hoch + (f.y - K.h(f.x, f.s)) * 0.2, K.h(cx, cs) + 1.3), cs); let ziel;
+      if (o.voraus) { const w = o.voraus, kb = o.kursBlick || 0, p = K.punkt(f.u + w, f.d * 0.5), bx = f.x + sx * w, bs = f.s + ss * w; ziel = V(bx + (p[0] - bx) * kb, Math.min(f.y + 1, K.hUD(f.u + w, f.d * 0.5) + 1.2), bs + (p[1] - bs) * kb); }
+      else ziel = V(f.x + sx * 7, f.y + 0.9 - 7 * Math.tan(Math.max(0, K.grad(f.u + 6)) * P.RAD) * 0.6, f.s + ss * 7);
+      if (kz.neu) { kz.ort.copy(ort); kz.ziel.copy(ziel); kz.neu = false; } else { const y = kz.ort.y + (ort.y - kz.ort.y) * Math.min(1, dt * 10), zy = kz.ziel.y + (ziel.y - kz.ziel.y) * Math.min(1, dt * (o.voraus ? 5 : 10)); kz.ort.copy(ort).setY(y); if (o.voraus) kz.ziel.lerp(ziel, Math.min(1, dt * 6)); else kz.ziel.copy(ziel); kz.ziel.setY(zy); }   // fester Abstand, nur Richtung und Höhe weich
+      if (kz.warLuft && !f.luft) kz.stoss = Math.min(1, 0.35 + Math.abs(f.vy || 0) * 0.06); kz.warLuft = f.luft; kz.stoss = (kz.stoss || 0) * Math.exp(-dt * 7); kz.zt = (kz.zt || 0) + dt;      // die Landung drückt die Kamera kurz hinunter, bei hohem Tempo zittert sie leicht
+      kam.position.copy(kz.ort); kam.position.y += -0.3 * kz.stoss + (Math.sin(kz.zt * 31) + Math.sin(kz.zt * 47 + 1)) * 0.02 * P.clamp((f.v - 20) / 14, 0, 1); kam.up.set(Math.sin(f.neig) * -0.06, 1, 0).normalize(); kam.lookAt(kz.ziel);
+      kam.fov = 56 + 12 * P.clamp(f.v / 30, 0, 1) + (o.weit || 0) * Math.pow(P.clamp((f.v - 14) / 24, 0, 1), 1.4);      // o.weit: bei hohem Tempo weitet sich der Blick, das Gelände zieht schneller vorbei sky.position.copy(kam.position);
     }
     function zeichne(c, w, h, dpr) {
       const r = renderer(), pw = Math.round(w * dpr), ph = Math.round(h * dpr), el = r.domElement;
       if (el.width !== pw || el.height !== ph) r.setSize(pw, ph, false);
       kam.aspect = w / h; kam.updateProjectionMatrix(); r.render(szene, kam); c.drawImage(el, 0, 0, w, h);
     }
-    return { K, szene, kam, figur: setzeFigur, stelle, kamera, zeichne, neu() { kz.neu = true; if (fig) fig.neu(); } };
+    return { K, szene, kam, figur: setzeFigur, ideallinie, idealFarbe, stelle, kamera, zeichne, neu() { kz.neu = true; if (fig) fig.neu(); } };
   }
   const geht = () => { try { return !!T && !!renderer(); } catch (e) { return false; } };
-  root.SXWelt = { baue, geht, C };
+  root.SXWelt = { baue, geht, C, info: () => (ren ? { calls: ren.info.render.calls, dreiecke: ren.info.render.triangles } : null) };
 })(typeof window !== "undefined" ? window : globalThis);
+
+// Cold Medal · Ski Cross und Ski Alpin – Bedienung der Fahrt (global SXBedienung): Wippe zum Lenken, Tasten, Anzeige „Kantenhalt“.
+// Eigene Datei seit Ski Alpin 0.1, damit beide Spiele dieselbe Bedienung einbinden statt sie zu kopieren. Das CSS steht hier mit drin.
+(function () {
+  "use strict";
+  const CSS = `.sx-wippe { position: absolute; left: 16px; bottom: 14px; width: 216px; height: 104px; display: flex; gap: 8px; pointer-events: auto; touch-action: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.sx-wippe span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 52px; pointer-events: none;
+  background: var(--paper, #F3EEE2); color: var(--ink, #1E2734); border: 3px solid var(--ink-deep, #141C28); box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 8px 18px rgba(0, 0, 0, 0.25);
+  font: 800 12px/1 var(--font-display, Futura, "Avenir Next", sans-serif); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.sx-wippe span.an { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink-deep, #141C28), 0 4px 10px rgba(0, 0, 0, 0.25); background: #FFF8E8; }
+.sx-wippe svg { width: 38px; height: 38px; display: block; }
+.sx-schieber { position: absolute; left: 14px; bottom: 10px; width: 262px; height: 128px; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.sx-schieber i { position: absolute; left: 0; right: 0; top: 24px; bottom: 24px; border-radius: 40px; background: rgba(243, 238, 226, 0.82); border: 3px solid var(--ink-deep, #141C28); box-shadow: 0 4px 0 var(--ink-deep, #141C28), 0 8px 18px rgba(0, 0, 0, 0.25); }
+.sx-schieber i::after { content: ""; position: absolute; left: 50%; top: 8px; bottom: 8px; width: 2px; margin-left: -1px; background: rgba(20, 28, 40, 0.35); }
+.sx-schieber em { position: absolute; top: 48px; width: 32px; height: 32px; color: rgba(20, 28, 40, 0.55); pointer-events: none; } .sx-schieber em:nth-of-type(1) { left: 8px; } .sx-schieber em:nth-of-type(2) { right: 8px; }
+.sx-schieber svg { width: 32px; height: 32px; display: block; }
+.sx-schieber b { position: absolute; left: 50%; top: 50%; width: 78px; height: 78px; margin: -39px 0 0 -39px; border-radius: 50%; background: var(--paper, #F3EEE2); border: 3px solid var(--ink-deep, #141C28); box-shadow: 0 3px 0 var(--ink-deep, #141C28); pointer-events: none; }
+.sx-schieber.voll b { background: #F0C56A; }
+.sx-kante { position: absolute; left: 50%; bottom: 16px; width: 190px; margin-left: -95px; pointer-events: none; text-align: center;
+  font: 800 10px/1 var(--font-display, Futura, "Avenir Next", sans-serif); letter-spacing: 0.1em; text-transform: uppercase; color: #141C28; }
+.sx-kante i { display: block; position: relative; height: 10px; margin-top: 4px; border-radius: 5px; background: rgba(20, 28, 40, 0.3); border: 2px solid #141C28; overflow: hidden; }
+.sx-kante b { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #6EAF64; }
+.sx-kante.warn b { background: #DDA43B; } .sx-kante.rutscht b { background: #C23B2A; }
+.cs-knopf.sx-bremse { bottom: 130px; right: 26px; }
+.sx-kante u { position: absolute; left: 74%; top: -2px; bottom: -2px; width: 2px; background: #141C28; }`;
+  const st = document.createElement("style"); st.textContent = CSS; document.head.appendChild(st);
+  const pfeil = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+  // Wippe: ein Feld für den linken Daumen, linke Hälfte kantet links, rechte rechts; der Daumen darf hinüberrutschen
+  function wippe(setze) {
+    const w = document.createElement("div"); w.className = "sx-wippe"; w.innerHTML = `<span>${pfeil("M14 6l-6 6 6 6")}Links</span><span>${pfeil("M10 6l6 6-6 6")}Rechts</span>`;
+    document.getElementById("hud").appendChild(w);
+    const [l, r] = w.children, finger = new Map();
+    const seite = (e) => { const a = l.getBoundingClientRect(), b = r.getBoundingClientRect(), d = (q) => Math.hypot(e.clientX - (q.left + q.right) / 2, e.clientY - (q.top + q.bottom) / 2); return d(a) <= d(b) ? -1 : 1; };
+    const neu = () => { let li = false, re = false; for (const v of finger.values()) { if (v < 0) li = true; else re = true; } setze(li, re); };
+    w.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); try { w.setPointerCapture(e.pointerId); } catch (er) { /* egal */ } finger.set(e.pointerId, seite(e)); neu(); });
+    w.addEventListener("pointermove", (e) => { if (finger.has(e.pointerId)) { finger.set(e.pointerId, seite(e)); neu(); } });
+    const weg = (e) => { if (finger.delete(e.pointerId)) neu(); }; w.addEventListener("pointerup", weg); w.addEventListener("pointercancel", weg); w.addEventListener("contextmenu", (e) => e.preventDefault());
+    return { el: w, zeige(li, re) { l.classList.toggle("an", li); r.classList.toggle("an", re); }, weg() { finger.clear(); if (w.parentNode) w.parentNode.removeChild(w); } };
+  }
+  // Schieber: stufenlos lenken. Der Daumen liegt auf dem Feld; je weiter er aus der Mitte rutscht, desto stärker wird gekantet (wenig für die Linie, ganz außen für enge Kurven).
+  function schieber(setze) {
+    const w = document.createElement("div"); w.className = "sx-schieber"; w.innerHTML = `<i></i><em>${pfeil("M14 6l-6 6 6 6")}</em><em>${pfeil("M10 6l6 6-6 6")}</em><b></b>`;
+    document.getElementById("hud").appendChild(w); const knauf = w.querySelector("b"); let finger = null;
+    const [eL, eR] = w.querySelectorAll("em"), mitte = (el) => { const q = el.getBoundingClientRect(); return [(q.left + q.right) / 2, (q.top + q.bottom) / 2]; };
+    // Ausschlag entlang der Achse vom linken zum rechten Pfeil: stimmt auch, wenn die Bühne gedreht ist (Telefon hochkant gehalten)
+    const wert = (e) => { const L = mitte(eL), Rr = mitte(eR), ax = Rr[0] - L[0], ay = Rr[1] - L[1], l2 = ax * ax + ay * ay || 1, tt = ((e.clientX - (L[0] + Rr[0]) / 2) * ax + (e.clientY - (L[1] + Rr[1]) / 2) * ay) / l2 * 2, n = Math.max(-1, Math.min(1, tt * 107 / 87)), a = Math.abs(n); return a < 0.07 ? 0 : Math.sign(n) * Math.pow((a - 0.07) / 0.93, 1.35); };
+    w.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); try { w.setPointerCapture(e.pointerId); } catch (er) { /* egal */ } finger = e.pointerId; setze(wert(e)); });
+    w.addEventListener("pointermove", (e) => { if (e.pointerId === finger) setze(wert(e)); });
+    const los = (e) => { if (e.pointerId === finger) { finger = null; setze(0); } }; w.addEventListener("pointerup", los); w.addEventListener("pointercancel", los); w.addEventListener("contextmenu", (e) => e.preventDefault());
+    return { el: w, zeige(lenk) { const a = Math.abs(lenk), n = a < 0.001 ? 0 : Math.sign(lenk) * (0.07 + 0.93 * Math.pow(a, 1 / 1.35)); knauf.style.transform = `translateX(${(n * 87).toFixed(1)}px)`; w.classList.toggle("voll", a > 0.9); }, weg() { if (w.parentNode) w.parentNode.removeChild(w); } };
+  }
+  // Tasten am Schreibtisch: Pfeile oder A/D lenken (Rahmen), Leertaste, Pfeil runter oder S ist die Hocke
+  const taste = { hocke: false, rechts: false, bremse: false, aktiv: false };
+  const bremsTaste = (e) => e.key === "ArrowUp" || e.key === "w" || e.key === "W";
+  const hockeTaste = (e) => e.key === " " || e.key === "ArrowDown" || e.key === "s" || e.key === "S" || e.key === "Shift";
+  window.addEventListener("keydown", (e) => { if (!taste.aktiv) return; if (hockeTaste(e)) { taste.hocke = true; e.preventDefault(); e.stopImmediatePropagation(); } else if (bremsTaste(e)) { taste.bremse = true; e.preventDefault(); } else if (e.key === "d" || e.key === "D") taste.rechts = true; }, true);
+  window.addEventListener("keyup", (e) => { if (hockeTaste(e)) { taste.hocke = false; if (taste.aktiv) e.stopImmediatePropagation(); } else if (bremsTaste(e)) taste.bremse = false; else if (e.key === "d" || e.key === "D") taste.rechts = false; }, true);
+
+  // Anzeige unten in der Mitte: wie viel die Kante trägt (Strich = Haftgrenze)
+  function kante() {
+    const anz = document.createElement("div"); anz.className = "sx-kante"; anz.innerHTML = "Kantenhalt<i><b></b><u></u></i>"; document.getElementById("hud").appendChild(anz); const balken = anz.querySelector("b");
+    return { zeige(f) { const an = Math.max(0, Math.min(1.35, f.luft ? 0 : f.lastAnteil)); balken.style.width = Math.round(an / 1.35 * 100) + "%"; anz.className = "sx-kante" + (f.rutsch > 0.15 ? " rutscht" : an > 0.9 ? " warn" : ""); }, weg() { if (anz.parentNode) anz.parentNode.removeChild(anz); } };
+  }
+  // Fahrgeräusch: Fahrtwind (tiefes Rauschen, lauter und heller mit dem Tempo) und die Kante im Schnee (helles Zischen unter Last und beim Rutschen).
+  // Eigener Klangweg, weil der Rahmen nur kurze Töne kennt; er wird mit der ersten Berührung geweckt. an() fragt den Ton-Schalter des Spiels ab.
+  function klang(an) {
+    let ac = null, wind = null, kante = null, gW = null, gK = null, fW = null, fK = null;
+    const wecke = () => { try { if (!ac) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return; ac = new A(); const n = ac.sampleRate * 2, b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+        const quelle = (typ, f, q) => { const s = ac.createBufferSource(), fi = ac.createBiquadFilter(), g = ac.createGain(); s.buffer = b; s.loop = true; fi.type = typ; fi.frequency.value = f; fi.Q.value = q; g.gain.value = 0; s.connect(fi); fi.connect(g); g.connect(ac.destination); s.start(); return [s, fi, g]; };
+        [wind, fW, gW] = quelle("lowpass", 300, 0.4); [kante, fK, gK] = quelle("bandpass", 3600, 0.8); } if (ac.state === "suspended") ac.resume(); } catch (e) { /* ohne Ton */ } };
+    window.addEventListener("pointerdown", wecke, true); window.addEventListener("keydown", wecke, true);
+    return { setze(f) { if (!ac || !gW) return; const t = ac.currentTime, laut = an() ? 1 : 0, v = Math.min(1, (f.v || 0) / 38), k = f.luft ? 0 : Math.min(1, Math.abs(f.aq || 0) / 14 * 0.6 + (f.rutsch || 0) * 0.9 + (f.bremse || 0) * 0.8) * Math.min(1, (f.v || 0) / 8);
+        gW.gain.setTargetAtTime(laut * (0.02 + 0.3 * v * v) * (f.luft ? 1.25 : 1), t, 0.08); fW.frequency.setTargetAtTime(250 + 1500 * v, t, 0.1); gK.gain.setTargetAtTime(laut * 0.16 * k, t, 0.04); fK.frequency.setTargetAtTime(2600 + 2600 * (f.rutsch || 0), t, 0.06); },
+      weg() { window.removeEventListener("pointerdown", wecke, true); window.removeEventListener("keydown", wecke, true); try { if (ac) ac.close(); } catch (e) { /* egal */ } ac = null; gW = null; } };
+  }
+  window.SXBedienung = { wippe, schieber, taste, kante, klang };
+})();
 
 // Cold Medal · Ski Cross – Spiel (Rahmen: oberflaeche/rahmen.js, Physik: physics.js, Bild: welt.js). Vorgaben: docs/VORGABEN.md.
 // Seit 0.4 (Mat, 15.11.2026): räumliche Fahrt mit Skiphysik, Blick von hinten. Phase 1: eine Testpiste, eine Fahrt auf Zeit.
@@ -2607,25 +2894,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   let R, welt = null, vorlauf = null, letztT = 0;
   const dieWelt = () => welt || (welt = WELT.baue(K));
   const kmh = (v) => Math.round(v * 3.6);
-  const pfeil = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 
-  // Wippe: ein Feld für den linken Daumen, linke Hälfte kantet links, rechte rechts; der Daumen darf hinüberrutschen
-  function wippe(setze) {
-    const w = document.createElement("div"); w.className = "sx-wippe"; w.innerHTML = `<span>${pfeil("M14 6l-6 6 6 6")}Links</span><span>${pfeil("M10 6l6 6-6 6")}Rechts</span>`;
-    document.getElementById("hud").appendChild(w);
-    const [l, r] = w.children, finger = new Map();
-    const seite = (e) => { const a = l.getBoundingClientRect(), b = r.getBoundingClientRect(), d = (q) => Math.hypot(e.clientX - (q.left + q.right) / 2, e.clientY - (q.top + q.bottom) / 2); return d(a) <= d(b) ? -1 : 1; };
-    const neu = () => { let li = false, re = false; for (const v of finger.values()) { if (v < 0) li = true; else re = true; } setze(li, re); };
-    w.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); try { w.setPointerCapture(e.pointerId); } catch (er) { /* egal */ } finger.set(e.pointerId, seite(e)); neu(); });
-    w.addEventListener("pointermove", (e) => { if (finger.has(e.pointerId)) { finger.set(e.pointerId, seite(e)); neu(); } });
-    const weg = (e) => { if (finger.delete(e.pointerId)) neu(); }; w.addEventListener("pointerup", weg); w.addEventListener("pointercancel", weg); w.addEventListener("contextmenu", (e) => e.preventDefault());
-    return { el: w, zeige(li, re) { l.classList.toggle("an", li); r.classList.toggle("an", re); }, weg() { finger.clear(); if (w.parentNode) w.parentNode.removeChild(w); } };
-  }
-  // Tasten am Schreibtisch: Pfeile oder A/D lenken (Rahmen), Leertaste, Pfeil runter oder S ist die Hocke
-  const taste = { hocke: false, rechts: false, aktiv: false };
-  const hockeTaste = (e) => e.key === " " || e.key === "ArrowDown" || e.key === "s" || e.key === "S" || e.key === "Shift";
-  window.addEventListener("keydown", (e) => { if (!taste.aktiv) return; if (hockeTaste(e)) { taste.hocke = true; e.preventDefault(); e.stopImmediatePropagation(); } else if (e.key === "d" || e.key === "D") taste.rechts = true; }, true);
-  window.addEventListener("keyup", (e) => { if (hockeTaste(e)) { taste.hocke = false; if (taste.aktiv) e.stopImmediatePropagation(); } else if (e.key === "d" || e.key === "D") taste.rechts = false; }, true);
+  const { wippe, taste, kante } = window.SXBedienung;
 
   function zeichne(c, t, f, o) {
     const dt = P.clamp(t - letztT, 0, 0.05); letztT = t;
@@ -2638,12 +2908,12 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     let phase = "tor", tPh = 0, acc = 0, tEnd = 0, li = false, re = false, ho = false, botC = null, rutschte = false;
     const wp = wippe((a, b) => { li = a; re = b; });
     const kH = R.knopf({ seite: "rechts", text: "Hocke", symbol: "hocke", onDown: () => { ho = true; }, onUp: () => { ho = false; } });
-    const anz = document.createElement("div"); anz.className = "sx-kante"; anz.innerHTML = "Kantenhalt<i><b></b><u></u></i>"; document.getElementById("hud").appendChild(anz); const balken = anz.querySelector("b");
+    const anz = kante();
     taste.aktiv = true; taste.hocke = taste.rechts = false; window.__sx = { f, K, P };      // für Prüfungen und zum Abstimmen in der Konsole
     R.szene({
       taste(k, an) { if (k === "links") li = an; if (k === "rechts") re = an; },
       bot() { botC = P.bot(f, K); },
-      ende() { taste.aktiv = false; wp.weg(); if (anz.parentNode) anz.parentNode.removeChild(anz); },
+      ende() { taste.aktiv = false; wp.weg(); anz.weg(); },
       update(dt) {
         tPh += dt;
         const rechts = re || taste.rechts, lenk = botC ? botC.lenk : (rechts ? 1 : 0) - (li ? 1 : 0), hocke = botC ? botC.hocke : ho || taste.hocke; botC = null;
@@ -2661,8 +2931,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
           if (f.fertig) { tEnd += dt; if (tEnd > 2.4) return ergebnis(f); }
         }
         wp.zeige(lenk < -0.3, lenk > 0.3); kH.set({ aktiv: hocke });
-        const an = P.clamp(f.luft ? 0 : f.lastAnteil, 0, 1.35); balken.style.width = Math.round(an / 1.35 * 100) + "%"; anz.className = "sx-kante" + (f.rutsch > 0.15 ? " rutscht" : an > 0.9 ? " warn" : "");
-        R.chips([[phase === "tor" ? "Am Start" : R.zeit(f.fertig ? f.zeit : f.t, 1) + " s", "dark"], [kmh(f.v) + " km/h", "gold"], [f.fertig ? "Im Ziel" : Math.max(0, Math.round(K.lang - f.s)) + " m", ""]]);
+        anz.zeige(f);
+        R.chips([[phase === "tor" ? "Am Start" : R.zeit(f.fertig ? f.zeit : f.t, 1) + " s", "dark"], [kmh(f.v) + " km/h", "gold"], [f.fertig ? "Im Ziel" : Math.max(0, Math.round(K.lang - f.u)) + " m", ""]]);
       },
       draw(c, t) { zeichne(c, t, f); if (phase === "tor") R.tafel(c, R.W / 2 - 90, 96, 180, 40, [[tPh > 1.5 ? "ACHTUNG" : "FERTIG MACHEN", 16, "#C23B2A"]]); },
     });

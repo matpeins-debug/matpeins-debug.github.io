@@ -1820,6 +1820,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "schneeball", name: "Schneeball", pfad: "/cold-medal-schneeball/", satz: "Schnee lesen und so weit werfen wie keiner im Dorf.", gruppen: false },
     { id: "big-air", name: "Big Air", pfad: "/big-air/", satz: "Anlauf, Absprung, Trick und Landung auf der großen Schanze.", gruppen: false },
     { id: "ski-cross", name: "Ski Cross", pfad: "/ski-cross/", satz: "Vier am Start, zwei kommen weiter: Wellen, Kurven, Zweikämpfe.", gruppen: false },
+    { id: "ski-alpin", name: "Ski Alpin", pfad: "/ski-alpin/", satz: "Kitzbühel, Abfahrt und Super-G: die Strecke nach echten Geländedaten.", gruppen: false },
     { id: "eisschnelllauf", name: "Eisschnelllauf", pfad: "/eisschnelllauf/", satz: "Im Takt über das Oval: Kurven drücken, Kraft einteilen.", gruppen: false },
     { id: "eisstock", name: "Eisstock", pfad: "/eisstock/", satz: "Stock um Stock an die Daube: Maß nehmen oder wegschießen.", gruppen: false },
     { id: "hoernerschlitten", name: "Hörnerschlitten", pfad: "/hoernerschlitten/", satz: "Mit dem Heuschlitten ins Tal: lenken, bremsen, nicht kippen.", gruppen: false },
@@ -1829,6 +1830,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     { id: "schuetzenfest", name: "Schützenfest", pfad: "/schuetzenfest/", satz: "Ruhige Hand am Schießstand: Atem, Zug, Treffer.", gruppen: false },
     { id: "penaltyschiessen", name: "Penaltyschießen", pfad: "/penaltyschiessen/", satz: "Eins gegen eins auf dem Eis: antäuschen, schießen, halten.", gruppen: false },
     { id: "halfpipe", name: "Halfpipe", pfad: "/halfpipe/", satz: "Acht Sprünge über der Kante: abspringen, drehen, landen.", gruppen: false },
+    { id: "sumo", name: "Yeti-Sumo", pfad: "/sumo/", satz: "Zwei Yetis, ein Ring aus Stroh: schieben, greifen, ausweichen.", gruppen: false },
   ];
   const live = () => LISTE.filter((s) => s.pfad);
   root.CMSpiele = {
@@ -2102,6 +2104,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
  *                                      in der vorderen Hand (r in Figur-Einheiten). Ohne outfit bleibt alles wie bisher.
  *                                      o.feet = "boots" (frei, Schneeball 0.9.2): Winterstiefel bis zur halben Wade mit Filzrand, Schnürung
  *                                      und dicker Profilsohle; der Fuß rollt im Lauf ab (Ferse auf, Spitze ab) statt starr zum Schienbein.
+ *   o.outfit = "yeti" (frei, Sumo 0.1): Yeti mit Fell, rundem Leib, Hörnern und Gürtel statt Mensch. o.fur, o.fur2, o.face, o.belt, o.horn
+ *                                      (Farben), o.dick (Leibesfülle, 1 = normal), o.mund = "auf", o.auge = "zu". Dieselben Posen.
  *   Figur3D.gift(px)                 → { canvas, render(kind, col, yaw, tilt) }  ein Geschenk allein als Bild ("rose", "teddy", "star"),
  *                                      Mitte des Bildes = Mitte des Geschenks, GIFT_U Einheiten über die ganze Breite
  */
@@ -2394,6 +2398,46 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       // Körperachsen: vorn, Seite
       const zs = [-Math.sin(sk.turn), 0, Math.cos(sk.turn)], fx = [Math.cos(sk.turn), 0, Math.sin(sk.turn)];
       const off = (q, f, z) => [q[0] + fx[0] * f + zs[0] * z, q[1], q[2] + fx[2] * f + zs[2] * z];
+      if (o.outfit === "yeti") {
+        // Yeti (Sumo 0.1): dichtes Fell, runder Leib, kurzer Hals, großer Kopf mit Hörnern, Gürtel um die Hüfte. Dieselben Posen wie alle Figuren.
+        const k = o.dick || 1, fur = hex(o.fur || "#F2F5F8"), fur2 = hex(o.fur2 || "#D3DDE8"), face = hex(o.face || "#6F8FB5"), belt = hex(o.belt || "#C23B2A"), horn = hex(o.horn || "#E8D8B4"), dark = hex("#1B2536");
+        const up = norm(sub(sk.nk, sk.hip)), fr = norm(cross(up, zs));
+        const E = (c, a1, a2, a3, r1, r2, r3, col, noOut) => parts.push([SPH, [a1[0] * r1, a1[1] * r1, a1[2] * r1, 0, a2[0] * r2, a2[1] * r2, a2[2] * r2, 0, a3[0] * r3, a3[1] * r3, a3[2] * r3, 0, c[0], c[1], c[2], 1], col, 0, 1, false, !!noOut]);
+        const at = (q, a1, f, a2, u, a3, z) => [q[0] + a1[0] * f + a2[0] * u + a3[0] * z, q[1] + a1[1] * f + a2[1] * u + a3[1] * z, q[2] + a1[2] * f + a2[2] * u + a3[2] * z];
+        // Beine: kurz und stämmig, große Füße mit drei Zehen
+        for (const L2 of [sk.S, sk.Fr]) {
+          limb(L2[0], L2[1], 8.2 * k, 6.8 * k, fur); limb(L2[1], L2[2], 6.6 * k, 5.6 * k, fur);
+          const down = norm(sub(L2[2], L2[1])), fd0 = norm(cross(zs, down)), fl = norm([fd0[0], 0, fd0[2]]), fc = [L2[2][0] + fl[0] * 3.2, Math.max(1.6, L2[2][1] - 1.2), L2[2][2] + fl[2] * 3.2];
+          E(fc, fl, [0, 1, 0], zs, 8.0, 3.0, 5.4, fur2);
+          for (const sd of [-1, 0, 1]) E([fc[0] + fl[0] * 6.6 + zs[0] * sd * 2.6, fc[1] - 0.5, fc[2] + fl[2] * 6.6 + zs[2] * sd * 2.6], fl, [0, 1, 0], zs, 1.5, 1.3, 1.3, dark, true);
+        }
+        // Leib: Bauch und Brust aus zwei Ballen, Rückenfell, Gürtel mit Knoten und Fransen
+        const mid = (t) => lerp(sk.hip, sk.nk, t);
+        E(at(mid(0.36), fr, 2.6, up, 0, zs, 0), fr, up, zs, 12.4 * k, 13.2, 12.8 * k, fur);
+        E(at(mid(0.8), fr, 0.8, up, 0, zs, 0), fr, up, zs, 10.4 * k, 10.2, 12.2 * k, fur);
+        E(at(mid(0.62), fr, -7.5 * k, up, 0, zs, 0), fr, up, zs, 5.2, 8.5, 9.5 * k, fur2);
+        E(at(mid(0.1), fr, 1.8, up, 0, zs, 0), fr, up, zs, 12.9 * k, 3.3, 13.3 * k, belt);
+        ball(at(mid(0.1), fr, 13.6 * k, up, 0, zs, 0), 2.5, belt);
+        for (const sd of [-2, -1, 0, 1, 2]) cap(at(mid(0.07), fr, 13.2 * k, up, 0, zs, sd * 2.2), at(mid(0.07), fr, 13.6 * k, up, -7.5, zs, sd * 2.4), 0.75, belt);
+        // Arme: runde Schulter, dicke Arme, Pranken
+        for (const A2 of [sk.AF, sk.AB]) {
+          ball(A2[0], 6.6 * k, fur); limb(A2[0], A2[1], 5.8 * k, 5.0 * k, fur); limb(A2[1], A2[2], 5.0 * k, 4.5 * k, fur);
+          const d = norm(sub(A2[2], A2[1])); ball([A2[2][0] + d[0] * 2.6, A2[2][1] + d[1] * 2.6, A2[2][2] + d[2] * 2.6], 4.9, fur2);
+        }
+        // Kopf: groß, Gesicht als hellblaue Maske, Augen, Nase, Maul mit zwei Zähnen, Hörner, Schopf
+        const hu = norm(sub(sk.head, sk.nk)), hf = norm(cross(hu, zs)), hc = at(sk.head, hf, 0.5, hu, 1.4, zs, 0);
+        E(hc, hf, hu, zs, 8.8, 8.4, 9.0, fur);
+        E(at(hc, hf, 4.9, hu, -0.8, zs, 0), hf, hu, zs, 4.6, 5.6, 6.4, face);
+        for (const sd of [-1, 1]) {
+          E(at(hc, hf, 8.9, hu, 1.0, zs, sd * 2.7), hf, hu, zs, 0.9, o.auge === "zu" ? 0.35 : 1.15, 1.15, dark, true);
+          E(at(hc, hf, 8.6, hu, o.auge === "zu" ? 2.6 : 3.1, zs, sd * 2.9), hf, hu, zs, 1.0, 0.75, 2.3, fur, true);
+          limb(at(hc, hf, 0, hu, 6.2, zs, sd * 4.6), at(hc, hf, 1.6, hu, 12.2, zs, sd * 7.4), 1.8, 0.5, horn);
+          E(at(hc, hf, 8.6, hu, -4.4, zs, sd * 1.5), hf, hu, zs, 0.6, 1.0, 0.6, hex("#FFFFFF"), true);
+        }
+        E(at(hc, hf, 9.6, hu, -1.0, zs, 0), hf, hu, zs, 1.2, 1.0, 1.5, dark, true);
+        E(at(hc, hf, 8.7, hu, -3.6, zs, 0), hf, hu, zs, 0.8, o.mund === "auf" ? 1.9 : 0.55, 2.7, dark, true);
+        ball(at(hc, hf, -1, hu, 8.6, zs, 0), 2.8, fur); ball(at(hc, hf, -4.2, hu, 7.2, zs, 0), 2.5, fur); ball(at(hc, hf, 2, hu, 8.2, zs, 0), 2.2, fur);
+      } else {
       // Beine: Oberschenkel kräftig zum Knie schmaler, Wade zum Knöchel schmaler
       const legC = L.pattern === "split" ? acc : suit;
       if (WIN) {
@@ -2539,6 +2583,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       if (hs2 === 2) { cap(H(-6.2, 3.2, 0), H(-7.6, -2.5, 0), 1.9, hair); cap(H(-7.6, -2.5, 0), H(-8.6, -8.5, 0), 1.6, hair); }
       if (hs2 === 4) parts.push([SPH, hM(H(-1.2, -0.8, 0), 6.0, 4.2, 6.5), hair]);
       if (hs2 === 5) parts.push([SPH, hM(H(-3.6, -5.5, 0), 3.2, 8.5, 5.8), hair]);
+      }
       // Schatten auf dem Eis: flache, dunklere Scheibe unter der Hüfte, kleiner und blasser im Sprung
       const sh = Math.max(0.35, 1 - (o.lift || 0) / 70);
       if (o.shadow !== false) drawMesh(SPH, ellM([sk.hip[0], 0.05, sk.hip[2]], 17 * sh, 0.05, 6 * sh), [0.66, 0.71, 0.79], 0, true);
