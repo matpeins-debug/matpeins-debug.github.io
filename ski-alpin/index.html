@@ -2977,8 +2977,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       plan: { riesenslalom: { ab: 1730, ziel: 1310, tor: { ab: 27, aus: 4, w: 3.2, erst: 45 } } }, kulisse: (K) => ({ dorf: true, starthaus: true, tribuene: 1, lift: -1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], zuschauer: [[K.lang * 0.72, K.lang + 70, 0]] }) }),
     // Wengen: echte Pistenlinie mit Höhenprofil. Die Höhen der Schlüsselstellen stammen aus der Streckenbeschreibung (blue News: Russisprung 2180 m, Hundschopf 1975 m, Minschkante 1915 m,
     // Canadian Corner 1890 m, Kernen-S 1825 m, Wasserstation 1775 m, Haneggschuss 1590 m, Silberhornsprung 1450 m, Österreicherloch 1390 m, Ziel-S 1385 m); die Grenzen dazwischen sind gesetzt.
-    wengen: () => ({ ort: "Wengen", daten: DAT().wengen, monoton: true, glatt: 14, halb: 18, abschnitte: [[9999, "Starthang", 16], [2205, "Russisprung", 16], [2160, "Traversenschuss", 15], [2060, "Panoramakurve", 15], [1995, "Hundschopf", 6.5], [1978, "Hundschopf", 14], [1940, "Minschkante", 12], [1902, "Canadian Corner", 14], [1872, "Alpweg", 4.5], [1838, "Kernen-S", 8], [1790, "Wasserstation", 4.5], [1766, "Langentrejen", 14], [1612, "Haneggschuss", 13], [1500, "Seilersboden", 16], [1462, "Silberhornsprung", 16], [1412, "Österreicherloch", 16], [1388, "Ziel-S", 13], [1335, "Zielschuss", 18]],
-      kanten: [[2180, 45, 50, 25, 180, 60], [1975, 70, 45, 35, 130, 45]],      // Russisprung, Hundschopf, Silberhornsprung: [Höhe der Kante, steil %, Mulde m, danach flach %, Länge m, Anlauf m]
+    wengen: () => ({ ort: "Wengen", daten: DAT().wengen, monoton: true, glatt: 14, halb: 18, abschnitte: [[9999, "Starthang", 16], [2205, "Russisprung", 16], [2160, "Traversenschuss", 15], [2060, "Panoramakurve", 15], [1995, "Hundschopf", 6.5], [1978, "Hundschopf", 16], [1940, "Minschkante", 12], [1902, "Canadian Corner", 14], [1872, "Alpweg", 4.5], [1838, "Kernen-S", 8], [1790, "Wasserstation", 4.5], [1766, "Langentrejen", 14], [1612, "Haneggschuss", 13], [1500, "Seilersboden", 16], [1462, "Silberhornsprung", 16], [1412, "Österreicherloch", 16], [1388, "Ziel-S", 13], [1335, "Zielschuss", 18]],
+      kanten: [[2180, 45, 50, 25, 180, 60], [1975, 76, 45, 35, 130, 45]],      // Russisprung, Hundschopf, Silberhornsprung: [Höhe der Kante, steil %, Mulde m, danach flach %, Länge m, Anlauf m]
       plan: { abfahrt: { ab: 2311, ziel: 1287 } }, /* 4 m unter dem veröffentlichten Start: die kartierte Linie macht ganz oben einen Haken (Weg vom Lift zum Starthaus) */ kulisse: (K, uBei) => { const aussen = (h0, h1) => { const a = uBei(h0), b = uBei(h1); let s = 0; for (let u = a; u < b; u += 10) s += K.kr(u); return [a, b, s > 0 ? -1 : 1]; };
         return { dorf: true, starthaus: true, tribuene: 1, stadel: true, fahnen: ["#D52B1E", "#D52B1E", "#D52B1E"], gipfel: true,
           wald: (u) => K.hoeheUeberMeer(u) < 1930,                                       // oben ist die Strecke über der Baumgrenze
@@ -2993,7 +2993,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const G = hang ? HAENGE[hang]() : null, ABS = G ? G.abschnitte : KITZ_ABSCHNITTE;
     const HALB = G ? G.halb : 20, PL = G ? G.plan[disz] : KITZ_PLAN[disz], eng = !!PL.tor;
     const D = G ? G.daten : DAT().kitz, sg = disz === "superg"; const L = linie(D, PL.ab); if (G && G.monoton) for (let i = 1; i < L.hoehen.length; i++) L.hoehen[i][1] = Math.min(L.hoehen[i][1], L.hoehen[i - 1][1] - 0.05);      // einzelne Ausreißer nach oben im Höhenprofil würden zu Schanzen
-    if (G && G.kanten) for (const [hK, steil, mulde, flach, weit, anlauf] of G.kanten) { let i = 0; while (i < L.hoehen.length - 2 && L.hoehen[i + 1][1] > hK) i++; const p0 = L.hoehen[i], p1 = L.hoehen[i + 1], bei = p0[0] + (p1[0] - p0[0]) * (p0[1] - hK) / (p0[1] - p1[1]); if (bei > (anlauf || 30) + 5) L.hoehen = kante(L.hoehen, bei, steil, mulde, flach, bei + weit, anlauf); }
+    const sprung = [];        // Bereiche um die nachgeschärften Kanten: dort steht kein Tor (Absprung und Landung)
+    if (G && G.kanten) for (const [hK, steil, mulde, flach, weit, anlauf] of G.kanten) { let i = 0; while (i < L.hoehen.length - 2 && L.hoehen[i + 1][1] > hK) i++; const p0 = L.hoehen[i], p1 = L.hoehen[i + 1], bei = p0[0] + (p1[0] - p0[0]) * (p0[1] - hK) / (p0[1] - p1[1]); if (bei > (anlauf || 30) + 5) { L.hoehen = kante(L.hoehen, bei, steil, mulde, flach, bei + weit, anlauf); sprung.push([bei - 25, bei + weit]); } }
     if (disz === "abfahrt" && !G) L.hoehen = kante(L.hoehen, 128, 83, 42, 8, 245, 100);        // Mausefalle: veröffentlicht 85 %, Sprung im Rennen 50 bis 60 m
     const basis = { punkte: L.punkte, hoehen: L.hoehen, zielHoehe: PL.ziel, halb: HALB, rand: 8, glatt: G ? G.glatt : 14 };
     const roh = P.kursLinie(basis), y0 = L.hoehen[0][1], NB = Math.ceil((roh.uMax - roh.uMin) / 4) + 1, BR = new Float64Array(NB);
@@ -3015,7 +3016,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const st = [[-80, 0], [0, 0]]; let sd = 1;
       for (let u = 70; u < roh.lang - 50; u += 62) { if (konvex(u)) continue; const frei = 1 - P.clamp(Math.abs(roh.kr(u)) * 55, 0, 1); st.push([u, sd * 5.2 * frei]); tore.push({ u, d: 0, w: 6 }); sd = -sd; }
       st.push([roh.lang + 60, 0]); const wedel = P.weich(st); ideal = (u) => 0.75 * schnitt(u) + wedel(u); for (const g of tore) { g.w = 6; g.d = P.clamp(ideal(g.u), -(breite(g.u, -1) - g.w + 2), breite(g.u, 1) - g.w + 2); }     // das Tor steht um die Linie des Vorläufers
-    } else for (let u = 120; u < roh.lang - 60; u += 85) if (!konvex(u)) { const w = Math.min(10, (breite(u, -1) + breite(u, 1)) / 2 - 1.5); tore.push({ u, d: P.clamp(0.8 * schnitt(u), -(breite(u, -1) - w + 2), breite(u, 1) - w + 2), w }); }
+    } else for (let u = 120; u < roh.lang - 60; u += 85) if (!konvex(u) && !sprung.some(([a, b]) => u > a && u < b)) { const w = Math.min(10, (breite(u, -1) + breite(u, 1)) / 2 - 1.5); tore.push({ u, d: P.clamp(0.8 * schnitt(u), -(breite(u, -1) - w + 2), breite(u, 1) - w + 2), w }); }
     const K = P.kursLinie(Object.assign({ name: (G ? G.ort : "Kitzbühel") + " · " + DISZ[disz].name, tore, ideal }, basis)), tal = PL.ziel <= 810;
     // Zwischenzeiten an vier Stellen; Kulisse am Rand: Zuschauer an den bekannten Stellen (als Höhen über dem Meer), Tribüne im Ziel, Hütte an der Seidlalm
     const uBei = (h) => { for (let u = 0; u < K.lang + 150; u += 2) if (y0 + K.hoehe(u) <= h) return u; return K.lang + 150; };
@@ -3135,7 +3136,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.18.0";
+  const VERSION = "0.18.1";
   // Sechs Strecken und mehr: das Programm im Menü steht in zwei Spalten, die Karte ist dafür breiter
   { const s = document.createElement("style"); s.textContent = "#scrMenu .card.menu { width: 500px; } #scrMenu #mModi { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scrMenu #mModi .big { font-size: 14px; padding: 5px 8px; min-width: 0; }"; document.head.appendChild(s); }
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
