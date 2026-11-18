@@ -2546,8 +2546,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       tor.add(new T.Mesh(tuch, new T.MeshBasicMaterial({ color: farbe, side: T.DoubleSide }))); tor.position.set(p[0], p[1], p[2]); tor.rotation.y = -K.th(u); tor.scale.setScalar(K.torGroesse || 1); g.add(tor); };
     // Kurse mit eigenen Toren (K.tore): je Tor zwei Fahnen, dazwischen fährt man durch; sonst eine Fahne an der Innenseite jeder Kurve
     // Slalom (K.torArt "stange"): je Tor zwei einzelne Kippstangen in einer Farbe, ohne Tuch
-    const kipp = new T.CylinderGeometry(0.035, 0.035, 1.9, 6).translate(0, 0.95, 0), kippe = (u, d, farbe) => { const p = raum(u, d), st = new T.Mesh(kipp, toon(farbe)); st.position.set(p[0], p[1], p[2]); st.scale.set(1.6, 1.15, 1.6); g.add(st); };
-    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) if (K.torArt === "stange") kippe(t.u, t.d + sd * (t.w + 0.12), K.torFarbe || (i % 2 ? C.blau : C.rot)); else fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
+    const kipp = new T.CylinderGeometry(0.035, 0.035, 1.9, 6).translate(0, 0.95, 0), kippStangen = [], kippe = (u, d, farbe, i, sd) => { const p = raum(u, d), st = new T.Mesh(kipp, toon(farbe)); st.position.set(p[0], p[1], p[2]); st.scale.set(1.6, 1.15, 1.6); g.add(st); (kippStangen[i] || (kippStangen[i] = []))[sd > 0 ? 1 : 0] = st; }; g.userData.kipp = kippStangen;
+    for (const [i, t] of (K.tore || []).entries()) for (const sd of [-1, 1]) if (K.torArt === "stange") kippe(t.u, t.d + sd * (t.w + 0.12), K.torFarbe || (i % 2 ? C.blau : C.rot), i, sd); else fahne(t.u, t.d + sd * (t.w + 0.2 + 0.4 * (K.torGroesse || 1)), K.torFarbe || (i % 2 ? C.blau : C.rot));      // die innere Stange steht knapp außerhalb der gewerteten Breite: wer zwischen den Stangen durchfährt, ist durch
     for (let u = 40; u < K.lang - 15 && !K.tore; u += 2) {
       const k = K.kr(u); if (Math.abs(k) < 0.012 || u - letzte < 16 || Math.abs(K.kr(u - 2)) > Math.abs(k)) continue;
       letzte = u; fahne(u, Math.sign(k) * (HB(u, Math.sign(k)) - 0.9), nr++ % 2 ? C.blau : C.rot);
@@ -2674,7 +2674,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     const basis = (obj, x, y, z, ort) => { obj.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x, y, z)); obj.position.copy(ort); };
     const ik = (a, b, l1, l2, bieg) => { const d = b.clone().sub(a), L = P.clamp(d.length(), 0.05, l1 + l2 - 0.002); d.normalize(); const x = (l1 * l1 - l2 * l2 + L * L) / (2 * L), h = Math.sqrt(Math.max(0, l1 * l1 - x * x)), q = bieg.clone().addScaledVector(d, -bieg.dot(d)).normalize(); return a.clone().addScaledVector(d, x).addScaledVector(q, h); };
     const mix = (a, b, t) => a.clone().lerp(b, t);
-    const Z = { up: new T.Vector3(0, 1, 0), hocke: 0, luft: 0, beuge: 0, neu: true, t: 0, jubel: 0, streck: 0, lande: 0, warLuft: false };
+    const Z = { up: new T.Vector3(0, 1, 0), hocke: 0, luft: 0, beuge: 0, neu: true, t: 0, jubel: 0, streck: 0, lande: 0, warLuft: false, block: 0 };
+    // Technische Disziplinen (opt.stil): Slalom mit ruhigem, aufrechtem Oberkörper, unter dem die Beine pendeln, und Armen, die die Stange wegschlagen;
+    // Riesenslalom mit großer Innenlage, Hüftknick, langem Außenbein und der Innenhand am Schnee (docs/BEWEGUNG.md)
+    const SLA = !!opt && opt.stil === "slalom", RS = !!opt && opt.stil === "riesenslalom", TECH = SLA || RS;
     // Haltung aus dem Zustand der Physik. dt glättet nur, was sonst springen würde (Übergang Boden und Luft).
     function stelle(f, K, dt) {
       let B = P.boden(K, f.x, f.s);
@@ -2687,18 +2690,18 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const hk = f.hocke * f.hocke * (3 - 2 * f.hocke) * (1 - Z.jubel), th0 = P.clamp(f.neig, -1.1, 1.1);
       // Bewegungslehre (docs/BEWEGUNG.md): im Flug kompakt mit angezogenen Beinen, kurz vor dem Aufsetzen leicht strecken und in der Landung abfedern; über Kuppen schlucken, in Mulden drücken; beim Kantenwechsel tiefer, im Bogen das Außenbein lang
       const ueber = f.luft ? f.y - K.h(f.x, f.s) : 0; Z.streck += ((f.luft && f.vy < 0 && ueber < 1.6 ? 1 : 0) - Z.streck) * Math.min(1, dt * 9); if (Z.warLuft && !f.luft) Z.lande = 0.4; Z.warLuft = f.luft; Z.lande *= Math.exp(-dt * 5);
-      const welle = f.luft ? 0 : P.clamp((K.grad(f.u + 5) - K.grad(f.u - 1)) * 0.012, -0.1, 0.2) * tempo, wechsel = f.luft ? 0 : 0.1 * (1 - hk) * (1 - P.clamp(Math.abs(th0) / 0.45, 0, 1)) * tempo;
+      const welle = f.luft ? 0 : P.clamp((K.grad(f.u + 5) - K.grad(f.u - 1)) * 0.012, -0.1, 0.2) * tempo, wechsel = f.luft ? 0 : (SLA ? 0.3 : RS ? 0.24 : 0.1) * (1 - hk) * (1 - P.clamp(Math.abs(th0) / (TECH ? 0.38 : 0.45), 0, 1)) * (TECH ? P.clamp(Math.hypot(f.vx, f.vs) / 9, 0, 1) : tempo);      // Umkanten: Beine anziehen, im Bogen wieder strecken
       const beuge = P.clamp(hk * 0.9 + (f.last - 1) * 0.16 + Z.luft * (0.6 - 0.42 * Z.streck) * (1 - hk * 0.6) + Z.lande + welle + wechsel + schlag, 0, 1); Z.beuge += (beuge - Z.beuge) * Math.min(1, dt * 12 + (k === 1 ? 1 : 0));
       const th = th0, phi = f.phi, sth = Math.sin(th), cth = Math.cos(th);
       const base = V(f.x, f.y, f.s), lehn = Up.clone().multiplyScalar(cth).addScaledVector(Rt, sth);
       const skiUp = Up.clone().multiplyScalar(Math.cos(phi)).addScaledVector(Rt, Math.sin(phi)), skiRt = Rt.clone().multiplyScalar(Math.cos(phi)).addScaledVector(Up, -Math.sin(phi));
       const pR = Rt.clone().multiplyScalar(Math.cos(th * 0.5)).addScaledVector(Up, -Math.sin(th * 0.5));
-      const hueft = base.clone().addScaledVector(lehn, P.lerp(0.84, 0.5, Z.beuge)).addScaledVector(Fw, -0.03 - 0.13 * Z.beuge);
-      const fuss = [-1, 1].map((sd) => base.clone().addScaledVector(Rt, sd * 0.19).addScaledVector(Fw, sd * sth > 0 ? 0.14 * Math.abs(sth) * (1 - hk) : 0.1 * Math.abs(sth) * hk)), knoechel = fuss.map((p) => p.clone().addScaledVector(skiUp, 0.12));
+      const hueft = base.clone().addScaledVector(lehn, P.lerp(0.84, 0.5, Z.beuge)).addScaledVector(Fw, -0.03 - 0.13 * Z.beuge).addScaledVector(Rt, TECH ? sth * (RS ? 0.12 : 0.07) * (1 - hk) : 0);      // Hüfte nach innen: Hüftknick
+      const spur = SLA ? 0.15 : RS ? 0.22 : 0.19, fuss = [-1, 1].map((sd) => base.clone().addScaledVector(Rt, sd * spur).addScaledVector(Fw, sd * sth > 0 ? 0.14 * Math.abs(sth) * (1 - hk) : 0.1 * Math.abs(sth) * hk)), knoechel = fuss.map((p) => p.clone().addScaledVector(skiUp, 0.12));
       for (let n = 0; n < 2; n++) { let zu = 0; for (let i = 0; i < 2; i++) zu = Math.max(zu, knoechel[i].distanceTo(hueft.clone().addScaledVector(pR, (i ? 1 : -1) * 0.1)) - 0.85); if (zu > 0) hueft.addScaledVector(lehn, -zu); }   // das Außenbein ist höchstens gestreckt
       for (let i = 0; i < 2; i++) {
         const sd = i ? 1 : -1, b = T_.bein[i], hj = hueft.clone().addScaledVector(pR, sd * 0.1);
-        const knie = ik(hj, knoechel[i], 0.44, 0.44, Fw.clone().addScaledVector(Rt, sth * 0.55 + sd * 0.06).addScaledVector(Up, 0.1));
+        const knie = ik(hj, knoechel[i], 0.44, 0.44, Fw.clone().addScaledVector(Rt, sth * (TECH ? 0.95 : 0.55) + sd * 0.06).addScaledVector(Up, 0.1));      // die Knie drücken in die Kurve
         zw(b.ober, hj, knie, 0.09); zw(b.unter, knie, knoechel[i], 0.07); b.knie.position.copy(knie);
         zw(b.schaft, knoechel[i].clone().addScaledVector(skiUp, -0.03), knoechel[i].clone().lerp(knie, 0.5), 0.066);
         basis(b.schuh, skiRt, skiUp, Fw.clone().negate(), knoechel[i].clone().addScaledVector(skiUp, -0.04).addScaledVector(Fw, 0.03));
@@ -2706,8 +2709,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         basis(b.ski, sRt, skiUp, sFw.negate(), fuss[i].clone().addScaledVector(skiUp, 0.012).addScaledVector(Rt, sd * 0.1 * (f.bremse || 0)));
       }
       // Rumpf: weniger geneigt als die Beine (Angulation), in der Hocke flach nach vorn
-      const kn = th * P.lerp(0.45, 0.85, hk), tUp = Up.clone().multiplyScalar(Math.cos(kn)).addScaledVector(Rt, Math.sin(kn)), tRt = Rt.clone().multiplyScalar(Math.cos(kn)).addScaledVector(Up, -Math.sin(kn));      // in der Hocke kein Hüftknick: der Rumpf legt sich mit in die Kurve
-      const pitch = P.lerp(0.5, 1.22, hk) + Z.luft * 0.42 * (1 - hk), wirbel = tUp.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(Fw, Math.sin(pitch)), brust = Fw.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(tUp, -Math.sin(pitch));
+      // Im Slalom bleibt der Oberkörper fast senkrecht und zeigt talwärts; im Riesenslalom neigt er sich weniger als die Beine und dreht leicht nach außen (Verwindung)
+      const gier = TECH ? -sth * (SLA ? 0.55 : 0.4) * (1 - hk) : 0, FwT = Fw.clone().multiplyScalar(Math.cos(gier)).addScaledVector(Rt, Math.sin(gier)), RtT = Rt.clone().multiplyScalar(Math.cos(gier)).addScaledVector(Fw, -Math.sin(gier));
+      const kn = th * P.lerp(SLA ? 0.16 : RS ? 0.34 : 0.45, 0.85, hk), tUp = Up.clone().multiplyScalar(Math.cos(kn)).addScaledVector(RtT, Math.sin(kn)), tRt = RtT.clone().multiplyScalar(Math.cos(kn)).addScaledVector(Up, -Math.sin(kn));      // in der Hocke kein Hüftknick: der Rumpf legt sich mit in die Kurve
+      const pitch = P.lerp(SLA ? 0.42 : RS ? 0.56 + 0.12 * Math.abs(sth) : 0.5, 1.22, hk) + Z.luft * 0.42 * (1 - hk), wirbel = tUp.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(FwT, Math.sin(pitch)), brust = FwT.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(tUp, -Math.sin(pitch));
       basis(T_.rumpf, tRt, wirbel, brust.clone().negate(), hueft.clone().addScaledVector(wirbel, 0.27)); T_.rumpf.scale.set(1.12, 1, 0.82);
       T_.becken.position.copy(hueft);
       const hals = hueft.clone().addScaledVector(wirbel, 0.52), blick = wirbel.clone().multiplyScalar(0.35).addScaledVector(Up, 0.8).addScaledVector(Fw, 0.25).addScaledVector(Rt, sth * 0.22).normalize(), kopf = hals.clone().addScaledVector(blick, 0.15);
@@ -2717,7 +2722,12 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
         const sd = i ? 1 : -1, a = T_.arm[i], sch = hueft.clone().addScaledVector(wirbel, 0.45).addScaledVector(tRt, sd * 0.2);
         // in der Kurve: Innenhand tief zum Schnee, Außenarm weit hinaus; beim Anschieben am Start stoßen beide Arme
         const inn = Math.max(0, sd * sth), aus = Math.max(0, -sd * sth), schub = !f.luft && f.t < 1.7 && !f.fertig ? Math.sin(Z.t * 9) * (1 - f.t / 1.7) : 0;
-        const steh = sch.clone().addScaledVector(Fw, 0.36 - 0.3 * schub).addScaledVector(Up, -0.2 - inn * 0.3 + aus * 0.1 + 0.1 * Math.abs(schub)).addScaledVector(tRt, sd * (0.13 + aus * 0.2 + inn * 0.1));
+        let steh = sch.clone().addScaledVector(Fw, 0.36 - 0.3 * schub).addScaledVector(Up, -0.2 - inn * 0.3 + aus * 0.1 + 0.1 * Math.abs(schub)).addScaledVector(tRt, sd * (0.13 + aus * 0.2 + inn * 0.1));
+        if (RS) steh = sch.clone().addScaledVector(Fw, 0.34 + aus * 0.1 - 0.3 * schub).addScaledVector(Up, -0.14 - inn * 0.52 + aus * 0.06 + 0.1 * Math.abs(schub)).addScaledVector(Rt, sd * (0.2 + aus * 0.12 + inn * 0.2));      // Innenhand zum Schnee, Außenarm vorn und ruhig
+        if (SLA) { // beide Hände ruhig vorn; am Tor schlägt der Außenarm quer vor dem Körper die Stange weg, zum Umkanten tippt der neue Innenstock in den Schnee
+          const tor = K.tore && K.tore[f.tor], nah = tor && !f.luft ? P.clamp(1 - Math.abs(tor.u - f.u - 1.2) / 3.2, 0, 1) : 0; if (i === 0) Z.block += (nah - Z.block) * Math.min(1, dt * 22);
+          const quer = aus > 0.05 ? Z.block : 0, tipp = (1 - P.clamp(Math.abs(th0) / 0.2, 0, 1)) * (1 - Z.block);
+          steh = sch.clone().addScaledVector(Fw, 0.4 + 0.14 * quer - 0.3 * schub).addScaledVector(Up, -0.12 + 0.06 * quer - 0.1 * tipp * (sd * Math.sign(f.kap || 0) > 0 ? 1 : 0) + 0.1 * Math.abs(schub)).addScaledVector(Rt, sd * (0.2 - 0.34 * quer)); }
         const tief = kopf.clone().addScaledVector(Fw, 0.27).addScaledVector(Up, -0.1).addScaledVector(Rt, sd * 0.07);
         const flug = sch.clone().addScaledVector(tRt, sd * 0.1).addScaledVector(Fw, 0.36).addScaledVector(Up, -0.16);      // im Flug: Hände ruhig vorn unten, keine Streckung, kein Rudern
         const hoch = sch.clone().addScaledVector(Up, 0.5 + Math.sin(Z.t * 10) * 0.05).addScaledVector(tRt, sd * 0.24).addScaledVector(Fw, 0.05);                                                      // im Ziel: Arme hoch
@@ -2741,7 +2751,8 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     // Stücke: jedes Teil der Welt kommt in die Gruppe seines Streckenstücks (aus userData.u oder aus seinem Ort); sichtbar sind nur die Stücke von 150 m hinter bis 760 m vor dem Fahrer.
     // Was die ganze Strecke entlangläuft (Linien, Zaun, Pfosten, Seil), bleibt immer sichtbar.
     const stuecke = new Map(), stueck = (n) => { if (!stuecke.has(n)) { const gr = new T.Group(); gr.userData.u = uStk(n); stuecke.set(n, gr); szene.add(gr); } return stuecke.get(n); };
-    for (const gruppe of [gelaende(K), kul]) { if (!gruppe) continue; szene.add(gruppe);
+    const gel = gelaende(K), kipp = gel.userData.kipp || [], kippt = []; let torWar = 0;      // kippt: Slalomstangen, die gerade umgeschlagen sind und zurückfedern
+    for (const gruppe of [gel, kul]) { if (!gruppe) continue; szene.add(gruppe);
       for (const o of gruppe.children.slice()) { let u = o.userData.u; if (u == null) { if (o.isInstancedMesh || o.isLineSegments) continue; let c = o.position; if (o.geometry && o.position.lengthSq() < 1e-6) { o.geometry.computeBoundingSphere(); const bs = o.geometry.boundingSphere; if (!bs || bs.radius > 260) continue; c = bs.center; } u = K.ort(c.x, -c.z).u; }
         stueck(stk(u)).add(o); } }
     let stkJetzt = null; const sichtbar = (u) => { const n = stk(u); if (n === stkJetzt) return; stkJetzt = n; for (const gr of stuecke.values()) gr.visible = gr.userData.u > u - 150 - TL / 2 && gr.userData.u < u + 760 + TL / 2; };
@@ -2770,6 +2781,9 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     function stelle(f, dt) {
       if (!fig) setzeFigur(null);
       lage = fig.stelle(f, K, dt); zeit += dt;
+      // Slalom: die Drehstange, an der der Fahrer vorbeizieht, kippt nach vorn und federt zurück
+      if (f.tor < torWar) torWar = f.tor; while (torWar < f.tor) { const t = K.tore[torWar], st = t && kipp[torWar] && kipp[torWar][t.sd > 0 ? 0 : 1]; if (st && Math.abs((f.d != null ? f.d : 0) - (t.d - t.sd * (t.w + 0.12))) < 1.7) { const vz = lage.Rt.clone().cross(lage.Up).dot(lage.Fw) < 0 ? -1 : 1; kippt.push({ st, t: 0, achse: lage.Rt.clone(), vz }); } torWar++; }
+      for (let i = kippt.length - 1; i >= 0; i--) { const q = kippt[i]; q.t += dt; const a = q.t < 0.07 ? 1.35 * q.t / 0.07 : 1.35 * Math.exp(-(q.t - 0.07) * 5) * Math.abs(Math.cos((q.t - 0.07) * 7)); q.st.quaternion.setFromAxisAngle(q.achse, q.vz * a); if (q.t > 1.3) { q.st.quaternion.identity(); kippt.splice(i, 1); } }
       if (fig.gross !== 1) { const s = fig.gross; fig.gruppe.scale.setScalar(s); fig.gruppe.position.set(f.x * (1 - s), f.y * (1 - s), -f.s * (1 - s)); }      // größer gezeichnet als echt, um den Fuß herum
       sichtbar(f.u != null ? f.u : f.s);
       if (kul) { const b = kul.userData.belebt; b.leute.forEach((gr) => { if (gr.parent.visible) gr.position.y = Math.max(0, Math.sin(zeit * 7 + gr.userData.takt * 2.1)) * 0.16; }); b.tuch.forEach((tu, i) => { tu.rotation.y = Math.sin(zeit * 3.1 + i) * 0.28 + Math.sin(zeit * 7.3 + i * 2) * 0.08; }); }
@@ -3136,7 +3150,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.18.1";
+  const VERSION = "0.19.0";
   // Sechs Strecken und mehr: das Programm im Menü steht in zwei Spalten, die Karte ist dafür breiter
   { const s = document.createElement("style"); s.textContent = "#scrMenu .card.menu { width: 500px; } #scrMenu #mModi { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scrMenu #mModi .big { font-size: 14px; padding: 5px 8px; min-width: 0; }"; document.head.appendChild(s); }
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
@@ -3183,7 +3197,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
   }
 
   function fahrt(st) {
-    S.stelleEin(st.disz); const K = kurs(st), f = S.amStart(K); const V = vor(st); if (WELT.geht()) welt(st).figur(R.myLook(), WELT.C.rot, { ski: SKI[st.disz], gross: 1.4 });
+    S.stelleEin(st.disz); const K = kurs(st), f = S.amStart(K); const V = vor(st); if (WELT.geht()) welt(st).figur(R.myLook(), WELT.C.rot, { ski: SKI[st.disz], gross: 1.4, stil: st.disz });
     let phase = "tor", tPh = 0, acc = 0, tEnd = 0, li = false, re = false, ho = false, br = false, botC = null, rutschte = false, abS = 0, weit = 0, zi = 0, zw = [], zwChip = null;
     // Riesenslalom und Slalom (eng): kein Schieber, sondern zwei große Knöpfe für den Takt, links und rechts im Wechsel (S.schwung). Sonst Schieber, Hocke, Bremse.
     const eng = /slalom/.test(st.disz), nichts = { set() {}, el: document.createElement("i") }; let sw = null, kL = nichts, kR = nichts, kH = nichts, kB;
@@ -3264,7 +3278,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
     plakat(c, t) {
       if (!R || !WELT.geht()) { c.fillStyle = "#8FBBD8"; c.fillRect(0, 0, 844, 390); return; }
       const dt = P.clamp(t - letztT, 0, 0.05), K = kurs(D0);
-      if (!demo || (demo.fertig && demo.t > demo.zeit + 3)) { S.stelleEin(D0.disz); demo = S.amStart(K); welt(D0).figur(R.myLook(), WELT.C.rot, { ski: SKI[D0.disz], gross: 1.4 }); }
+      if (!demo || (demo.fertig && demo.t > demo.zeit + 3)) { S.stelleEin(D0.disz); demo = S.amStart(K); welt(D0).figur(R.myLook(), WELT.C.rot, { ski: SKI[D0.disz], gross: 1.4, stil: D0.disz }); }
       demoAcc += dt; let n = 0; while (demoAcc >= DT && n++ < 4) { demoAcc -= DT; const b = P.bot(demo, K, S.vorlauf(K)); P.schritt(demo, K, b.lenk, b.hocke, DT, b.bremse); if (demo.fertig) demo.t += DT; }
       zeichne(c, t, D0, demo, { hinten: 6.5, hoch: 2.0, dreh: 0.5 });
     },
