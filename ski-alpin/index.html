@@ -2690,8 +2690,10 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       const hk = f.hocke * f.hocke * (3 - 2 * f.hocke) * (1 - Z.jubel), th0 = P.clamp(f.neig, -1.1, 1.1);
       // Bewegungslehre (docs/BEWEGUNG.md): im Flug kompakt mit angezogenen Beinen, kurz vor dem Aufsetzen leicht strecken und in der Landung abfedern; über Kuppen schlucken, in Mulden drücken; beim Kantenwechsel tiefer, im Bogen das Außenbein lang
       const ueber = f.luft ? f.y - K.h(f.x, f.s) : 0; Z.streck += ((f.luft && f.vy < 0 && ueber < 1.6 ? 1 : 0) - Z.streck) * Math.min(1, dt * 9); if (Z.warLuft && !f.luft) Z.lande = 0.4; Z.warLuft = f.luft; Z.lande *= Math.exp(-dt * 5);
-      const welle = f.luft ? 0 : P.clamp((K.grad(f.u + 5) - K.grad(f.u - 1)) * 0.012, -0.1, 0.2) * tempo, wechsel = f.luft ? 0 : (SLA ? 0.3 : RS ? 0.24 : 0.1) * (1 - hk) * (1 - P.clamp(Math.abs(th0) / (TECH ? 0.38 : 0.45), 0, 1)) * (TECH ? P.clamp(Math.hypot(f.vx, f.vs) / 9, 0, 1) : tempo);      // Umkanten: Beine anziehen, im Bogen wieder strecken
-      const beuge = P.clamp(hk * 0.9 + (f.last - 1) * 0.16 + Z.luft * (0.6 - 0.42 * Z.streck) * (1 - hk * 0.6) + Z.lande + welle + wechsel + schlag, 0, 1); Z.beuge += (beuge - Z.beuge) * Math.min(1, dt * 12 + (k === 1 ? 1 : 0));
+      const welle = f.luft ? 0 : P.clamp((K.grad(f.u + 5) - K.grad(f.u - 1)) * 0.012, -0.1, 0.2) * tempo, wechsel = f.luft || TECH ? 0 : 0.1 * (1 - hk) * (1 - P.clamp(Math.abs(th0) / 0.45, 0, 1)) * tempo;
+      // Slalom und Riesenslalom: Tief-Hoch im Takt der Bögen. Im Bogen (am Tor) geht der Fahrer deutlich in die Knie, zum Umkanten kommt er wieder hoch.
+      const imBogen = P.clamp((Math.abs(th0) - 0.04) / (RS ? 0.26 : 0.22), 0, 1), tiefHoch = TECH && !f.luft ? (RS ? 0.62 : 0.5) * imBogen * imBogen * (3 - 2 * imBogen) * (1 - hk) * P.clamp(Math.hypot(f.vx, f.vs) / 8, 0, 1) : 0;
+      const beuge = P.clamp(hk * 0.9 + (f.last - 1) * (TECH ? 0.05 : 0.16) + Z.luft * (0.6 - 0.42 * Z.streck) * (1 - hk * 0.6) + Z.lande + welle + wechsel + tiefHoch + schlag, 0, 1); Z.beuge += (beuge - Z.beuge) * Math.min(1, dt * (TECH ? 16 : 12) + (k === 1 ? 1 : 0));
       const th = th0, phi = f.phi, sth = Math.sin(th), cth = Math.cos(th);
       const base = V(f.x, f.y, f.s), lehn = Up.clone().multiplyScalar(cth).addScaledVector(Rt, sth);
       const skiUp = Up.clone().multiplyScalar(Math.cos(phi)).addScaledVector(Rt, Math.sin(phi)), skiRt = Rt.clone().multiplyScalar(Math.cos(phi)).addScaledVector(Up, -Math.sin(phi));
@@ -2712,7 +2714,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
       // Im Slalom bleibt der Oberkörper fast senkrecht und zeigt talwärts; im Riesenslalom neigt er sich weniger als die Beine und dreht leicht nach außen (Verwindung)
       const gier = TECH ? -sth * (SLA ? 0.55 : 0.4) * (1 - hk) : 0, FwT = Fw.clone().multiplyScalar(Math.cos(gier)).addScaledVector(Rt, Math.sin(gier)), RtT = Rt.clone().multiplyScalar(Math.cos(gier)).addScaledVector(Fw, -Math.sin(gier));
       const kn = th * P.lerp(SLA ? 0.16 : RS ? 0.34 : 0.45, 0.85, hk), tUp = Up.clone().multiplyScalar(Math.cos(kn)).addScaledVector(RtT, Math.sin(kn)), tRt = RtT.clone().multiplyScalar(Math.cos(kn)).addScaledVector(Up, -Math.sin(kn));      // in der Hocke kein Hüftknick: der Rumpf legt sich mit in die Kurve
-      const pitch = P.lerp(SLA ? 0.42 : RS ? 0.56 + 0.12 * Math.abs(sth) : 0.5, 1.22, hk) + Z.luft * 0.42 * (1 - hk), wirbel = tUp.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(FwT, Math.sin(pitch)), brust = FwT.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(tUp, -Math.sin(pitch));
+      const pitch = P.lerp(SLA ? 0.36 + 0.3 * Z.beuge : RS ? 0.46 + 0.28 * Z.beuge : 0.5, 1.22, hk) + Z.luft * 0.42 * (1 - hk), wirbel = tUp.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(FwT, Math.sin(pitch)), brust = FwT.clone().multiplyScalar(Math.cos(pitch)).addScaledVector(tUp, -Math.sin(pitch));
       basis(T_.rumpf, tRt, wirbel, brust.clone().negate(), hueft.clone().addScaledVector(wirbel, 0.27)); T_.rumpf.scale.set(1.12, 1, 0.82);
       T_.becken.position.copy(hueft);
       const hals = hueft.clone().addScaledVector(wirbel, 0.52), blick = wirbel.clone().multiplyScalar(0.35).addScaledVector(Up, 0.8).addScaledVector(Fw, 0.25).addScaledVector(Rt, sth * 0.22).normalize(), kopf = hals.clone().addScaledVector(blick, 0.15);
@@ -3150,7 +3152,7 @@ tr.cut td { border-bottom: 2px dashed var(--red); }
 // Einzelrennen auf Zeit auf nachgebauten Strecken. Zwei Eingaben: links/rechts (Kante) und Hocke.
 (function () {
   "use strict";
-  const VERSION = "0.19.0";
+  const VERSION = "0.19.1";
   // Sechs Strecken und mehr: das Programm im Menü steht in zwei Spalten, die Karte ist dafür breiter
   { const s = document.createElement("style"); s.textContent = "#scrMenu .card.menu { width: 500px; } #scrMenu #mModi { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; } #scrMenu #mModi .big { font-size: 14px; padding: 5px 8px; min-width: 0; }"; document.head.appendChild(s); }
   const S = window.SAKurse, P = window.SXPhys, WELT = window.SXWelt, B = window.SXBedienung, DT = 1 / P.CFG.HZ;
